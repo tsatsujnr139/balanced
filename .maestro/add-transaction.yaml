@@ -1,0 +1,14 @@
+appId: com.tsatsujnr.balanced
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+- tapOn:
+    id: "plus"
+- extendedWaitUntil:
+    visible: "Add transaction"
+    timeout: 10000
+- assertVisible: "Expense"
+- assertVisible: "Income"
+- assertVisible: "Transfer"

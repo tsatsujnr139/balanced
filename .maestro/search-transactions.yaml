@@ -1,0 +1,12 @@
+appId: com.tsatsujnr.balanced
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 30000
+- tapOn:
+    text: "Search transactions"
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 10000
+- assertVisible: "Transactions"

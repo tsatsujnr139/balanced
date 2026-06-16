@@ -23,11 +23,20 @@ export default function TabLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
+            name="search-transactions"
+            options={{
+              animation: 'fade',
+              animationDuration: 150,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
             name="add-transaction"
             options={{
               contentStyle: { backgroundColor: 'transparent' },
               presentation: 'formSheet',
-              sheetAllowedDetents: [0.92, 1],
+              sheetAllowedDetents: [1],
+              sheetInitialDetentIndex: 0,
               sheetGrabberVisible: false,
             }}
           />

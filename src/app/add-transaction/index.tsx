@@ -1,7 +1,18 @@
+import { SegmentedControl } from '@expo/ui/community/segmented-control';
 import { SymbolView } from 'expo-symbols';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  useColorScheme,
+  type TextInput as TextInputType,
+} from 'react-native';
 
 import { useThemeColors } from '@/hooks/use-theme';
+
+const TRANSACTION_TYPES = ['Expense', 'Income', 'Transfer'];
 
 type RowProps = {
   icon: string;
@@ -82,86 +93,76 @@ function FieldGroup({ children }: { children: React.ReactNode }) {
 
 export default function AddTransactionScreen() {
   const colors = useThemeColors();
+  const colorScheme = useColorScheme();
+  const amountRef = useRef<TextInputType>(null);
+  const [transactionTypeIndex, setTransactionTypeIndex] = useState(0);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      amountRef.current?.focus();
+    }, 300);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, []);
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
-        gap: 22,
+        gap: 18,
         paddingHorizontal: 20,
         paddingBottom: 40,
-        paddingTop: 18,
       }}
       keyboardDismissMode="interactive"
       style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ gap: 18 }}>
-        <Text selectable style={{ color: colors.foreground, fontSize: 38, fontWeight: '800' }}>
-          New Transaction
-        </Text>
-        <FieldGroup>
-          <View style={{ paddingHorizontal: 18, paddingTop: 18 }}>
-            <TextInput
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={colors.muted}
-              style={{
-                color: colors.foreground,
-                fontSize: 52,
-                fontWeight: '700',
-                minHeight: 74,
-              }}
-            />
-          </View>
-          <View style={{ borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: 18 }}>
-            <TextInput
-              placeholder="Notes"
-              placeholderTextColor={colors.muted}
-              multiline
-              style={{
-                color: colors.foreground,
-                fontSize: 18,
-                minHeight: 96,
-                paddingTop: 18,
-                textAlignVertical: 'top',
-              }}
-            />
-          </View>
-        </FieldGroup>
-      </View>
+      <SegmentedControl
+        appearance={colorScheme === 'dark' ? 'dark' : 'light'}
+        onChange={(event) => {
+          setTransactionTypeIndex(event.nativeEvent.selectedSegmentIndex);
+        }}
+        selectedIndex={transactionTypeIndex}
+        style={{ width: '100%' }}
+        values={TRANSACTION_TYPES}
+      />
 
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 18,
-          borderCurve: 'continuous',
-          flexDirection: 'row',
-          padding: 4,
-        }}>
-        {['Expense', 'Income', 'Transfer'].map((type, index) => (
-          <View
-            key={type}
+      <FieldGroup>
+        <View style={{ paddingHorizontal: 18, paddingTop: 18 }}>
+          <TextInput
+            ref={amountRef}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+            placeholderTextColor={colors.muted}
             style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: 42,
-              borderRadius: 14,
-              backgroundColor: index === 0 ? colors.selected : 'transparent',
-            }}>
-            <Text
-              selectable
-              style={{ color: colors.foreground, fontSize: 16, fontWeight: index === 0 ? '700' : '600' }}>
-              {type}
-            </Text>
-          </View>
-        ))}
-      </View>
+              color: colors.foreground,
+              fontSize: 52,
+              fontWeight: '700',
+              minHeight: 74,
+            }}
+          />
+        </View>
+        <View style={{ borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: 18 }}>
+          <TextInput
+            placeholder="Notes"
+            placeholderTextColor={colors.muted}
+            multiline
+            style={{
+              color: colors.foreground,
+              fontSize: 18,
+              minHeight: 96,
+              paddingTop: 18,
+              textAlignVertical: 'top',
+            }}
+          />
+        </View>
+      </FieldGroup>
 
       <FieldGroup>
         <FieldRow icon="calendar" iconColor="#0A84FF" label="Date and time" value="Today, 21:52" />
         <FieldRow icon="building.columns.fill" iconColor="#34A853" label="Account" value="Everyday" />
-        <FieldRow icon="tag.fill" iconColor="#FF9F0A" label="Category" required />
-        <FieldRow icon="number" iconColor="#5856D6" label="Tags / labels" value="None" />
+        <FieldRow icon="square.grid.2x2.fill" iconColor="#FF9F0A" label="Category" required />
+        <FieldRow icon="tag" iconColor="#5856D6" label="Tags" value="None" />
         <FieldRow
           icon="paperclip"
           iconColor="#8E8E93"

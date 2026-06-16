@@ -19,7 +19,13 @@ function getIOSVersion() {
 }
 
 // iOS 26 UIKit bug: large titles disappear when combined with header blur.
-const disableHeaderBlur = getIOSVersion() >= 26;
+// Also avoids RNScreens warning when NativeTabs scroll edge effects are active.
+export function shouldDisableHeaderBlur() {
+  return getIOSVersion() >= 26;
+}
+
+// iOS 26 UIKit bug: large titles disappear when combined with header blur.
+const disableHeaderBlur = shouldDisableHeaderBlur();
 
 export function TabStackLayout({ title, largeTitle = false, headerShown = true }: Props) {
   return (
@@ -35,7 +41,6 @@ export function TabStackLayout({ title, largeTitle = false, headerShown = true }
       <Stack.Screen name="index" options={{ title, headerShown, headerLargeTitle: largeTitle }}>
         <Stack.Header
           transparent
-          blurEffect={disableHeaderBlur ? undefined : 'systemMaterial'}
           style={{ shadowColor: 'transparent' }}
           largeStyle={{ shadowColor: 'transparent' }}
         />

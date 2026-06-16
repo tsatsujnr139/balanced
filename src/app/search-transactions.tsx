@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Stack } from 'expo-router/stack';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { SearchBarCommands } from 'react-native-screens';
 
@@ -14,6 +14,8 @@ const SEARCH_SUGGESTIONS = [
   'Transfer to Savings',
 ];
 
+const SEARCH_FOCUS_DELAY_MS = 200;
+
 export default function SearchTransactionsScreen() {
   const colors = useThemeColors();
   const searchBarRef = useRef<SearchBarCommands | null>(null);
@@ -22,15 +24,21 @@ export default function SearchTransactionsScreen() {
     item.toLowerCase().includes(query.trim().toLowerCase())
   );
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      searchBarRef.current?.focus();
-    }, 250);
-
-    return () => {
-      clearTimeout(timeout);
-    };
+  const closeSearch = useCallback(() => {
+    router.back();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const timeout = setTimeout(() => {
+        searchBarRef.current?.focus();
+      }, SEARCH_FOCUS_DELAY_MS);
+
+      return () => {
+        clearTimeout(timeout);
+      };
+    }, [])
+  );
 
   return (
     <>
@@ -38,8 +46,8 @@ export default function SearchTransactionsScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: 120,
-          paddingTop: 18,
+          paddingBottom: 40,
+          paddingTop: 8,
         }}
         style={{ flex: 1, backgroundColor: colors.background }}>
         <Text
@@ -77,15 +85,11 @@ export default function SearchTransactionsScreen() {
         </View>
       </ScrollView>
 
-      <Stack.Screen options={{ headerTransparent: true, title: 'Search' }} />
+      <Stack.Screen.BackButton hidden />
+      <Stack.Screen.Title large>Search</Stack.Screen.Title>
       <Stack.SearchBar
-        allowToolbarIntegration
         autoCapitalize="none"
-        autoFocus
-        hideNavigationBar
-        onCancelButtonPress={() => {
-          setQuery('');
-        }}
+        onCancelButtonPress={closeSearch}
         onChangeText={(event) => {
           setQuery(event.nativeEvent.text);
         }}
@@ -93,14 +97,11 @@ export default function SearchTransactionsScreen() {
         placement="automatic"
         ref={searchBarRef}
       />
-      <Stack.Toolbar placement="bottom">
-        <Stack.Toolbar.SearchBarSlot separateBackground />
+      <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           accessibilityLabel="Close search"
           icon="xmark"
-          onPress={() => {
-            router.back();
-          }}
+          onPress={closeSearch}
           separateBackground
         />
       </Stack.Toolbar>
