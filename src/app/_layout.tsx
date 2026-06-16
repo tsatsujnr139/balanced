@@ -1,15 +1,38 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Stack } from 'expo-router/stack';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { Uniwind } from 'uniwind';
+
+import '@/global.css';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { ConvexClientProvider } from '@/providers/convex-provider';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    Uniwind.setTheme('system');
+  }, []);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <ConvexClientProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <AnimatedSplashOverlay />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="add-transaction"
+            options={{
+              contentStyle: { backgroundColor: 'transparent' },
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.92, 1],
+              sheetGrabberVisible: false,
+            }}
+          />
+        </Stack>
+      </ThemeProvider>
+    </ConvexClientProvider>
   );
 }

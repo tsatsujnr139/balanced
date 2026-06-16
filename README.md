@@ -1,56 +1,110 @@
-# Welcome to your Expo app 👋
+# balanced
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A personal finance app built with [Expo](https://expo.dev), native UI via
+[`@expo/ui`](https://docs.expo.dev/versions/latest/sdk/ui/swift-ui/) (SwiftUI on
+iOS), native bottom tabs from Expo Router, and a [Convex](https://convex.dev)
+backend.
 
-## Get started
+## What's here
 
-1. Install dependencies
+- **Native bottom tab bar** (`expo-router/unstable-native-tabs`) with SF Symbol
+  icons: **Dashboard · Planning · Stats · You**.
+- **Dashboard** (`src/app/index.ios.tsx`) built entirely from native SwiftUI
+  primitives via `@expo/ui/swift-ui`:
+  - Net‑worth header with assets / debts summary.
+  - **Accounts** — horizontally scrollable cards of balances.
+  - **Recent transactions** list.
+  - **Budgets** usage with native progress bars.
+  - A React Native fallback (`src/app/index.tsx`) renders the same dashboard on
+    web/Android.
+- **Convex backend** scaffolding in `convex/` (schema, `getSnapshot` query, and a
+  `seedDemo` mutation). The UI currently reads local sample data and is wired to
+  swap to Convex with a one‑line change.
 
-   ```bash
-   npm install
-   ```
+## Project structure
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+  app/
+    _layout.tsx          # Theme + Convex providers + native tabs
+    index.ios.tsx        # Dashboard (SwiftUI via @expo/ui)
+    index.tsx            # Dashboard (RN fallback for web/Android)
+    planning.tsx         # Planning tab
+    stats.tsx            # Stats tab
+    you.tsx              # Profile tab
+  components/
+    app-tabs.tsx         # Native tab bar (iOS/Android)
+    app-tabs.web.tsx     # Headless tab bar (web)
+  features/finance/
+    types.ts             # Account / Transaction / Budget types
+    mock-data.ts         # Local sample data (matches Convex shape)
+    use-finance.ts       # Data hook (swap to Convex useQuery later)
+    format.ts            # Currency / date helpers
+    components/placeholder*.tsx
+  providers/convex-provider.tsx
+  global.css             # Tailwind + Uniwind theme tokens (light/dark)
+  lib/cn.ts              # className merge helper
+convex/
+  schema.ts              # accounts / transactions / budgets tables
+  finance.ts             # getSnapshot query
+  seed.ts                # seedDemo mutation
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Run it
 
-### Other setup steps
+> `@expo/ui` and native tabs need a **development build** (not Expo Go).
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+pnpm install
 
-## Learn more
+# iOS (simulator or device) — builds a dev client
+pnpm exec expo run:ios
 
-To learn more about developing your project with Expo, look at the following resources:
+# Android
+pnpm exec expo run:android
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The RN fallback runs in the browser too: `pnpm web` or `pnpm exec expo start --web`.
 
-## Join the community
+## Styling & theming
 
-Join our community of developers creating universal apps.
+[Uniwind](https://docs.uniwind.dev/) provides Tailwind `className` styling on React
+Native screens (web/Android fallback). Theme tokens live in `src/global.css` using
+`@layer theme` with `@variant light` / `@variant dark` — components use semantic
+utilities like `bg-background`, `text-foreground`, and `bg-card` that adapt
+automatically (no `dark:` prefix needed).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The app follows the device color scheme via `Uniwind.setTheme('system')` in
+`src/app/_layout.tsx`. For APIs that need raw color values (native tab bar,
+`SymbolView` tints), use `useThemeColors()` from `src/hooks/use-theme.ts`.
+
+The iOS dashboard (`index.ios.tsx`) stays on `@expo/ui` SwiftUI `modifiers` — Uniwind
+does not apply inside the SwiftUI tree.
+
+## Connect the Convex backend
+
+The app runs on sample data out of the box. To switch to live data:
+
+```bash
+# 1. Start Convex (creates the deployment, generates types, writes the URL)
+pnpm exec convex dev
+
+# 2. Expose the URL to the Expo client (copy from Convex output)
+echo "EXPO_PUBLIC_CONVEX_URL=https://<your-deployment>.convex.cloud" > .env.local
+
+# 3. Seed demo data
+pnpm exec convex run seed:seedDemo
+```
+
+Then point the UI at Convex by replacing the body of `useFinance()` in
+`src/features/finance/use-finance.ts`:
+
+```ts
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
+
+const snapshot = useQuery(api.finance.getSnapshot) ?? { accounts: [], transactions: [], budgets: [] };
+```
+
+The query returns the same `FinanceSnapshot` shape the screens already use, so no
+component changes are required.

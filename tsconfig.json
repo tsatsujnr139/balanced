@@ -15,6 +15,11 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "src/uniwind-types.d.ts"
+  ],
+  "exclude": [
+    "convex",
+    "node_modules"
   ]
 }

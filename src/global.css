@@ -1,9 +1,47 @@
-:root {
+@import 'tailwindcss';
+@import 'uniwind';
+
+/*
+ * Semantic theme tokens for balanced.
+ * Use utilities like bg-background, text-foreground, bg-card, text-muted, etc.
+ * Variables adapt automatically when the active theme changes — no dark: prefix needed.
+ */
+@layer theme {
+  :root {
+    @variant light {
+      --color-background: #f6f7fb;
+      --color-foreground: #0b0b0f;
+      --color-card: #ffffff;
+      --color-muted: #60646c;
+      --color-border: #e4e6ee;
+      --color-selected: #e6e8f0;
+      --color-primary: #2f6bff;
+      --color-positive: #16a34a;
+      --color-negative: #dc2626;
+    }
+
+    @variant dark {
+      --color-background: #0a0a0c;
+      --color-foreground: #ffffff;
+      --color-card: #161719;
+      --color-muted: #a1a6b0;
+      --color-border: #26282c;
+      --color-selected: #26282c;
+      --color-primary: #5b8cff;
+      --color-positive: #3dd68c;
+      --color-negative: #ff6b6b;
+    }
+  }
+}
+
+@theme static {
   --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
+    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji,
+    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
+    monospace;
+  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic',
+    sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
