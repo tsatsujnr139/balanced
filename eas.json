@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 20.4.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "channel": "production",
+      "distribution": "store",
+      "autoIncrement": true,
+      "node": "24.13.0",
+      "pnpm": "11.6.0",
+      "ios": {
+        "image": "sdk-56"
+      },
+      "env": {
+        "APP_NAME": "Balanced",
+        "APP_ICON": "./src/assets/logo.png",
+        "EXPO_PUBLIC_APP_ENV": "prod",
+        "EXPO_PUBLIC_CONVEX_URL": "https://terrific-badger-983.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://terrific-badger-983.eu-west-1.convex.site"
+      }
+    }
+  }
+}

@@ -1,28 +1,27 @@
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type DimensionValue,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth } from '@/constants/theme';
 import {
-  budgetUsage,
-  formatCompactCurrency,
-  formatCurrency,
-  formatTransactionDate,
-} from '@/features/finance/format';
+  DEFAULT_ACCOUNT_COLOR,
+  ACCOUNT_TYPE_LABEL,
+} from '@/features/finance/account-constants';
+import { BudgetList } from '@/features/finance/components/budget-list';
+import { TransactionList } from '@/features/finance/components/transaction-list';
+import { DEFAULT_CURRENCY, formatCurrency } from '@/features/finance/format';
 import type { Account } from '@/features/finance/types';
 import { useFinance } from '@/features/finance/use-finance';
 import { useThemeColors } from '@/hooks/use-theme';
-import { cn } from '@/lib/cn';
-
-const ACCOUNT_TYPE_LABEL: Record<string, string> = {
-  checking: 'Checking',
-  savings: 'Savings',
-  credit: 'Credit',
-  investment: 'Investing',
-  cash: 'Cash',
-};
 
 const HORIZONTAL_PADDING = 16;
 const COLUMN_GAP = 10;
@@ -32,6 +31,82 @@ const ACCOUNT_PAGE_PEEK = 28;
 const GRID_COLUMNS = 2;
 const GRID_ROWS = 2;
 const ACCOUNTS_PER_PAGE = GRID_COLUMNS * GRID_ROWS;
+const ACCOUNT_CARD_HEIGHT = 104;
+const DEFAULT_NEW_ACCOUNT_PARAMS = {
+  name: 'My Account',
+  balance: '0.00',
+  currency: DEFAULT_CURRENCY,
+  type: 'cash',
+  color: DEFAULT_ACCOUNT_COLOR,
+} as const;
+
+function SkeletonBlock({
+  height,
+  width = '100%',
+  borderRadius = 10,
+}: {
+  height: number;
+  width?: DimensionValue;
+  borderRadius?: number;
+}) {
+  const colors = useThemeColors();
+
+  return <View style={{ width, height, borderRadius, backgroundColor: colors.border, opacity: 0.65 }} />;
+}
+
+function ListSkeleton({ rows = 3 }: { rows?: number }) {
+  const colors = useThemeColors();
+
+  return (
+    <View
+      style={{
+        gap: 16,
+        padding: 16,
+        borderRadius: 22,
+        borderCurve: 'continuous',
+        backgroundColor: colors.card,
+      }}>
+      {Array.from({ length: rows }, (_, index) => (
+        <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <SkeletonBlock height={38} width={38} borderRadius={19} />
+          <View style={{ flex: 1, gap: 7 }}>
+            <SkeletonBlock height={13} width="55%" />
+            <SkeletonBlock height={11} width="38%" />
+          </View>
+          <SkeletonBlock height={13} width={64} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function AccountGridSkeleton({ cardWidth }: { cardWidth: number }) {
+  return (
+    <View style={{ gap: ROW_GAP }}>
+      {[0, 1].map((row) => (
+        <View key={row} style={{ flexDirection: 'row', gap: COLUMN_GAP }}>
+          <SkeletonBlock height={ACCOUNT_CARD_HEIGHT} width={cardWidth} borderRadius={16} />
+          <SkeletonBlock height={ACCOUNT_CARD_HEIGHT} width={cardWidth} borderRadius={16} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function buildNewAccountParams() {
+  return {
+    ...DEFAULT_NEW_ACCOUNT_PARAMS,
+    draftId: `new-${Date.now()}`,
+  };
+}
+
+const ADD_ACCOUNT_SLOT = { id: '__add__', kind: 'add' as const };
+
+type AccountGridItem = Account | typeof ADD_ACCOUNT_SLOT;
+
+function isAddAccountSlot(item: AccountGridItem): item is typeof ADD_ACCOUNT_SLOT {
+  return 'kind' in item && item.kind === 'add';
+}
 
 function chunk<T>(items: T[], size: number): T[][] {
   const pages: T[][] = [];
@@ -39,6 +114,25 @@ function chunk<T>(items: T[], size: number): T[][] {
     pages.push(items.slice(i, i + size));
   }
   return pages;
+}
+
+function buildAccountPages(accounts: Account[]): (AccountGridItem | null)[][] {
+  const items: AccountGridItem[] = [...accounts, ADD_ACCOUNT_SLOT];
+  const pages = chunk(items, ACCOUNTS_PER_PAGE).map((page) => {
+    const slots: (AccountGridItem | null)[] = Array.from({ length: ACCOUNTS_PER_PAGE }, () => null);
+
+    page.forEach((item, index) => {
+      const column = Math.floor(index / GRID_ROWS);
+      const row = index % GRID_ROWS;
+      slots[row * GRID_COLUMNS + column] = item;
+    });
+
+    return slots;
+  });
+
+  return pages.length > 0
+    ? pages
+    : [[ADD_ACCOUNT_SLOT, null, null, null]];
 }
 
 function AccountCard({
@@ -49,29 +143,75 @@ function AccountCard({
   width: number;
 }) {
   return (
-    <ThemedView variant="card" className="gap-1.5 rounded-2xl px-3 py-2.5" style={{ width }}>
-      <View className="flex-row items-center justify-between">
-        <View
-          className="size-7 items-center justify-center rounded-full"
-          style={{ backgroundColor: account.color }}>
-          <SymbolView name={account.symbol as never} size={13} tintColor="#fff" />
+    <Pressable
+      accessibilityRole="button"
+      style={{ width, height: ACCOUNT_CARD_HEIGHT }}
+      onPress={() => {
+        router.push({
+          pathname: '/account/[id]',
+          params: { id: account.id },
+        });
+      }}>
+      <ThemedView
+        variant="card"
+        className="h-full justify-between rounded-2xl px-3.5 py-3"
+        style={{ width }}>
+        <View className="flex-row items-center justify-between">
+          <View
+            className="size-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: account.color }}>
+            <SymbolView name={account.symbol as never} size={15} tintColor="#fff" />
+          </View>
+          <ThemedText type="small" color="muted" numberOfLines={1} className="text-xs leading-4">
+            {ACCOUNT_TYPE_LABEL[account.type]}
+          </ThemedText>
         </View>
-        <ThemedText type="small" color="muted" className="text-[11px]">
-          {ACCOUNT_TYPE_LABEL[account.type]}
+        <View className="gap-0">
+          <ThemedText type="small" color="muted" numberOfLines={1} className="text-[15px] leading-5">
+            {account.name}
+          </ThemedText>
+          <ThemedText
+            type="smallBold"
+            color={account.balance < 0 ? 'negative' : 'foreground'}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            className="text-xl leading-7">
+            {formatCurrency(account.balance, account.currency)}
+          </ThemedText>
+        </View>
+      </ThemedView>
+    </Pressable>
+  );
+}
+
+function AddAccountCard({ width }: { width: number }) {
+  const colors = useThemeColors();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add account"
+      style={{ width, height: ACCOUNT_CARD_HEIGHT }}
+      onPress={() => {
+        router.push({
+          pathname: '/add-account',
+          params: buildNewAccountParams(),
+        });
+      }}>
+      <ThemedView
+        variant="card"
+        className="h-full items-center justify-center gap-2 rounded-2xl px-3.5 py-3"
+        style={{ width }}>
+        <View
+          className="size-8 items-center justify-center rounded-full"
+          style={{ backgroundColor: colors.border }}>
+          <SymbolView name="plus" size={15} tintColor={colors.muted} />
+        </View>
+        <ThemedText type="small" color="muted" className="text-[15px] leading-5">
+          Add account
         </ThemedText>
-      </View>
-      <View className="gap-0">
-        <ThemedText type="small" color="muted" className="text-[13px]">
-          {account.name}
-        </ThemedText>
-        <ThemedText
-          type="smallBold"
-          color={account.balance < 0 ? 'negative' : 'foreground'}
-          className="text-lg leading-6">
-          {formatCurrency(account.balance)}
-        </ThemedText>
-      </View>
-    </ThemedView>
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -83,8 +223,9 @@ export default function DashboardScreen() {
   const carouselWidth = Math.min(width, MaxContentWidth + HORIZONTAL_PADDING * 2);
   const pageWidth = contentWidth - ACCOUNT_PAGE_PEEK;
   const cardWidth = (pageWidth - COLUMN_GAP) / GRID_COLUMNS;
-  const { accounts, transactions, budgets, netWorth, totalAssets, totalLiabilities } = useFinance();
-  const accountPages = chunk(accounts, ACCOUNTS_PER_PAGE);
+  const { accounts, transactions, budgets, netWorth, totalAssets, totalLiabilities, isLoading } =
+    useFinance();
+  const accountPages = buildAccountPages(accounts);
 
   return (
     <ScrollView
@@ -95,124 +236,124 @@ export default function DashboardScreen() {
         paddingBottom: insets.bottom + BottomTabInset + 24,
       }}>
       <View className="w-full gap-6" style={{ maxWidth: MaxContentWidth }}>
-        <View className="gap-1">
-          <ThemedText type="smallBold" color="muted" className="text-[15px]">
-            Balance
-          </ThemedText>
-          <ThemedText type="title" className="text-[34px] leading-[40px]">
-            {formatCurrency(netWorth)}
-          </ThemedText>
-          <View className="mt-0.5 flex-row gap-4">
-            <View className="flex-row items-center gap-1">
-              <SymbolView name="arrow.up.right" size={12} tintColor={colors.positive} />
-              <ThemedText type="small" color="muted">
-                Income {formatCompactCurrency(totalAssets)}
-              </ThemedText>
-            </View>
-            <View className="flex-row items-center gap-1">
-              <SymbolView name="arrow.down.right" size={12} tintColor={colors.negative} />
-              <ThemedText type="small" color="muted">
-                Expenses {formatCompactCurrency(totalLiabilities)}
-              </ThemedText>
+        {isLoading ? (
+          <View style={{ gap: 9 }}>
+            <SkeletonBlock height={14} width={62} />
+            <SkeletonBlock height={38} width={180} borderRadius={12} />
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <SkeletonBlock height={13} width={112} />
+              <SkeletonBlock height={13} width={112} />
             </View>
           </View>
-        </View>
+        ) : (
+          <View className="gap-1">
+            <ThemedText type="smallBold" color="muted" className="text-[15px]">
+              Balance
+            </ThemedText>
+            <ThemedText type="title" className="text-[34px] leading-[40px]">
+              {formatCurrency(netWorth)}
+            </ThemedText>
+            <View className="mt-0.5 flex-row gap-4">
+              <View className="flex-row items-center gap-1">
+                <SymbolView name="arrow.up.right" size={12} tintColor={colors.positive} />
+                <ThemedText type="small" color="muted">
+                  Income {formatCurrency(totalAssets)}
+                </ThemedText>
+              </View>
+              <View className="flex-row items-center gap-1">
+                <SymbolView name="arrow.down.right" size={12} tintColor={colors.negative} />
+                <ThemedText type="small" color="muted">
+                  Expenses {formatCurrency(totalLiabilities)}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        )}
 
         <View className="gap-2">
           <ThemedText type="subtitle" className="text-[22px] leading-7">
             Accounts
           </ThemedText>
-          <ScrollView
-            horizontal
-            decelerationRate="fast"
-            nestedScrollEnabled
-            snapToAlignment="start"
-            snapToInterval={pageWidth + PAGE_GAP}
-            showsHorizontalScrollIndicator={false}
-            style={{ width: carouselWidth, marginLeft: -HORIZONTAL_PADDING }}
-            contentContainerStyle={{
-              gap: PAGE_GAP,
-              paddingLeft: HORIZONTAL_PADDING,
-              paddingRight: HORIZONTAL_PADDING + PAGE_GAP,
-            }}>
-            {accountPages.map((page, pageIndex) => (
-              <View key={pageIndex} style={{ width: pageWidth, gap: ROW_GAP }}>
-                {chunk(page, GRID_COLUMNS).map((row, rowIndex) => (
-                  <View key={rowIndex} className="flex-row" style={{ gap: COLUMN_GAP }}>
-                    {row.map((account) => (
-                      <AccountCard key={account.id} account={account} width={cardWidth} />
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View className="gap-2">
-          <ThemedText type="subtitle" className="text-[22px] leading-7">
-            Recent transactions
-          </ThemedText>
-          <ThemedView variant="card" className="rounded-[22px] p-4">
-            {transactions.map((txn, index) => (
-              <View
-                key={txn.id}
-                className={cn('flex-row items-center gap-2', index < transactions.length - 1 && 'mb-4')}>
-                <View
-                  className="size-[38px] items-center justify-center rounded-full"
-                  style={{ backgroundColor: txn.color }}>
-                  <SymbolView name={txn.symbol as never} size={16} tintColor="#fff" />
-                </View>
-                <View className="min-w-0 flex-1 gap-0.5">
-                  <ThemedText type="smallBold">{txn.merchant}</ThemedText>
-                  <ThemedText type="small" color="muted">
-                    {txn.category} · {formatTransactionDate(txn.date)}
-                  </ThemedText>
-                </View>
-                <ThemedText type="smallBold" color={txn.amount > 0 ? 'positive' : 'foreground'}>
-                  {formatCurrency(txn.amount, txn.currency, { signed: true })}
-                </ThemedText>
-              </View>
-            ))}
-          </ThemedView>
-        </View>
-
-        <View className="gap-2">
-          <ThemedText type="subtitle" className="text-[22px] leading-7">
-            Budgets
-          </ThemedText>
-          <ThemedView variant="card" className="rounded-[22px] p-4">
-            {budgets.map((budget, index) => {
-              const usage = budgetUsage(budget.spent, budget.limit);
-              const overBudget = budget.spent > budget.limit;
-              return (
-                <View key={budget.id} className={cn(index < budgets.length - 1 && 'mb-6')}>
-                  <View className="mb-2 flex-row items-center gap-2">
-                    <View
-                      className="size-[26px] items-center justify-center rounded-full"
-                      style={{ backgroundColor: budget.color }}>
-                      <SymbolView name={budget.symbol as never} size={12} tintColor="#fff" />
+          {isLoading ? (
+            <AccountGridSkeleton cardWidth={cardWidth} />
+          ) : (
+            <ScrollView
+              horizontal
+              decelerationRate="fast"
+              nestedScrollEnabled
+              snapToAlignment="start"
+              snapToInterval={pageWidth + PAGE_GAP}
+              showsHorizontalScrollIndicator={false}
+              style={{ width: carouselWidth, marginLeft: -HORIZONTAL_PADDING }}
+              contentContainerStyle={{
+                gap: PAGE_GAP,
+                paddingLeft: HORIZONTAL_PADDING,
+                paddingRight: HORIZONTAL_PADDING + PAGE_GAP,
+              }}>
+              {accountPages.map((page, pageIndex) => (
+                <View key={pageIndex} style={{ width: pageWidth, gap: ROW_GAP }}>
+                  {chunk(page, GRID_COLUMNS).map((row, rowIndex) => (
+                    <View key={rowIndex} className="flex-row" style={{ gap: COLUMN_GAP }}>
+                      {row.map((item, slotIndex) =>
+                        item === null ? (
+                          <View
+                            key={`empty-${pageIndex}-${rowIndex}-${slotIndex}`}
+                            style={{ width: cardWidth, height: ACCOUNT_CARD_HEIGHT }}
+                          />
+                        ) : isAddAccountSlot(item) ? (
+                          <AddAccountCard key={item.id} width={cardWidth} />
+                        ) : (
+                          <AccountCard key={item.id} account={item} width={cardWidth} />
+                        )
+                      )}
                     </View>
-                    <ThemedText type="smallBold" className="flex-1">
-                      {budget.name}
-                    </ThemedText>
-                    <ThemedText type="small" color="muted">
-                      {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
-                    </ThemedText>
-                  </View>
-                  <View className="h-2 overflow-hidden rounded bg-border">
-                    <View
-                      className="h-2 rounded"
-                      style={{
-                        width: `${usage}%`,
-                        backgroundColor: overBudget ? colors.negative : budget.color,
-                      }}
-                    />
-                  </View>
+                  ))}
                 </View>
-              );
-            })}
-          </ThemedView>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between">
+            <ThemedText type="subtitle" className="text-[22px] leading-7">
+              Recent transactions
+            </ThemedText>
+            {!isLoading ? (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => {
+                  router.push('/transactions');
+                }}>
+                <ThemedText type="linkPrimary" className="text-[15px] font-semibold">
+                  View more
+                </ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
+          {isLoading ? <ListSkeleton /> : <TransactionList transactions={transactions} />}
+        </View>
+
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between">
+            <ThemedText type="subtitle" className="text-[22px] leading-7">
+              Budgets
+            </ThemedText>
+            {!isLoading ? (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => {
+                  router.push('/budgets');
+                }}>
+                <ThemedText type="linkPrimary" className="text-[15px] font-semibold">
+                  View more
+                </ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
+          {isLoading ? <ListSkeleton rows={2} /> : <BudgetList budgets={budgets} />}
         </View>
       </View>
     </ScrollView>

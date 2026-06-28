@@ -7,6 +7,6 @@ appId: com.tsatsujnr.balanced
 - tapOn:
     text: "Search transactions"
 - extendedWaitUntil:
-    visible: "Search"
+    visible: "Transactions"
     timeout: 10000
-- assertVisible: "Transactions"
+- assertVisible: "Search transactions"

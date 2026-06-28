@@ -2,10 +2,13 @@ import { router } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { Platform } from 'react-native';
 
+import { useAppNotifications } from '@/features/finance/use-app-notifications';
+
 type Props = {
   title: string;
   largeTitle?: boolean;
   headerShown?: boolean;
+  dashboardActions?: boolean;
 };
 
 function getIOSVersion() {
@@ -27,7 +30,11 @@ export function shouldDisableHeaderBlur() {
 // iOS 26 UIKit bug: large titles disappear when combined with header blur.
 const disableHeaderBlur = shouldDisableHeaderBlur();
 
-export function TabStackLayout({ title, largeTitle = false, headerShown = true }: Props) {
+export function TabStackLayout({ title, largeTitle = false, headerShown = true, dashboardActions = false }: Props) {
+  const { notificationCount } = useAppNotifications();
+  const notificationBadge =
+    notificationCount > 0 ? (notificationCount > 99 ? '99+' : String(notificationCount)) : undefined;
+
   return (
     <Stack
       screenOptions={{
@@ -46,10 +53,23 @@ export function TabStackLayout({ title, largeTitle = false, headerShown = true }
         />
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
+            accessibilityLabel="Notifications"
+            hidden={!dashboardActions}
+            onPress={() => {
+              router.push('/notifications');
+            }}
+            separateBackground>
+            <Stack.Toolbar.Icon sf="bell" />
+            {notificationBadge ? <Stack.Toolbar.Badge>{notificationBadge}</Stack.Toolbar.Badge> : null}
+          </Stack.Toolbar.Button>
+          <Stack.Toolbar.Button
             accessibilityLabel="Search transactions"
             icon="magnifyingglass"
             onPress={() => {
-              router.push('/search-transactions');
+              router.push({
+                pathname: '/transactions',
+                params: { focusSearch: '1' },
+              });
             }}
             separateBackground
           />

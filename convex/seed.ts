@@ -2,6 +2,24 @@ import { mutation } from './_generated/server';
 
 const DAY = 86_400_000;
 
+/** Deletes all tags and transaction-tag links. Run: npx convex run seed:clearAllTags */
+export const clearAllTags = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const transactionTags = await ctx.db.query('transactionTags').collect();
+    for (const row of transactionTags) {
+      await ctx.db.delete(row._id);
+    }
+
+    const tags = await ctx.db.query('tags').collect();
+    for (const tag of tags) {
+      await ctx.db.delete(tag._id);
+    }
+
+    return { deletedTags: tags.length, deletedLinks: transactionTags.length };
+  },
+});
+
 /**
  * Populates the database with demo finance data. Run once from the dashboard:
  *   npx convex run seed:seedDemo
@@ -10,7 +28,13 @@ const DAY = 86_400_000;
 export const seedDemo = mutation({
   args: {},
   handler: async (ctx) => {
-    for (const table of ['transactions', 'accounts', 'budgets'] as const) {
+    for (const table of [
+      'transactions',
+      'accounts',
+      'budgets',
+      'plannedPayments',
+      'plannedPaymentEntries',
+    ] as const) {
       const rows = await ctx.db.query(table).collect();
       await Promise.all(rows.map((r) => ctx.db.delete(r._id)));
     }
@@ -20,7 +44,7 @@ export const seedDemo = mutation({
     const everyday = await ctx.db.insert('accounts', {
       name: 'Everyday',
       institution: 'Chase',
-      type: 'checking',
+      type: 'current',
       balance: 482_355,
       currency: 'GHS',
       symbol: 'creditcard.fill',
@@ -50,7 +74,7 @@ export const seedDemo = mutation({
     const credit = await ctx.db.insert('accounts', {
       name: 'Sapphire',
       institution: 'Chase',
-      type: 'credit',
+      type: 'general',
       balance: -128_940,
       currency: 'GHS',
       symbol: 'creditcard.circle.fill',
@@ -81,13 +105,73 @@ export const seedDemo = mutation({
     }
 
     const budgets = [
-      { name: 'Groceries', spent: 42_300, limit: 60_000, symbol: 'cart.fill', color: '#16A34A', order: 0 },
-      { name: 'Dining out', spent: 31_800, limit: 35_000, symbol: 'fork.knife', color: '#F59E0B', order: 1 },
-      { name: 'Transport', spent: 9_400, limit: 25_000, symbol: 'car.fill', color: '#2563EB', order: 2 },
-      { name: 'Entertainment', spent: 22_100, limit: 20_000, symbol: 'gamecontroller.fill', color: '#DC2626', order: 3 },
+      { name: 'Groceries', category: 'Groceries', limit: 60_000, symbol: 'cart.fill', color: '#16A34A', order: 0 },
+      { name: 'Dining out', category: 'Coffee', limit: 35_000, symbol: 'fork.knife', color: '#F59E0B', order: 1 },
+      { name: 'Transport', category: 'Transport', limit: 25_000, symbol: 'car.fill', color: '#2563EB', order: 2 },
+      { name: 'Subscriptions', category: 'Subscriptions', limit: 2_000, symbol: 'repeat.circle.fill', color: '#DC2626', order: 3 },
     ];
     for (const b of budgets) {
-      await ctx.db.insert('budgets', { ...b, currency: 'GHS' });
+      await ctx.db.insert('budgets', {
+        ...b,
+        currency: 'GHS',
+        period: 'monthly',
+        notifyOnOverspend: true,
+        notifyAtThreshold: true,
+      });
+    }
+
+    const plannedPayments = [
+      {
+        name: 'Spotify Subscription',
+        description: 'Spotify',
+        accountId: everyday,
+        category: 'Subscriptions',
+        categorySymbol: 'repeat.circle.fill',
+        categoryColor: '#1DB954',
+        amount: 4_300,
+        type: 'expense' as const,
+        startDate: now - 95 * DAY,
+        frequency: 'monthly' as const,
+        interval: 1,
+        order: 0,
+      },
+      {
+        name: "Vicki's Insurance",
+        description: 'Prudential Life',
+        accountId: everyday,
+        category: 'Insurance',
+        categorySymbol: 'shield.fill',
+        categoryColor: '#34C7B5',
+        amount: 35_294,
+        type: 'expense' as const,
+        startDate: now - 135 * DAY,
+        frequency: 'monthly' as const,
+        interval: 1,
+        order: 1,
+      },
+      {
+        name: 'Salary',
+        description: 'Acme Payroll',
+        accountId: everyday,
+        category: 'Income',
+        categorySymbol: 'banknote.fill',
+        categoryColor: '#34C759',
+        amount: 412_500,
+        type: 'income' as const,
+        startDate: now + 6 * DAY,
+        frequency: 'monthly' as const,
+        interval: 1,
+        order: 2,
+      },
+    ];
+    for (const p of plannedPayments) {
+      await ctx.db.insert('plannedPayments', {
+        ...p,
+        currency: 'GHS',
+        tagIds: [],
+        notifyOnDue: true,
+        notifyOnOverdue: true,
+      });
     }
 
     return { ok: true };

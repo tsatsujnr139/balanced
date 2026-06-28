@@ -1,10 +1,18 @@
 import { router } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
+import { useFinance } from '@/features/finance/use-finance';
 import { useThemeColors } from '@/hooks/use-theme';
 
 export default function AppTabs() {
   const colors = useThemeColors();
+  const { plannedPaymentsOverdueCount } = useFinance();
+  const plannedBadge =
+    plannedPaymentsOverdueCount > 0
+      ? plannedPaymentsOverdueCount > 99
+        ? '99+'
+        : String(plannedPaymentsOverdueCount)
+      : undefined;
 
   return (
     <NativeTabs
@@ -22,6 +30,7 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="planning">
         <NativeTabs.Trigger.Label>Planning</NativeTabs.Trigger.Label>
+        {plannedBadge ? <NativeTabs.Trigger.Badge>{plannedBadge}</NativeTabs.Trigger.Badge> : null}
         <NativeTabs.Trigger.Icon
           sf={{ default: 'calendar', selected: 'calendar' }}
           md="calendar_month"

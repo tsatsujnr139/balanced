@@ -1,0 +1,229 @@
+import { useMutation } from 'convex/react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Stack } from 'expo-router/stack';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Platform } from 'react-native';
+
+import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
+import { shouldDisableHeaderBlur } from '@/components/tab-stack-layout';
+import {
+  AddBudgetContext,
+  type BudgetCategorySelection,
+  type BudgetTagSelection,
+} from '@/features/finance/add-budget-context';
+import { DEFAULT_BUDGET_PERIOD } from '@/features/finance/budget-constants';
+import { DEFAULT_CURRENCY } from '@/features/finance/format';
+import type { BudgetPeriod } from '@/features/finance/types';
+import { useFinance } from '@/features/finance/use-finance';
+import { useThemeColors } from '@/hooks/use-theme';
+
+function amountInputToMinorUnits(value: string): number {
+  const parsed = Number.parseFloat(value.replace(/[^0-9.]/g, ''));
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+}
+
+function formatAmountInput(minorUnits: number): string {
+  return (minorUnits / 100).toFixed(2);
+}
+
+function closeAddBudget() {
+  if (router.canDismiss()) {
+    router.dismiss();
+    return;
+  }
+
+  router.replace('/budgets');
+}
+
+export default function AddBudgetLayout() {
+  const colors = useThemeColors();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const editingId = typeof params.id === 'string' ? params.id : null;
+  const disableHeaderBlur = shouldDisableHeaderBlur();
+  const createBudget = useMutation(api.finance.createBudget);
+  const updateBudget = useMutation(api.finance.updateBudget);
+  const { accounts, budgets } = useFinance();
+  const editingBudget = budgets.find((budget) => budget.id === editingId);
+  const initialCategory = editingBudget?.category
+    ? {
+        name: editingBudget.category,
+        symbol: editingBudget.symbol,
+        color: editingBudget.color,
+      }
+    : null;
+  const [amount, setAmount] = useState(editingBudget ? formatAmountInput(editingBudget.limit) : '');
+  const [name, setName] = useState(editingBudget?.name ?? '');
+  const [category, setCategory] = useState<BudgetCategorySelection | null>(initialCategory);
+  const [period, setPeriod] = useState<BudgetPeriod>(editingBudget?.period ?? DEFAULT_BUDGET_PERIOD);
+  const [tag, setTag] = useState<BudgetTagSelection | null>(null);
+  const [notifyOnOverspend, setNotifyOnOverspend] = useState(editingBudget?.notifyOnOverspend ?? false);
+  const [notifyAtThreshold, setNotifyAtThreshold] = useState(editingBudget?.notifyAtThreshold ?? false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = useCallback(async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    const limit = amountInputToMinorUnits(amount);
+    if (limit <= 0) {
+      Alert.alert('Missing amount', 'Enter a budget amount to continue.');
+      return;
+    }
+    if (!category) {
+      Alert.alert('Missing category', 'Choose a category for this budget.');
+      return;
+    }
+
+    const trimmedName = name.trim() || category.name;
+    const currency = accounts[0]?.currency ?? DEFAULT_CURRENCY;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        name: trimmedName,
+        limit,
+        currency,
+        category: category.name,
+        symbol: category.symbol,
+        color: category.color,
+        period,
+        tagId: tag ? (tag.id as Id<'tags'>) : undefined,
+        notifyOnOverspend,
+        notifyAtThreshold,
+      };
+      if (editingId) {
+        await updateBudget({ id: editingId as Id<'budgets'>, ...payload });
+      } else {
+        await createBudget(payload);
+      }
+      closeAddBudget();
+    } catch (error) {
+      Alert.alert(
+        'Could not save budget',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
+      setIsSubmitting(false);
+    }
+  }, [
+    accounts,
+    amount,
+    category,
+    createBudget,
+    editingId,
+    isSubmitting,
+    name,
+    notifyAtThreshold,
+    notifyOnOverspend,
+    period,
+    tag,
+    updateBudget,
+  ]);
+
+  const budgetContext = useMemo(
+    () => ({
+      amount,
+      name,
+      category,
+      period,
+      tag,
+      notifyOnOverspend,
+      notifyAtThreshold,
+      isSubmitting,
+      setAmount,
+      setName,
+      setCategory,
+      setPeriod,
+      setTag,
+      setNotifyOnOverspend,
+      setNotifyAtThreshold,
+      submit: () => {
+        void submit();
+      },
+    }),
+    [
+      amount,
+      category,
+      isSubmitting,
+      name,
+      notifyAtThreshold,
+      notifyOnOverspend,
+      period,
+      submit,
+      tag,
+    ]
+  );
+
+  return (
+    <AddBudgetContext.Provider value={budgetContext}>
+      <Stack
+        screenOptions={{
+          headerTransparent: true,
+          headerBlurEffect:
+            Platform.OS === 'ios' ? (disableHeaderBlur ? 'none' : 'systemMaterial') : undefined,
+          headerShadowVisible: false,
+        }}>
+        <Stack.Screen
+          name="index"
+          options={{ headerLargeTitle: false, title: editingId ? 'Edit budget' : 'New budget' }}>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Close"
+              icon="xmark"
+              onPress={closeAddBudget}
+              separateBackground
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            {isSubmitting ? (
+              <Stack.Toolbar.View>
+                <ActivityIndicator />
+              </Stack.Toolbar.View>
+            ) : (
+              <Stack.Toolbar.Button
+                accessibilityLabel="Save budget"
+                icon="checkmark"
+                onPress={() => {
+                  void submit();
+                }}
+                tintColor={colors.primary}
+                variant="prominent"
+              />
+            )}
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen name="category" options={{ headerBackVisible: false, title: 'Category' }}>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen name="period" options={{ headerBackVisible: false, title: 'Period' }}>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen name="tags" options={{ headerBackVisible: false, title: 'Tag' }}>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+      </Stack>
+    </AddBudgetContext.Provider>
+  );
+}

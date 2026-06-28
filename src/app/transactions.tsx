@@ -1,0 +1,66 @@
+import { useQuery } from 'convex/react';
+import { router } from 'expo-router';
+import { Stack } from 'expo-router/stack';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
+import type { SearchBarCommands } from 'react-native-screens';
+
+import { api } from '../../convex/_generated/api';
+import { TransactionList } from '@/features/finance/components/transaction-list';
+import { filterTransactions } from '@/features/finance/filter-transactions';
+import { useThemeColors } from '@/hooks/use-theme';
+
+export default function TransactionsScreen() {
+  const colors = useThemeColors();
+  const searchBarRef = useRef<SearchBarCommands | null>(null);
+  const [query, setQuery] = useState('');
+  const transactions = useQuery(api.finance.listTransactions);
+  const filteredTransactions = filterTransactions(transactions ?? [], query);
+
+  return (
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{
+          gap: 18,
+          paddingHorizontal: 20,
+          paddingBottom: 40,
+        }}
+        keyboardDismissMode="interactive"
+        style={{ flex: 1, backgroundColor: colors.background }}>
+        {transactions === undefined ? (
+          <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          <TransactionList transactions={filteredTransactions} />
+        )}
+      </ScrollView>
+
+      <Stack.Screen.BackButton displayMode="minimal" />
+      <Stack.Screen.Title large>Transactions</Stack.Screen.Title>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          accessibilityLabel="Add transaction"
+          icon="plus"
+          onPress={() => {
+            router.push('/add-transaction');
+          }}
+        />
+      </Stack.Toolbar>
+      <Stack.SearchBar
+        autoCapitalize="none"
+        onCancelButtonPress={() => {
+          setQuery('');
+          searchBarRef.current?.blur();
+        }}
+        onChangeText={(event) => {
+          setQuery(event.nativeEvent.text);
+        }}
+        placeholder="Search transactions"
+        placement="automatic"
+        ref={searchBarRef}
+      />
+    </>
+  );
+}
