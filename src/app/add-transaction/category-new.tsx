@@ -1,22 +1,31 @@
-import { useMutation } from 'convex/react';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { useMutation } from "convex/react";
+import { router, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
-import { api } from '../../../convex/_generated/api';
+import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import {
   DEFAULT_LABEL_COLOR,
   normalizeColorParam,
   pickRandomColor,
-} from '@/features/finance/color-utils';
-import { ColorLeading, CategoryLeading, NameLeading } from '@/features/finance/components/label-form-leads';
-import { FieldGroup, FieldRow, FieldSectionLabel } from '@/features/finance/components/form-fields';
-import { useAddTransaction } from '@/features/finance/add-transaction-context';
-import { useThemeColors } from '@/hooks/use-theme';
+} from "@/features/finance/color-utils";
+import {
+  FieldGroup,
+  FieldRow,
+  FieldSectionLabel,
+} from "@/features/finance/components/form-fields";
+import {
+  ColorLeading,
+  CategoryLeading,
+  NameLeading,
+} from "@/features/finance/components/label-form-leads";
+import { useThemeColors } from "@/hooks/use-theme";
 
-const RETURN_PATH = '/add-transaction/category-new';
-const DEFAULT_CATEGORY_SYMBOL = 'square.grid.2x2.fill';
+import { api } from "../../../convex/_generated/api";
+
+const RETURN_PATH = "/add-transaction/category-new";
+const DEFAULT_CATEGORY_SYMBOL = "square.grid.2x2.fill";
 
 function normalizeSymbolParam(symbol: string | string[] | undefined) {
   const value = Array.isArray(symbol) ? symbol[0] : symbol;
@@ -25,24 +34,34 @@ function normalizeSymbolParam(symbol: string | string[] | undefined) {
 
 export default function NewCategoryScreen() {
   const colors = useThemeColors();
-  const params = useLocalSearchParams<{ color?: string; name?: string; symbol?: string }>();
+  const params = useLocalSearchParams<{
+    color?: string;
+    name?: string;
+    symbol?: string;
+  }>();
   const [initialColor] = useState(() => pickRandomColor());
   const [isSaving, setIsSaving] = useState(false);
   const createCategory = useMutation(api.finance.createCategory);
-  const { addCustomCategory, labelDraft, setCategory, setLabelDraft } = useAddTransaction();
+  const { addCustomCategory, labelDraft, setCategory, setLabelDraft } =
+    useAddTransaction();
   const { color, name, symbol } = labelDraft;
   const trimmedName = name.trim();
 
   useEffect(() => {
     setLabelDraft({
-      color: normalizeColorParam(params.color) ?? initialColor ?? DEFAULT_LABEL_COLOR,
-      name: Array.isArray(params.name) ? params.name[0] : (params.name ?? ''),
+      color:
+        normalizeColorParam(params.color) ??
+        initialColor ??
+        DEFAULT_LABEL_COLOR,
+      name: Array.isArray(params.name) ? params.name[0] : (params.name ?? ""),
       symbol: normalizeSymbolParam(params.symbol),
     });
   }, [initialColor, params.color, params.name, params.symbol, setLabelDraft]);
 
   const save = useCallback(async () => {
-    if (!trimmedName || isSaving) return;
+    if (!trimmedName || isSaving) {
+      return;
+    }
     setIsSaving(true);
     try {
       const category = await createCategory({
@@ -59,10 +78,18 @@ export default function NewCategoryScreen() {
       setCategory(category.name);
       router.back();
     } catch {
-      Alert.alert('Could not add category', 'Please try again.');
+      Alert.alert("Could not add category", "Please try again.");
       setIsSaving(false);
     }
-  }, [addCustomCategory, color, createCategory, isSaving, setCategory, symbol, trimmedName]);
+  }, [
+    addCustomCategory,
+    color,
+    createCategory,
+    isSaving,
+    setCategory,
+    symbol,
+    trimmedName,
+  ]);
 
   return (
     <>
@@ -87,8 +114,13 @@ export default function NewCategoryScreen() {
       </Stack.Screen>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
-        style={{ flex: 1, backgroundColor: colors.background }}>
+        contentContainerStyle={{
+          gap: 18,
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+        }}
+        style={{ backgroundColor: colors.background, flex: 1 }}
+      >
         <View>
           <FieldSectionLabel>General</FieldSectionLabel>
           <FieldGroup>
@@ -97,15 +129,19 @@ export default function NewCategoryScreen() {
               leading={<NameLeading name={name} />}
               onPress={() => {
                 router.push({
-                  pathname: '/add-transaction/label-name',
                   params: { returnPath: RETURN_PATH },
+                  pathname: "/add-transaction/label-name",
                 });
               }}
               valueNode={
                 trimmedName ? (
-                  <Text style={{ color: colors.muted, fontSize: 17 }}>{trimmedName}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 17 }}>
+                    {trimmedName}
+                  </Text>
                 ) : (
-                  <Text style={{ color: colors.negative, fontSize: 17 }}>Required</Text>
+                  <Text style={{ color: colors.negative, fontSize: 17 }}>
+                    Required
+                  </Text>
                 )
               }
             />
@@ -114,8 +150,8 @@ export default function NewCategoryScreen() {
               leading={<CategoryLeading color={color} symbol={symbol} />}
               onPress={() => {
                 router.push({
-                  pathname: '/add-transaction/category-icon',
                   params: { returnPath: RETURN_PATH },
+                  pathname: "/add-transaction/category-icon",
                 });
               }}
             />
@@ -125,8 +161,8 @@ export default function NewCategoryScreen() {
               leading={<ColorLeading color={color} />}
               onPress={() => {
                 router.push({
-                  pathname: '/add-transaction/color',
                   params: { returnPath: RETURN_PATH },
+                  pathname: "/add-transaction/color",
                 });
               }}
             />

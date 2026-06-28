@@ -1,16 +1,26 @@
-import { usePaginatedQuery } from 'convex/react';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { SymbolView } from 'expo-symbols';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { usePaginatedQuery } from "convex/react";
+import { router, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { SymbolView } from "expo-symbols";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
-import { api } from '../../../convex/_generated/api';
-import type { Id } from '../../../convex/_generated/dataModel';
-import { TransactionList } from '@/features/finance/components/transaction-list';
-import { formatCurrency } from '@/features/finance/format';
-import { maskCurrencyValue, useBalanceVisibility } from '@/features/finance/use-balance-visibility';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+import { TransactionList } from "@/features/finance/components/transaction-list";
+import { formatCurrency } from "@/features/finance/format";
+import {
+  maskCurrencyValue,
+  useBalanceVisibility,
+} from "@/features/finance/use-balance-visibility";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
+
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 export default function AccountScreen() {
   const colors = useThemeColors();
@@ -19,14 +29,16 @@ export default function AccountScreen() {
   const { accounts, isLoading: isLoadingAccounts } = useFinance();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   const account = accounts.find((item) => item.id === accountId);
-  const accountBalance = account ? formatCurrency(account.balance, account.currency) : '';
+  const accountBalance = account
+    ? formatCurrency(account.balance, account.currency)
+    : "";
   const {
     results: transactions,
     status,
     loadMore,
   } = usePaginatedQuery(
     api.finance.listAccountTransactions,
-    accountId ? { accountId: accountId as Id<'accounts'> } : 'skip',
+    accountId ? { accountId: accountId as Id<"accounts"> } : "skip",
     { initialNumItems: 10 }
   );
 
@@ -34,45 +46,70 @@ export default function AccountScreen() {
     <>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 24, paddingHorizontal: 20, paddingBottom: 40 }}
-        style={{ flex: 1, backgroundColor: colors.background }}>
+        contentContainerStyle={{
+          gap: 24,
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+        }}
+        style={{ backgroundColor: colors.background, flex: 1 }}
+      >
         {isLoadingAccounts || !account ? (
-          <View style={{ minHeight: 180, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 180,
+            }}
+          >
             {isLoadingAccounts ? (
               <ActivityIndicator />
             ) : (
-              <Text style={{ color: colors.muted, fontSize: 17 }}>Account not found</Text>
+              <Text style={{ color: colors.muted, fontSize: 17 }}>
+                Account not found
+              </Text>
             )}
           </View>
         ) : (
           <>
             <View
               style={{
-                padding: 20,
-                borderRadius: 24,
-                borderCurve: 'continuous',
                 backgroundColor: colors.card,
-              }}>
+                borderCurve: "continuous",
+                borderRadius: 24,
+                padding: 20,
+              }}
+            >
               <View style={{ gap: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={{ color: colors.muted, fontSize: 14 }}>Account balance</Text>
+                <View
+                  style={{
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Text style={{ color: colors.muted, fontSize: 14 }}>
+                    Account balance
+                  </Text>
                   <Pressable
                     accessibilityRole="switch"
                     accessibilityState={{ checked: isBalanceVisible }}
-                    accessibilityLabel={isBalanceVisible ? 'Hide balances' : 'Show balances'}
+                    accessibilityLabel={
+                      isBalanceVisible ? "Hide balances" : "Show balances"
+                    }
                     hitSlop={8}
                     onPress={toggleBalanceVisibility}
                     style={({ pressed }) => ({
-                      height: 34,
-                      width: 34,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 17,
+                      alignItems: "center",
                       backgroundColor: colors.background,
+                      borderRadius: 17,
+                      height: 34,
+                      justifyContent: "center",
                       opacity: pressed ? 0.65 : 1,
-                    })}>
+                      width: 34,
+                    })}
+                  >
                     <SymbolView
-                      name={(isBalanceVisible ? 'eye' : 'eye.slash') as never}
+                      name={(isBalanceVisible ? "eye" : "eye.slash") as never}
                       size={18}
                       tintColor={colors.muted}
                     />
@@ -80,44 +117,67 @@ export default function AccountScreen() {
                 </View>
                 <Text
                   style={{
-                    color: account.balance < 0 ? colors.negative : colors.foreground,
+                    color:
+                      account.balance < 0 ? colors.negative : colors.foreground,
                     fontSize: 36,
-                    fontWeight: '700',
-                    fontVariant: ['tabular-nums'],
-                  }}>
-                  {isBalanceVisible ? accountBalance : maskCurrencyValue(accountBalance)}
+                    fontVariant: ["tabular-nums"],
+                    fontWeight: "700",
+                  }}
+                >
+                  {isBalanceVisible
+                    ? accountBalance
+                    : maskCurrencyValue(accountBalance)}
                 </Text>
               </View>
             </View>
 
             <View style={{ gap: 10 }}>
-              <Text style={{ color: colors.foreground, fontSize: 22, fontWeight: '700' }}>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 22,
+                  fontWeight: "700",
+                }}
+              >
                 Transactions
               </Text>
-              {status === 'LoadingFirstPage' ? (
-                <View style={{ minHeight: 96, alignItems: 'center', justifyContent: 'center' }}>
+              {status === "LoadingFirstPage" ? (
+                <View
+                  style={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 96,
+                  }}
+                >
                   <ActivityIndicator />
                 </View>
               ) : (
                 <TransactionList transactions={transactions} />
               )}
-              {status === 'CanLoadMore' || status === 'LoadingMore' ? (
+              {status === "CanLoadMore" || status === "LoadingMore" ? (
                 <Pressable
                   accessibilityRole="button"
-                  disabled={status === 'LoadingMore'}
+                  disabled={status === "LoadingMore"}
                   onPress={() => {
                     loadMore(10);
                   }}
                   style={({ pressed }) => ({
+                    alignItems: "center",
+                    justifyContent: "center",
                     minHeight: 44,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: pressed || status === 'LoadingMore' ? 0.6 : 1,
-                  })}>
-                  {status === 'LoadingMore' ? (
+                    opacity: pressed || status === "LoadingMore" ? 0.6 : 1,
+                  })}
+                >
+                  {status === "LoadingMore" ? (
                     <ActivityIndicator />
                   ) : (
-                    <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+                    <Text
+                      style={{
+                        color: colors.primary,
+                        fontSize: 17,
+                        fontWeight: "600",
+                      }}
+                    >
                       Show more
                     </Text>
                   )}
@@ -128,7 +188,7 @@ export default function AccountScreen() {
         )}
       </ScrollView>
 
-      <Stack.Screen.Title>{account?.name ?? 'Account'}</Stack.Screen.Title>
+      <Stack.Screen.Title>{account?.name ?? "Account"}</Stack.Screen.Title>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           accessibilityLabel="Edit account"
@@ -138,8 +198,12 @@ export default function AccountScreen() {
               return;
             }
 
-            router.push({ pathname: '/add-account', params: { id: accountId } });
-          }}>
+            router.push({
+              params: { id: accountId },
+              pathname: "/add-account",
+            });
+          }}
+        >
           Edit
         </Stack.Toolbar.Button>
       </Stack.Toolbar>

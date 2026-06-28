@@ -1,8 +1,8 @@
-import { SegmentedControl } from '@expo/ui/community/segmented-control';
-import { useMutation } from 'convex/react';
-import { router, useLocalSearchParams } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import { useCallback, useState } from 'react';
+import { SegmentedControl } from "@expo/ui/community/segmented-control";
+import { useMutation } from "convex/react";
+import { router, useLocalSearchParams } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,17 +12,22 @@ import {
   TextInput,
   View,
   useColorScheme,
-} from 'react-native';
+} from "react-native";
 
-import { api } from '../../../convex/_generated/api';
-import type { Id } from '../../../convex/_generated/dataModel';
-import { useAddTemplate } from '@/features/finance/add-template-context';
-import { FieldGroup, FieldRow, FieldSectionLabel } from '@/features/finance/components/form-fields';
-import { getCurrencySymbol } from '@/features/finance/format';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+import { useAddTemplate } from "@/features/finance/add-template-context";
+import {
+  FieldGroup,
+  FieldRow,
+  FieldSectionLabel,
+} from "@/features/finance/components/form-fields";
+import { getCurrencySymbol } from "@/features/finance/format";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
 
-const TEMPLATE_TYPES = ['Expense', 'Income', 'Transfer'];
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+
+const TEMPLATE_TYPES = ["Expense", "Income", "Transfer"];
 
 function closeTemplateForm() {
   if (router.canDismiss()) {
@@ -30,12 +35,16 @@ function closeTemplateForm() {
     return;
   }
 
-  router.replace('/templates');
+  router.replace("/templates");
 }
 
 function tagsLabel(tags: { name: string }[]): string {
-  if (tags.length === 0) return 'None';
-  if (tags.length === 1) return tags[0].name;
+  if (tags.length === 0) {
+    return "None";
+  }
+  if (tags.length === 1) {
+    return tags[0].name;
+  }
   return `${tags.length} tags`;
 }
 
@@ -68,47 +77,60 @@ export default function AddTemplateScreen() {
   const account = accounts.find((item) => item.id === accountId);
   const toAccount = accounts.find((item) => item.id === toAccountId);
   const amountColor =
-    type === 'income' ? colors.positive : type === 'expense' ? colors.negative : colors.foreground;
-  const currencySymbol = getCurrencySymbol(account?.currency ?? accounts[0]?.currency ?? 'GHS');
-  const typeIndex = type === 'income' ? 1 : type === 'transfer' ? 2 : 0;
+    type === "income"
+      ? colors.positive
+      : type === "expense"
+        ? colors.negative
+        : colors.foreground;
+  const currencySymbol = getCurrencySymbol(
+    account?.currency ?? accounts[0]?.currency ?? "GHS"
+  );
+  const typeIndex = type === "income" ? 1 : type === "transfer" ? 2 : 0;
 
   const confirmDelete = useCallback(() => {
     if (!editingId || isSubmitting || isDeleting) {
       return;
     }
 
-    Alert.alert('Delete template?', 'This template will be permanently deleted.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setIsDeleting(true);
-          try {
-            await deleteTemplate({ id: editingId as Id<'transactionTemplates'> });
-            closeTemplateForm();
-          } catch (error) {
-            Alert.alert(
-              'Could not delete template',
-              error instanceof Error ? error.message : 'Please try again.'
-            );
-          } finally {
-            setIsDeleting(false);
-          }
+    Alert.alert(
+      "Delete template?",
+      "This template will be permanently deleted.",
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteTemplate({
+                id: editingId as Id<"transactionTemplates">,
+              });
+              closeTemplateForm();
+            } catch (error) {
+              Alert.alert(
+                "Could not delete template",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+          style: "destructive",
+          text: "Delete",
         },
-      },
-    ]);
+      ]
+    );
   }, [deleteTemplate, editingId, isDeleting, isSubmitting]);
 
   if (isLoadingExisting) {
     return (
       <View
         style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: "center",
           backgroundColor: colors.background,
-        }}>
+          flex: 1,
+          justifyContent: "center",
+        }}
+      >
         <ActivityIndicator />
       </View>
     );
@@ -118,18 +140,25 @@ export default function AddTemplateScreen() {
     <ScrollView
       automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
+      contentContainerStyle={{
+        gap: 18,
+        paddingBottom: 40,
+        paddingHorizontal: 20,
+      }}
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
-      style={{ flex: 1, backgroundColor: colors.background }}>
+      style={{ backgroundColor: colors.background, flex: 1 }}
+    >
       <SegmentedControl
-        appearance={colorScheme === 'dark' ? 'dark' : 'light'}
+        appearance={colorScheme === "dark" ? "dark" : "light"}
         onChange={(event) => {
           const selected = event.nativeEvent.selectedSegmentIndex;
-          setType(selected === 1 ? 'income' : selected === 2 ? 'transfer' : 'expense');
+          setType(
+            selected === 1 ? "income" : selected === 2 ? "transfer" : "expense"
+          );
         }}
         selectedIndex={typeIndex}
-        style={{ width: '100%' }}
+        style={{ width: "100%" }}
         values={TEMPLATE_TYPES}
       />
 
@@ -145,15 +174,16 @@ export default function AddTemplateScreen() {
         </View>
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'baseline',
-            gap: 10,
+            alignItems: "baseline",
             borderTopColor: colors.border,
             borderTopWidth: 1,
+            flexDirection: "row",
+            gap: 10,
             paddingHorizontal: 18,
             paddingTop: 12,
-          }}>
-          <Text style={{ color: amountColor, fontSize: 30, fontWeight: '700' }}>
+          }}
+        >
+          <Text style={{ color: amountColor, fontSize: 30, fontWeight: "700" }}>
             {currencySymbol}
           </Text>
           <TextInput
@@ -165,25 +195,30 @@ export default function AddTemplateScreen() {
               color: amountColor,
               flex: 1,
               fontSize: 46,
-              fontWeight: '700',
+              fontWeight: "700",
               minHeight: 68,
-              textAlign: 'right',
+              textAlign: "right",
             }}
             value={amount}
           />
         </View>
-        {type === 'expense' ? (
+        {type === "expense" ? (
           <View
             style={{
-              minHeight: 58,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
+              alignItems: "center",
               borderTopColor: colors.border,
               borderTopWidth: 1,
+              flexDirection: "row",
+              gap: 12,
+              minHeight: 58,
               paddingHorizontal: 18,
-            }}>
-            <SymbolView name="creditcard.fill" size={17} tintColor={colors.muted} />
+            }}
+          >
+            <SymbolView
+              name="creditcard.fill"
+              size={17}
+              tintColor={colors.muted}
+            />
             <Text style={{ color: colors.foreground, flex: 1, fontSize: 16 }}>
               Transaction charge
             </Text>
@@ -192,24 +227,35 @@ export default function AddTemplateScreen() {
               onChangeText={setTransactionCharge}
               placeholder="0.00"
               placeholderTextColor={colors.muted}
-              style={{ color: colors.foreground, fontSize: 17, minHeight: 58, textAlign: 'right' }}
+              style={{
+                color: colors.foreground,
+                fontSize: 17,
+                minHeight: 58,
+                textAlign: "right",
+              }}
               value={transactionCharge}
             />
           </View>
         ) : null}
         <View
           style={{
-            minHeight: 74,
             borderTopColor: colors.border,
             borderTopWidth: 1,
+            minHeight: 74,
             paddingHorizontal: 18,
-          }}>
+          }}
+        >
           <TextInput
             multiline
             onChangeText={setMerchant}
             placeholder="Description (optional)"
             placeholderTextColor={colors.muted}
-            style={{ color: colors.foreground, fontSize: 17, minHeight: 74, paddingVertical: 16 }}
+            style={{
+              color: colors.foreground,
+              fontSize: 17,
+              minHeight: 74,
+              paddingVertical: 16,
+            }}
             value={merchant}
           />
         </View>
@@ -219,41 +265,62 @@ export default function AddTemplateScreen() {
         <FieldSectionLabel>Details</FieldSectionLabel>
         <FieldGroup>
           <FieldRow
-            icon={account?.symbol ?? 'building.columns.fill'}
-            iconColor={account?.color ?? '#8E8E93'}
-            label={type === 'transfer' ? 'From Account' : 'Account'}
+            icon={account?.symbol ?? "building.columns.fill"}
+            iconColor={account?.color ?? "#8E8E93"}
+            label={type === "transfer" ? "From Account" : "Account"}
             onPress={() =>
-              router.push({ pathname: '/add-template/account', params: { field: 'from' } })
+              router.push({
+                params: { field: "from" },
+                pathname: "/add-template/account",
+              })
             }
             valueNode={
-              <Text style={{ color: account ? colors.muted : colors.negative, fontSize: 17 }}>
-                {account?.name ?? 'Required'}
+              <Text
+                style={{
+                  color: account ? colors.muted : colors.negative,
+                  fontSize: 17,
+                }}
+              >
+                {account?.name ?? "Required"}
               </Text>
             }
           />
-          {type === 'transfer' ? (
+          {type === "transfer" ? (
             <FieldRow
-              icon={toAccount?.symbol ?? 'tray.full.fill'}
-              iconColor={toAccount?.color ?? '#8E8E93'}
+              icon={toAccount?.symbol ?? "tray.full.fill"}
+              iconColor={toAccount?.color ?? "#8E8E93"}
               label="To Account"
               onPress={() =>
-                router.push({ pathname: '/add-template/account', params: { field: 'to' } })
+                router.push({
+                  params: { field: "to" },
+                  pathname: "/add-template/account",
+                })
               }
               valueNode={
-                <Text style={{ color: toAccount ? colors.muted : colors.negative, fontSize: 17 }}>
-                  {toAccount?.name ?? 'Required'}
+                <Text
+                  style={{
+                    color: toAccount ? colors.muted : colors.negative,
+                    fontSize: 17,
+                  }}
+                >
+                  {toAccount?.name ?? "Required"}
                 </Text>
               }
             />
           ) : (
             <FieldRow
-              icon={category?.symbol ?? 'square.grid.2x2.fill'}
-              iconColor={category?.color ?? '#8E8E93'}
+              icon={category?.symbol ?? "square.grid.2x2.fill"}
+              iconColor={category?.color ?? "#8E8E93"}
               label="Category"
-              onPress={() => router.push('/add-template/category')}
+              onPress={() => router.push("/add-template/category")}
               valueNode={
-                <Text style={{ color: category ? colors.muted : colors.negative, fontSize: 17 }}>
-                  {category?.name ?? 'Required'}
+                <Text
+                  style={{
+                    color: category ? colors.muted : colors.negative,
+                    fontSize: 17,
+                  }}
+                >
+                  {category?.name ?? "Required"}
                 </Text>
               }
             />
@@ -263,7 +330,7 @@ export default function AddTemplateScreen() {
             iconColor="#AF52DE"
             label="Tags"
             last
-            onPress={() => router.push('/add-template/tags')}
+            onPress={() => router.push("/add-template/tags")}
             value={tagsLabel(tags)}
           />
         </FieldGroup>
@@ -276,20 +343,29 @@ export default function AddTemplateScreen() {
           disabled={isSubmitting || isDeleting}
           onPress={confirmDelete}
           style={({ pressed }) => ({
-            minHeight: 56,
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: "center",
+            backgroundColor: "transparent",
+            borderCurve: "continuous",
             borderRadius: 18,
-            borderCurve: 'continuous',
-            backgroundColor: 'transparent',
+            justifyContent: "center",
+            minHeight: 56,
             opacity: pressed || isSubmitting || isDeleting ? 0.6 : 1,
-          })}>
+          })}
+        >
           {isDeleting ? (
             <ActivityIndicator color={colors.negative} />
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View
+              style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
+            >
               <SymbolView name="trash" size={18} tintColor={colors.negative} />
-              <Text style={{ color: colors.negative, fontSize: 17, fontWeight: '600' }}>
+              <Text
+                style={{
+                  color: colors.negative,
+                  fontSize: 17,
+                  fontWeight: "600",
+                }}
+              >
                 Delete
               </Text>
             </View>

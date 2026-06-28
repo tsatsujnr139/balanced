@@ -1,4 +1,4 @@
-import type { Transaction } from './types';
+import type { Transaction } from "./types";
 
 export const MAX_TRANSACTION_DESCRIPTION_SUGGESTIONS = 5;
 
@@ -8,8 +8,8 @@ function normalizeDescription(value: string): string {
 
 function isChargeTransaction(transaction: Transaction): boolean {
   return (
-    transaction.transactionKind === 'charge' ||
-    transaction.category === 'Transaction charges'
+    transaction.transactionKind === "charge" ||
+    transaction.category === "Transaction charges"
   );
 }
 

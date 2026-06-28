@@ -1,26 +1,34 @@
-import { useQuery } from 'convex/react';
-import Storage from 'expo-sqlite/kv-store';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from "convex/react";
+import Storage from "expo-sqlite/kv-store";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api } from '../../../convex/_generated/api';
-import { buildFinanceNotifications } from './notifications';
-import { useFinance } from './use-finance';
+import { api } from "../../../convex/_generated/api";
+import { buildFinanceNotifications } from "./notifications";
+import { useFinance } from "./use-finance";
 
-const DISMISSED_NOTIFICATIONS_KEY = 'finance.dismissed-notifications.v1';
+const DISMISSED_NOTIFICATIONS_KEY = "finance.dismissed-notifications.v1";
 
 function readDismissedIds(): string[] {
   try {
     const serialized = Storage.getItemSync(DISMISSED_NOTIFICATIONS_KEY);
-    if (!serialized) return [];
+    if (!serialized) {
+      return [];
+    }
     const parsed = JSON.parse(serialized);
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === "string")
+      : [];
   } catch {
     return [];
   }
 }
 
 function saveDismissedIds(ids: string[]) {
-  void Storage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(ids)).catch(() => undefined);
+  void Storage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(ids)).catch(
+    () => {
+      /* empty */
+    }
+  );
 }
 
 export function useAppNotifications() {
@@ -29,9 +37,10 @@ export function useAppNotifications() {
   const [dismissedIds, setDismissedIds] = useState<string[]>(readDismissedIds);
   const notifications = useMemo(
     () =>
-      buildFinanceNotifications({ budgets, plannedPayments: plannedPayments ?? [] }).filter(
-        (notification) => !dismissedIds.includes(notification.id)
-      ),
+      buildFinanceNotifications({
+        budgets,
+        plannedPayments: plannedPayments ?? [],
+      }).filter((notification) => !dismissedIds.includes(notification.id)),
     [budgets, dismissedIds, plannedPayments]
   );
 
@@ -40,7 +49,9 @@ export function useAppNotifications() {
   }, [dismissedIds]);
 
   const dismissNotification = useCallback((id: string) => {
-    setDismissedIds((current) => (current.includes(id) ? current : [...current, id]));
+    setDismissedIds((current) =>
+      current.includes(id) ? current : [...current, id]
+    );
   }, []);
 
   const clearNotifications = useCallback(() => {
@@ -51,9 +62,9 @@ export function useAppNotifications() {
   }, [notifications]);
 
   return {
-    notifications,
-    notificationCount: notifications.length,
-    dismissNotification,
     clearNotifications,
+    dismissNotification,
+    notificationCount: notifications.length,
+    notifications,
   };
 }

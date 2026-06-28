@@ -1,4 +1,4 @@
-import { ScreenPlaceholder } from '@/features/finance/components/placeholder';
+import { ScreenPlaceholder } from "@/features/finance/components/placeholder";
 
 export default function StatsScreen() {
   return (

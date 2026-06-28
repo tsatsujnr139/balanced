@@ -1,11 +1,12 @@
-import { useQuery } from 'convex/react';
-import { router } from 'expo-router';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { useQuery } from "convex/react";
+import { router } from "expo-router";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 
-import { api } from '../../../convex/_generated/api';
-import { useAddTransaction } from '@/features/finance/add-transaction-context';
-import { TransactionTemplateList } from '@/features/finance/components/transaction-template-list';
-import { useThemeColors } from '@/hooks/use-theme';
+import { useAddTransaction } from "@/features/finance/add-transaction-context";
+import { TransactionTemplateList } from "@/features/finance/components/transaction-template-list";
+import { useThemeColors } from "@/hooks/use-theme";
+
+import { api } from "../../../convex/_generated/api";
 
 export default function AddTransactionTemplatesScreen() {
   const colors = useThemeColors();
@@ -15,10 +16,21 @@ export default function AddTransactionTemplatesScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
-      style={{ flex: 1, backgroundColor: colors.background }}>
+      contentContainerStyle={{
+        gap: 18,
+        paddingBottom: 40,
+        paddingHorizontal: 20,
+      }}
+      style={{ backgroundColor: colors.background, flex: 1 }}
+    >
       {templates === undefined ? (
-        <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 160,
+          }}
+        >
           <ActivityIndicator />
         </View>
       ) : (

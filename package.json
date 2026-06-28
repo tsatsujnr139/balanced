@@ -1,8 +1,21 @@
 {
   "name": "balanced",
-  "packageManager": "pnpm@11.6.0",
-  "main": "expo-router/entry",
   "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start --dev-client",
+    "start": "expo start --dev-client",
+    "convex:dev": "convex dev",
+    "prebuild": "expo prebuild --clean",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "lint": "ultracite check",
+    "format": "oxfmt --write .",
+    "check": "ultracite check",
+    "fix": "ultracite fix"
+  },
   "dependencies": {
     "@expo/ui": "~56.0.18",
     "@react-native-community/datetimepicker": "9.1.0",
@@ -27,6 +40,7 @@
     "expo-status-bar": "~56.0.4",
     "expo-symbols": "~56.0.6",
     "expo-system-ui": "~56.0.5",
+    "expo-updates": "~56.0.19",
     "expo-web-browser": "~56.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -43,19 +57,10 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "eslint": "^9.0.0",
-    "eslint-config-expo": "~56.0.4",
-    "typescript": "~6.0.3"
+    "oxfmt": "^0.56.0",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.3",
+    "ultracite": "7.8.3"
   },
-  "scripts": {
-    "dev": "expo start --dev-client",
-    "start": "expo start --dev-client",
-    "convex:dev": "convex dev",
-    "prebuild": "expo prebuild --clean",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "lint": "expo lint"
-  },
-  "private": true
+  "packageManager": "pnpm@11.6.0"
 }

@@ -1,13 +1,13 @@
-import { router } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { SymbolView } from 'expo-symbols';
-import { Pressable, ScrollView, View } from 'react-native';
+import { router } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { SymbolView } from "expo-symbols";
+import { Pressable, ScrollView, View } from "react-native";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import type { AppNotification } from '@/features/finance/notifications';
-import { useAppNotifications } from '@/features/finance/use-app-notifications';
-import { useThemeColors } from '@/hooks/use-theme';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import type { AppNotification } from "@/features/finance/notifications";
+import { useAppNotifications } from "@/features/finance/use-app-notifications";
+import { useThemeColors } from "@/hooks/use-theme";
 
 function NotificationRow({
   notification,
@@ -22,19 +22,32 @@ function NotificationRow({
     <Pressable
       accessibilityRole="button"
       onPress={() => {
-        router.push({ pathname: notification.route, params: { id: notification.routeId } });
-      }}>
+        router.push({
+          params: { id: notification.routeId },
+          pathname: notification.route,
+        });
+      }}
+    >
       <View className="flex-row items-start gap-3">
         <View
           className="size-10 items-center justify-center rounded-full"
-          style={{ backgroundColor: notification.color }}>
-          <SymbolView name={notification.symbol as never} size={18} tintColor="#fff" />
+          style={{ backgroundColor: notification.color }}
+        >
+          <SymbolView
+            name={notification.symbol as never}
+            size={18}
+            tintColor="#fff"
+          />
         </View>
         <View className="min-w-0 flex-1 gap-1">
           <ThemedText type="smallBold" className="text-base leading-[22px]">
             {notification.title}
           </ThemedText>
-          <ThemedText type="small" color="muted" className="text-[15px] leading-[21px]">
+          <ThemedText
+            type="small"
+            color="muted"
+            className="text-[15px] leading-[21px]"
+          >
             {notification.body}
           </ThemedText>
         </View>
@@ -45,10 +58,12 @@ function NotificationRow({
           onPress={(event) => {
             event.stopPropagation();
             onDismiss();
-          }}>
+          }}
+        >
           <View
             className="size-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: colors.border }}>
+            style={{ backgroundColor: colors.border }}
+          >
             <SymbolView name="xmark" size={12} tintColor={colors.muted} />
           </View>
         </Pressable>
@@ -59,7 +74,8 @@ function NotificationRow({
 
 export default function NotificationsScreen() {
   const colors = useThemeColors();
-  const { clearNotifications, dismissNotification, notifications } = useAppNotifications();
+  const { clearNotifications, dismissNotification, notifications } =
+    useAppNotifications();
 
   return (
     <>
@@ -70,7 +86,8 @@ export default function NotificationsScreen() {
           <Stack.Toolbar.Button
             accessibilityLabel="Clear all notifications"
             onPress={clearNotifications}
-            variant="plain">
+            variant="plain"
+          >
             Clear
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -78,10 +95,18 @@ export default function NotificationsScreen() {
 
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
-        style={{ flex: 1, backgroundColor: colors.background }}>
+        contentContainerStyle={{
+          gap: 18,
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+        }}
+        style={{ backgroundColor: colors.background, flex: 1 }}
+      >
         {notifications.length === 0 ? (
-          <ThemedView variant="card" className="items-center rounded-[22px] px-4 py-7">
+          <ThemedView
+            variant="card"
+            className="items-center rounded-[22px] px-4 py-7"
+          >
             <View className="mb-3 size-11 items-center justify-center rounded-full bg-background">
               <SymbolView name="bell" size={22} tintColor={colors.muted} />
             </View>
@@ -98,7 +123,10 @@ export default function NotificationsScreen() {
                   onDismiss={() => dismissNotification(notification.id)}
                 />
                 {index < notifications.length - 1 ? (
-                  <View className="my-4 h-px" style={{ backgroundColor: colors.border }} />
+                  <View
+                    className="my-4 h-px"
+                    style={{ backgroundColor: colors.border }}
+                  />
                 ) : null}
               </View>
             ))}

@@ -1,23 +1,25 @@
-import { useMutation, useQuery } from 'convex/react';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Platform } from 'react-native';
+import { useMutation, useQuery } from "convex/react";
+import { router, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Platform } from "react-native";
 
-import { api } from '../../../convex/_generated/api';
-import type { Id } from '../../../convex/_generated/dataModel';
-import { shouldDisableHeaderBlur } from '@/components/tab-stack-layout';
-import { AddTemplateContext } from '@/features/finance/add-template-context';
-import {
-  TRANSFER_CATEGORY,
-  type TransactionCategory,
-} from '@/features/finance/transaction-categories';
-import type { TransactionTag, TransactionTemplateType } from '@/features/finance/types';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { AddTemplateContext } from "@/features/finance/add-template-context";
+import { TRANSFER_CATEGORY } from "@/features/finance/transaction-categories";
+import type { TransactionCategory } from "@/features/finance/transaction-categories";
+import type {
+  TransactionTag,
+  TransactionTemplateType,
+} from "@/features/finance/types";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
+
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 function amountInputToMinorUnits(value: string): number {
-  const parsed = Number.parseFloat(value.replace(/[^0-9.]/g, ''));
+  const parsed = Number.parseFloat(value.replaceAll(/[^0-9.]/g, ""));
   return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
 }
 
@@ -31,7 +33,7 @@ function closeTemplateForm() {
     return;
   }
 
-  router.replace('/templates');
+  router.replace("/templates");
 }
 
 export default function AddTemplateLayout() {
@@ -42,19 +44,21 @@ export default function AddTemplateLayout() {
   const { accounts } = useFinance();
   const template = useQuery(
     api.finance.getTransactionTemplate,
-    editingId ? { id: editingId as Id<'transactionTemplates'> } : 'skip'
+    editingId ? { id: editingId as Id<"transactionTemplates"> } : "skip"
   );
   const createTemplate = useMutation(api.finance.createTransactionTemplate);
   const updateTemplate = useMutation(api.finance.updateTransactionTemplate);
-  const [accountId, setAccountId] = useState<string | null>(accounts[0]?.id ?? null);
-  const [amount, setAmount] = useState('');
+  const [accountId, setAccountId] = useState<string | null>(
+    accounts[0]?.id ?? null
+  );
+  const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<TransactionCategory | null>(null);
-  const [merchant, setMerchant] = useState('');
-  const [name, setName] = useState('');
+  const [merchant, setMerchant] = useState("");
+  const [name, setName] = useState("");
   const [tags, setTags] = useState<TransactionTag[]>([]);
   const [toAccountId, setToAccountId] = useState<string | null>(null);
-  const [transactionCharge, setTransactionCharge] = useState('');
-  const [type, setType] = useState<TransactionTemplateType>('expense');
+  const [transactionCharge, setTransactionCharge] = useState("");
+  const [type, setType] = useState<TransactionTemplateType>("expense");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hydratedIdRef = useRef<string | null>(null);
   const effectiveAccountId = accountId ?? accounts[0]?.id ?? null;
@@ -80,7 +84,9 @@ export default function AddTemplateLayout() {
     setTags(template.tags);
     setToAccountId(template.toAccountId);
     setTransactionCharge(
-      template.transactionCharge ? minorUnitsToAmountInput(template.transactionCharge) : ''
+      template.transactionCharge
+        ? minorUnitsToAmountInput(template.transactionCharge)
+        : ""
     );
     setType(template.type);
   }, [editingId, template]);
@@ -102,52 +108,58 @@ export default function AddTemplateLayout() {
     const chargeInMinorUnits = amountInputToMinorUnits(transactionCharge);
     const account = accounts.find((item) => item.id === effectiveAccountId);
     const toAccount = accounts.find((item) => item.id === toAccountId);
-    const selectedCategory = type === 'transfer' ? TRANSFER_CATEGORY : category;
+    const selectedCategory = type === "transfer" ? TRANSFER_CATEGORY : category;
 
     if (!name.trim()) {
-      Alert.alert('Missing name', 'Enter a template name to continue.');
+      Alert.alert("Missing name", "Enter a template name to continue.");
       return;
     }
     if (amountInMinorUnits <= 0) {
-      Alert.alert('Missing amount', 'Enter an amount to continue.');
+      Alert.alert("Missing amount", "Enter an amount to continue.");
       return;
     }
     if (!account || !selectedCategory) {
-      Alert.alert('Missing details', 'Choose an account and category.');
+      Alert.alert("Missing details", "Choose an account and category.");
       return;
     }
-    if (type === 'transfer' && !toAccount) {
-      Alert.alert('Missing destination', 'Choose a destination account.');
+    if (type === "transfer" && !toAccount) {
+      Alert.alert("Missing destination", "Choose a destination account.");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const payload = {
-        accountId: account.id as Id<'accounts'>,
+        accountId: account.id as Id<"accounts">,
         amount: amountInMinorUnits,
         category: selectedCategory.name,
         color: selectedCategory.color,
         merchant: merchant.trim(),
         name,
         symbol: selectedCategory.symbol,
-        tagIds: tags.map((tag) => tag.id as Id<'tags'>),
-        toAccountId: type === 'transfer' ? (toAccount!.id as Id<'accounts'>) : undefined,
+        tagIds: tags.map((tag) => tag.id as Id<"tags">),
+        toAccountId:
+          type === "transfer" ? (toAccount!.id as Id<"accounts">) : undefined,
         transactionCharge:
-          type === 'expense' && chargeInMinorUnits > 0 ? chargeInMinorUnits : undefined,
+          type === "expense" && chargeInMinorUnits > 0
+            ? chargeInMinorUnits
+            : undefined,
         type,
       };
 
       if (editingId) {
-        await updateTemplate({ id: editingId as Id<'transactionTemplates'>, ...payload });
+        await updateTemplate({
+          id: editingId as Id<"transactionTemplates">,
+          ...payload,
+        });
       } else {
         await createTemplate(payload);
       }
       closeTemplateForm();
     } catch (error) {
       Alert.alert(
-        'Could not save template',
-        error instanceof Error ? error.message : 'Please try again.'
+        "Could not save template",
+        error instanceof Error ? error.message : "Please try again."
       );
       setIsSubmitting(false);
     }
@@ -178,10 +190,6 @@ export default function AddTemplateLayout() {
       isSubmitting,
       merchant,
       name,
-      tags,
-      toAccountId,
-      transactionCharge,
-      type,
       setAccountId,
       setAmount,
       setCategory,
@@ -193,7 +201,11 @@ export default function AddTemplateLayout() {
       submit: () => {
         void submit();
       },
+      tags,
+      toAccountId,
       toggleTag,
+      transactionCharge,
+      type,
     }),
     [
       amount,
@@ -216,14 +228,23 @@ export default function AddTemplateLayout() {
     <AddTemplateContext.Provider value={context}>
       <Stack
         screenOptions={{
-          headerTransparent: true,
           headerBlurEffect:
-            Platform.OS === 'ios' ? (disableHeaderBlur ? 'none' : 'systemMaterial') : undefined,
+            Platform.OS === "ios"
+              ? disableHeaderBlur
+                ? "none"
+                : "systemMaterial"
+              : undefined,
           headerShadowVisible: false,
-        }}>
+          headerTransparent: true,
+        }}
+      >
         <Stack.Screen
           name="index"
-          options={{ headerLargeTitle: false, title: isEditing ? 'Edit Template' : 'Add Template' }}>
+          options={{
+            headerLargeTitle: false,
+            title: isEditing ? "Edit Template" : "Add Template",
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Close"
@@ -250,7 +271,10 @@ export default function AddTemplateLayout() {
             )}
           </Stack.Toolbar>
         </Stack.Screen>
-        <Stack.Screen name="account" options={{ headerBackVisible: false, title: 'Account' }}>
+        <Stack.Screen
+          name="account"
+          options={{ headerBackVisible: false, title: "Account" }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"
@@ -260,7 +284,10 @@ export default function AddTemplateLayout() {
             />
           </Stack.Toolbar>
         </Stack.Screen>
-        <Stack.Screen name="category" options={{ headerBackVisible: false, title: 'Category' }}>
+        <Stack.Screen
+          name="category"
+          options={{ headerBackVisible: false, title: "Category" }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"
@@ -270,7 +297,10 @@ export default function AddTemplateLayout() {
             />
           </Stack.Toolbar>
         </Stack.Screen>
-        <Stack.Screen name="tags" options={{ headerBackVisible: false, title: 'Tags' }}>
+        <Stack.Screen
+          name="tags"
+          options={{ headerBackVisible: false, title: "Tags" }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"

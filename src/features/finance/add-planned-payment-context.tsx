@@ -1,20 +1,20 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from "react";
 
-import type { PlannedPaymentFrequency, PlannedPaymentType } from './types';
+import type { PlannedPaymentFrequency, PlannedPaymentType } from "./types";
 
-export type PlannedCategorySelection = {
+export interface PlannedCategorySelection {
   name: string;
   symbol: string;
   color: string;
-};
+}
 
-export type PlannedTagSelection = {
+export interface PlannedTagSelection {
   id: string;
   name: string;
   color: string;
-};
+}
 
-type AddPlannedPaymentContextValue = {
+interface AddPlannedPaymentContextValue {
   type: PlannedPaymentType;
   amount: string;
   name: string;
@@ -42,15 +42,18 @@ type AddPlannedPaymentContextValue = {
   setNotifyOnDue: (value: boolean) => void;
   setNotifyOnOverdue: (value: boolean) => void;
   submit: () => void;
-};
+}
 
-export const AddPlannedPaymentContext = createContext<AddPlannedPaymentContextValue | null>(null);
+export const AddPlannedPaymentContext =
+  createContext<AddPlannedPaymentContextValue | null>(null);
 
 export function useAddPlannedPayment() {
   const context = useContext(AddPlannedPaymentContext);
 
   if (!context) {
-    throw new Error('useAddPlannedPayment must be used inside AddPlannedPaymentContext.Provider');
+    throw new Error(
+      "useAddPlannedPayment must be used inside AddPlannedPaymentContext.Provider"
+    );
   }
 
   return context;

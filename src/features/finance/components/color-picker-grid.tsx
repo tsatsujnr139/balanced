@@ -1,16 +1,16 @@
-import { SymbolView } from 'expo-symbols';
-import { Pressable, View } from 'react-native';
+import { SymbolView } from "expo-symbols";
+import { Pressable, View } from "react-native";
 
-import { ACCOUNT_COLOR_GROUPS } from '@/features/finance/account-constants';
-import { useThemeColors } from '@/hooks/use-theme';
+import { ACCOUNT_COLOR_GROUPS } from "@/features/finance/account-constants";
+import { useThemeColors } from "@/hooks/use-theme";
 
-type Props = {
+interface Props {
   onSelect: (color: string) => void;
   selectedColor: string;
-};
+}
 
 function isLightSwatch(color: string): boolean {
-  const hex = color.replace('#', '');
+  const hex = color.replace("#", "");
   const red = Number.parseInt(hex.slice(0, 2), 16);
   const green = Number.parseInt(hex.slice(2, 4), 16);
   const blue = Number.parseInt(hex.slice(4, 6), 16);
@@ -24,13 +24,15 @@ export function ColorPickerGrid({ onSelect, selectedColor }: Props) {
   return (
     <View style={{ gap: 14 }}>
       {ACCOUNT_COLOR_GROUPS.map((group) => (
-        <View key={group.id} style={{ flexDirection: 'row', gap: 10 }}>
+        <View key={group.id} style={{ flexDirection: "row", gap: 10 }}>
           {group.colors.map((color) => {
             const selected = color === selectedColor;
-            const checkmarkColor = isLightSwatch(color) ? colors.foreground : '#fff';
+            const checkmarkColor = isLightSwatch(color)
+              ? colors.foreground
+              : "#fff";
 
             return (
-              <View key={color} style={{ flex: 1, alignItems: 'center' }}>
+              <View key={color} style={{ alignItems: "center", flex: 1 }}>
                 <Pressable
                   accessibilityLabel={`Select ${color}`}
                   accessibilityRole="button"
@@ -38,18 +40,23 @@ export function ColorPickerGrid({ onSelect, selectedColor }: Props) {
                     onSelect(color);
                   }}
                   style={{
-                    width: '100%',
-                    maxWidth: 56,
+                    alignItems: "center",
                     aspectRatio: 1,
-                    borderRadius: 999,
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     backgroundColor: color,
-                    borderColor: selected ? colors.foreground : 'transparent',
+                    borderColor: selected ? colors.foreground : "transparent",
+                    borderRadius: 999,
                     borderWidth: selected ? 2 : 0,
-                  }}>
+                    justifyContent: "center",
+                    maxWidth: 56,
+                    width: "100%",
+                  }}
+                >
                   {selected ? (
-                    <SymbolView name="checkmark" size={22} tintColor={checkmarkColor} />
+                    <SymbolView
+                      name="checkmark"
+                      size={22}
+                      tintColor={checkmarkColor}
+                    />
                   ) : null}
                 </Pressable>
               </View>

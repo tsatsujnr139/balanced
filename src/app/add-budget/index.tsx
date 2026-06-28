@@ -1,16 +1,20 @@
-import { router } from 'expo-router';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { router } from "expo-router";
+import { ScrollView, Switch, Text, TextInput, View } from "react-native";
 
-import { useAddBudget } from '@/features/finance/add-budget-context';
-import { BUDGET_PERIOD_LABEL } from '@/features/finance/budget-constants';
+import { useAddBudget } from "@/features/finance/add-budget-context";
+import { BUDGET_PERIOD_LABEL } from "@/features/finance/budget-constants";
+import {
+  FieldGroup,
+  FieldRow,
+  FieldSectionLabel,
+} from "@/features/finance/components/form-fields";
 import {
   CategoryLeading,
   ColorLeading,
-} from '@/features/finance/components/label-form-leads';
-import { FieldGroup, FieldRow, FieldSectionLabel } from '@/features/finance/components/form-fields';
-import { DEFAULT_CURRENCY, getCurrencySymbol } from '@/features/finance/format';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+} from "@/features/finance/components/label-form-leads";
+import { DEFAULT_CURRENCY, getCurrencySymbol } from "@/features/finance/format";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
 
 function SwitchRow({
   label,
@@ -30,27 +34,33 @@ function SwitchRow({
   return (
     <View
       style={{
-        minHeight: 62,
-        flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: "center",
+        flexDirection: "row",
         gap: 14,
+        minHeight: 62,
         paddingLeft: 16,
-      }}>
+      }}
+    >
       <View
         style={{
-          minHeight: 62,
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
+          alignItems: "center",
           borderBottomColor: colors.border,
           borderBottomWidth: last ? 0 : 1,
+          flex: 1,
+          flexDirection: "row",
+          gap: 12,
+          minHeight: 62,
           paddingRight: 16,
           paddingVertical: 12,
-        }}>
+        }}
+      >
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: colors.foreground, fontSize: 17 }}>{label}</Text>
-          <Text style={{ color: colors.muted, fontSize: 13 }}>{description}</Text>
+          <Text style={{ color: colors.foreground, fontSize: 17 }}>
+            {label}
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 13 }}>
+            {description}
+          </Text>
         </View>
         <Switch
           onValueChange={onValueChange}
@@ -78,24 +88,38 @@ export default function AddBudgetScreen() {
     setNotifyOnOverspend,
     tag,
   } = useAddBudget();
-  const currencySymbol = getCurrencySymbol(accounts[0]?.currency ?? DEFAULT_CURRENCY);
+  const currencySymbol = getCurrencySymbol(
+    accounts[0]?.currency ?? DEFAULT_CURRENCY
+  );
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
+      contentContainerStyle={{
+        gap: 18,
+        paddingBottom: 40,
+        paddingHorizontal: 20,
+      }}
       keyboardDismissMode="interactive"
-      style={{ flex: 1, backgroundColor: colors.background }}>
+      style={{ backgroundColor: colors.background, flex: 1 }}
+    >
       <FieldGroup>
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'baseline',
+            alignItems: "baseline",
+            flexDirection: "row",
             gap: 10,
             paddingHorizontal: 18,
             paddingVertical: 18,
-          }}>
-          <Text style={{ color: colors.foreground, fontSize: 34, fontWeight: '700' }}>
+          }}
+        >
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 34,
+              fontWeight: "700",
+            }}
+          >
             {currencySymbol}
           </Text>
           <TextInput
@@ -107,27 +131,33 @@ export default function AddBudgetScreen() {
               color: colors.foreground,
               flex: 1,
               fontSize: 52,
-              fontWeight: '700',
+              fontWeight: "700",
               minHeight: 74,
-              textAlign: 'right',
+              textAlign: "right",
             }}
             value={amount}
           />
         </View>
         <View
           style={{
-            minHeight: 62,
-            flexDirection: 'row',
-            alignItems: 'center',
+            alignItems: "center",
             borderTopColor: colors.border,
             borderTopWidth: 1,
+            flexDirection: "row",
+            minHeight: 62,
             paddingHorizontal: 18,
-          }}>
+          }}
+        >
           <TextInput
             onChangeText={setName}
             placeholder="Budget name"
             placeholderTextColor={colors.muted}
-            style={{ color: colors.foreground, flex: 1, fontSize: 17, minHeight: 62 }}
+            style={{
+              color: colors.foreground,
+              flex: 1,
+              fontSize: 17,
+              minHeight: 62,
+            }}
             value={name}
           />
         </View>
@@ -138,16 +168,20 @@ export default function AddBudgetScreen() {
           label="Category"
           leading={
             <CategoryLeading
-              color={category?.color ?? '#8E8E93'}
-              symbol={category?.symbol ?? 'square.grid.2x2.fill'}
+              color={category?.color ?? "#8E8E93"}
+              symbol={category?.symbol ?? "square.grid.2x2.fill"}
             />
           }
-          onPress={() => router.push('/add-budget/category')}
+          onPress={() => router.push("/add-budget/category")}
           valueNode={
             category ? (
-              <Text style={{ color: colors.muted, fontSize: 17 }}>{category.name}</Text>
+              <Text style={{ color: colors.muted, fontSize: 17 }}>
+                {category.name}
+              </Text>
             ) : (
-              <Text style={{ color: colors.negative, fontSize: 17 }}>Required</Text>
+              <Text style={{ color: colors.negative, fontSize: 17 }}>
+                Required
+              </Text>
             )
           }
         />
@@ -155,15 +189,15 @@ export default function AddBudgetScreen() {
           label="Period"
           icon="arrow.triangle.2.circlepath"
           iconColor="#0A84FF"
-          onPress={() => router.push('/add-budget/period')}
+          onPress={() => router.push("/add-budget/period")}
           value={BUDGET_PERIOD_LABEL[period]}
         />
         <FieldRow
           label="Tag"
           last
           leading={<ColorLeading color={tag?.color ?? colors.border} />}
-          onPress={() => router.push('/add-budget/tags')}
-          value={tag?.name ?? 'None'}
+          onPress={() => router.push("/add-budget/tags")}
+          value={tag?.name ?? "None"}
         />
       </FieldGroup>
 

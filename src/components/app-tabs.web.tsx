@@ -1,22 +1,16 @@
-import {
-  Tabs,
-  TabList,
-  TabTrigger,
-  TabSlot,
-  TabTriggerSlotProps,
-  TabListProps,
-} from 'expo-router/ui';
-import { Pressable, View } from 'react-native';
+import type { TabTriggerSlotProps, TabListProps } from "expo-router/ui";
+import { Tabs, TabList, TabTrigger, TabSlot } from "expo-router/ui";
+import { Pressable, View } from "react-native";
 
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+import { MaxContentWidth } from "@/constants/theme";
 
-import { MaxContentWidth } from '@/constants/theme';
+import { ThemedText } from "./themed-text";
+import { ThemedView } from "./themed-view";
 
 export default function AppTabs() {
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
+      <TabSlot style={{ height: "100%" }} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="dashboard" href="/dashboard" asChild>
@@ -37,13 +31,18 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+export function TabButton({
+  children,
+  isFocused,
+  ...props
+}: TabTriggerSlotProps) {
   return (
     <Pressable {...props} className="active:opacity-70">
       <ThemedView
-        variant={isFocused ? 'selected' : 'card'}
-        className="rounded-xl px-4 py-1">
-        <ThemedText type="small" color={isFocused ? 'foreground' : 'muted'}>
+        variant={isFocused ? "selected" : "card"}
+        className="rounded-xl px-4 py-1"
+      >
+        <ThemedText type="small" color={isFocused ? "foreground" : "muted"}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -53,11 +52,15 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 
 export function CustomTabList(props: TabListProps) {
   return (
-    <View {...props} className="absolute w-full flex-row items-center justify-center p-4">
+    <View
+      {...props}
+      className="absolute w-full flex-row items-center justify-center p-4"
+    >
       <ThemedView
         variant="card"
-        className="max-w-full flex-grow flex-row items-center gap-2 rounded-[32px] px-8 py-2"
-        style={{ maxWidth: MaxContentWidth }}>
+        className="max-w-full grow flex-row items-center gap-2 rounded-4xl px-8 py-2"
+        style={{ maxWidth: MaxContentWidth }}
+      >
         <ThemedText type="smallBold" className="mr-auto">
           balanced
         </ThemedText>

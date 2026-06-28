@@ -1,22 +1,22 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { SymbolView } from "expo-symbols";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { TransactionList } from '@/features/finance/components/transaction-list';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { TransactionList } from "@/features/finance/components/transaction-list";
 import {
   budgetUsage,
   budgetUsagePercent,
   formatCurrency,
-} from '@/features/finance/format';
-import type { Budget, Transaction } from '@/features/finance/types';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+} from "@/features/finance/format";
+import type { Budget, Transaction } from "@/features/finance/types";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
 
-type TabKey = 'overview' | 'transactions';
+type TabKey = "overview" | "transactions";
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -32,9 +32,18 @@ function isCurrentMonth(date: string): boolean {
 }
 
 function matchesBudget(transaction: Transaction, budget: Budget): boolean {
-  if (transaction.amount >= 0) return false;
-  if (budget.category && transaction.category !== budget.category) return false;
-  if (budget.tagId && !transaction.tags.some((tag) => tag.id === budget.tagId)) return false;
+  if (transaction.amount >= 0) {
+    return false;
+  }
+  if (budget.category && transaction.category !== budget.category) {
+    return false;
+  }
+  if (
+    budget.tagId &&
+    !transaction.tags.some((tag) => tag.id === budget.tagId)
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -62,19 +71,21 @@ function TabButton({
       accessibilityState={{ selected: active }}
       onPress={onPress}
       style={{
-        flex: 1,
-        alignItems: 'center',
+        alignItems: "center",
         borderBottomColor: active ? colors.primary : colors.border,
         borderBottomWidth: active ? 3 : 1,
+        flex: 1,
         paddingBottom: 12,
         paddingTop: 10,
-      }}>
+      }}
+    >
       <Text
         style={{
           color: active ? colors.primary : colors.foreground,
           fontSize: 17,
-          fontWeight: '700',
-        }}>
+          fontWeight: "700",
+        }}
+      >
         {label}
       </Text>
     </Pressable>
@@ -103,7 +114,10 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
             </ThemedText>
           </View>
           <View className="rounded-xl bg-background px-3 py-2">
-            <ThemedText type="smallBold" color={percent > 100 ? 'negative' : 'muted'}>
+            <ThemedText
+              type="smallBold"
+              color={percent > 100 ? "negative" : "muted"}
+            >
               {100 - percent}%
             </ThemedText>
           </View>
@@ -113,8 +127,8 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
           <View
             className="h-3 rounded-full"
             style={{
-              width: `${Math.max(usage, budget.spent > 0 ? 2 : 0)}%`,
               backgroundColor: overspent > 0 ? colors.negative : budget.color,
+              width: `${Math.max(usage, budget.spent > 0 ? 2 : 0)}%`,
             }}
           />
         </View>
@@ -137,11 +151,20 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
             </ThemedText>
           </View>
           <View className="flex-1 items-end">
-            <ThemedText type="smallBold" color={overspent > 0 ? 'negative' : 'foreground'}>
-              {formatCurrency(overspent > 0 ? overspent : riskAmount, budget.currency)}
+            <ThemedText
+              type="smallBold"
+              color={overspent > 0 ? "negative" : "foreground"}
+            >
+              {formatCurrency(
+                overspent > 0 ? overspent : riskAmount,
+                budget.currency
+              )}
             </ThemedText>
-            <ThemedText type="smallBold" color={overspent > 0 ? 'negative' : 'foreground'}>
-              {overspent > 0 ? 'Overspent' : 'Left'}
+            <ThemedText
+              type="smallBold"
+              color={overspent > 0 ? "negative" : "foreground"}
+            >
+              {overspent > 0 ? "Overspent" : "Left"}
             </ThemedText>
           </View>
         </View>
@@ -151,8 +174,13 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
         <View className="flex-row items-center gap-3">
           <View
             className="size-12 items-center justify-center rounded-2xl"
-            style={{ backgroundColor: budget.color }}>
-            <SymbolView name={budget.symbol as never} size={24} tintColor="#fff" />
+            style={{ backgroundColor: budget.color }}
+          >
+            <SymbolView
+              name={budget.symbol as never}
+              size={24}
+              tintColor="#fff"
+            />
           </View>
           <View className="min-w-0 flex-1">
             <ThemedText type="smallBold" className="text-[17px]">
@@ -189,16 +217,25 @@ export default function BudgetDetailScreen() {
   const id = firstParam(params.id);
   const colors = useThemeColors();
   const { budgets, transactions } = useFinance();
-  const [tab, setTab] = useState<TabKey>('overview');
+  const [tab, setTab] = useState<TabKey>("overview");
   const budget = budgets.find((item) => item.id === id);
   const budgetTransactions = useMemo(() => {
-    if (!budget) return [];
+    if (!budget) {
+      return [];
+    }
     return transactions
-      .filter((transaction) => isCurrentMonth(transaction.date) && matchesBudget(transaction, budget))
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .filter(
+        (transaction) =>
+          isCurrentMonth(transaction.date) && matchesBudget(transaction, budget)
+      )
+      .toSorted((a, b) => b.date.localeCompare(a.date));
   }, [budget, transactions]);
   const currentMonthSpent = useMemo(
-    () => budgetTransactions.reduce((total, transaction) => total + Math.abs(transaction.amount), 0),
+    () =>
+      budgetTransactions.reduce(
+        (total, transaction) => total + Math.abs(transaction.amount),
+        0
+      ),
     [budgetTransactions]
   );
 
@@ -206,11 +243,12 @@ export default function BudgetDetailScreen() {
     return (
       <View
         style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: "center",
           backgroundColor: colors.background,
-        }}>
+          flex: 1,
+          justifyContent: "center",
+        }}
+      >
         <Stack.Screen.BackButton displayMode="minimal" />
         <ThemedText type="small" color="muted">
           This budget was not found.
@@ -227,26 +265,36 @@ export default function BudgetDetailScreen() {
         <Stack.Toolbar.Button
           accessibilityLabel="Edit budget"
           onPress={() => {
-            router.push({ pathname: '/add-budget', params: { id: budget.id } });
+            router.push({ params: { id: budget.id }, pathname: "/add-budget" });
           }}
-          variant="plain">
+          variant="plain"
+        >
           Edit
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
 
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
-        style={{ flex: 1, backgroundColor: colors.background }}>
+        contentContainerStyle={{
+          gap: 18,
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+        }}
+        style={{ backgroundColor: colors.background, flex: 1 }}
+      >
         <View className="flex-row">
-          <TabButton active={tab === 'overview'} label="Overview" onPress={() => setTab('overview')} />
           <TabButton
-            active={tab === 'transactions'}
+            active={tab === "overview"}
+            label="Overview"
+            onPress={() => setTab("overview")}
+          />
+          <TabButton
+            active={tab === "transactions"}
             label="Transactions"
-            onPress={() => setTab('transactions')}
+            onPress={() => setTab("transactions")}
           />
         </View>
-        {tab === 'overview' ? (
+        {tab === "overview" ? (
           <MonthOverview budget={budget} spent={currentMonthSpent} />
         ) : (
           <TransactionList transactions={budgetTransactions} />

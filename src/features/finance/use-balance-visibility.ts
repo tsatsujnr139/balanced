@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from "react";
 
 let balancesVisible = true;
 const listeners = new Set<() => void>();
@@ -26,11 +26,15 @@ function setBalancesVisible(nextVisible: boolean) {
 }
 
 export function maskCurrencyValue(value: string): string {
-  return value.replace(/[^\s]/g, '*');
+  return value.replaceAll(/[^\s]/g, "*");
 }
 
 export function useBalanceVisibility() {
-  const isBalanceVisible = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isBalanceVisible = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getSnapshot
+  );
 
   return {
     isBalanceVisible,

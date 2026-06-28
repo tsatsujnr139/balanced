@@ -1,18 +1,22 @@
-import { useQuery } from 'convex/react';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
-import type { SearchBarCommands } from 'react-native-screens';
+import { useQuery } from "convex/react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import type { SearchBarCommands } from "react-native-screens";
 
-import { api } from '../../convex/_generated/api';
-import { PlannedPaymentList } from '@/features/finance/components/planned-payment-list';
-import type { PlannedPayment } from '@/features/finance/types';
-import { useThemeColors } from '@/hooks/use-theme';
+import { PlannedPaymentList } from "@/features/finance/components/planned-payment-list";
+import type { PlannedPayment } from "@/features/finance/types";
+import { useThemeColors } from "@/hooks/use-theme";
+
+import { api } from "../../convex/_generated/api";
 
 const SEARCH_FOCUS_DELAY_MS = 200;
 
-function filterPlannedPayments(payments: PlannedPayment[], query: string): PlannedPayment[] {
+function filterPlannedPayments(
+  payments: PlannedPayment[],
+  query: string
+): PlannedPayment[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
     return payments;
@@ -29,13 +33,13 @@ export default function PlannedPaymentsScreen() {
   const colors = useThemeColors();
   const { focusSearch } = useLocalSearchParams<{ focusSearch?: string }>();
   const searchBarRef = useRef<SearchBarCommands | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const plannedPayments = useQuery(api.finance.listPlannedPayments);
   const filtered = useMemo(
     () => filterPlannedPayments(plannedPayments ?? [], query),
     [plannedPayments, query]
   );
-  const shouldFocusSearch = focusSearch === '1';
+  const shouldFocusSearch = focusSearch === "1";
 
   useFocusEffect(
     useCallback(() => {
@@ -55,11 +59,22 @@ export default function PlannedPaymentsScreen() {
     <>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
+        contentContainerStyle={{
+          gap: 18,
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+        }}
         keyboardDismissMode="interactive"
-        style={{ flex: 1, backgroundColor: colors.background }}>
+        style={{ backgroundColor: colors.background, flex: 1 }}
+      >
         {plannedPayments === undefined ? (
-          <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 160,
+            }}
+          >
             <ActivityIndicator />
           </View>
         ) : (
@@ -75,8 +90,8 @@ export default function PlannedPaymentsScreen() {
           icon="plus"
           onPress={() => {
             router.push({
-              pathname: '/add-planned-payment',
               params: { draftId: `new-${Date.now()}` },
+              pathname: "/add-planned-payment",
             });
           }}
         />
@@ -84,7 +99,7 @@ export default function PlannedPaymentsScreen() {
       <Stack.SearchBar
         autoCapitalize="none"
         onCancelButtonPress={() => {
-          setQuery('');
+          setQuery("");
           searchBarRef.current?.blur();
         }}
         onChangeText={(event) => {

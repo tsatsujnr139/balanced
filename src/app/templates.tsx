@@ -1,14 +1,15 @@
-import { useQuery } from 'convex/react';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
-import type { SearchBarCommands } from 'react-native-screens';
+import { useQuery } from "convex/react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import type { SearchBarCommands } from "react-native-screens";
 
-import { api } from '../../convex/_generated/api';
-import { TransactionTemplateList } from '@/features/finance/components/transaction-template-list';
-import type { TransactionTemplate } from '@/features/finance/types';
-import { useThemeColors } from '@/hooks/use-theme';
+import { TransactionTemplateList } from "@/features/finance/components/transaction-template-list";
+import type { TransactionTemplate } from "@/features/finance/types";
+import { useThemeColors } from "@/hooks/use-theme";
+
+import { api } from "../../convex/_generated/api";
 
 const SEARCH_FOCUS_DELAY_MS = 200;
 
@@ -33,13 +34,13 @@ export default function TemplatesScreen() {
   const colors = useThemeColors();
   const { focusSearch } = useLocalSearchParams<{ focusSearch?: string }>();
   const searchBarRef = useRef<SearchBarCommands | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const templates = useQuery(api.finance.listTransactionTemplates);
   const filtered = useMemo(
     () => filterTemplates(templates ?? [], query),
     [query, templates]
   );
-  const shouldFocusSearch = focusSearch === '1';
+  const shouldFocusSearch = focusSearch === "1";
 
   useFocusEffect(
     useCallback(() => {
@@ -59,11 +60,22 @@ export default function TemplatesScreen() {
     <>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
+        contentContainerStyle={{
+          gap: 18,
+          paddingBottom: 40,
+          paddingHorizontal: 20,
+        }}
         keyboardDismissMode="interactive"
-        style={{ flex: 1, backgroundColor: colors.background }}>
+        style={{ backgroundColor: colors.background, flex: 1 }}
+      >
         {templates === undefined ? (
-          <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 160,
+            }}
+          >
             <ActivityIndicator />
           </View>
         ) : (
@@ -71,7 +83,10 @@ export default function TemplatesScreen() {
             emptyText="No templates yet"
             templates={filtered}
             onPressTemplate={(template) => {
-              router.push({ pathname: '/add-template', params: { id: template.id } });
+              router.push({
+                params: { id: template.id },
+                pathname: "/add-template",
+              });
             }}
           />
         )}
@@ -84,14 +99,14 @@ export default function TemplatesScreen() {
           accessibilityLabel="Add template"
           icon="plus"
           onPress={() => {
-            router.push('/add-template');
+            router.push("/add-template");
           }}
         />
       </Stack.Toolbar>
       <Stack.SearchBar
         autoCapitalize="none"
         onCancelButtonPress={() => {
-          setQuery('');
+          setQuery("");
           searchBarRef.current?.blur();
         }}
         onChangeText={(event) => {

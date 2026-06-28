@@ -1,9 +1,9 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from "react";
 
-import type { TransactionCategory } from './transaction-categories';
-import type { TransactionTag, TransactionTemplateType } from './types';
+import type { TransactionCategory } from "./transaction-categories";
+import type { TransactionTag, TransactionTemplateType } from "./types";
 
-type AddTemplateContextValue = {
+interface AddTemplateContextValue {
   accountId: string | null;
   amount: string;
   category: TransactionCategory | null;
@@ -25,15 +25,19 @@ type AddTemplateContextValue = {
   setType: (type: TransactionTemplateType) => void;
   submit: () => void;
   toggleTag: (tag: TransactionTag) => void;
-};
+}
 
-export const AddTemplateContext = createContext<AddTemplateContextValue | null>(null);
+export const AddTemplateContext = createContext<AddTemplateContextValue | null>(
+  null
+);
 
 export function useAddTemplate() {
   const context = useContext(AddTemplateContext);
 
   if (!context) {
-    throw new Error('useAddTemplate must be used inside AddTemplateContext.Provider');
+    throw new Error(
+      "useAddTemplate must be used inside AddTemplateContext.Provider"
+    );
   }
 
   return context;

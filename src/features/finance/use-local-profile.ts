@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Storage from 'expo-sqlite/kv-store';
+import Storage from "expo-sqlite/kv-store";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-const PROFILE_FIRST_NAME_KEY = 'profile.firstName.v1';
+const PROFILE_FIRST_NAME_KEY = "profile.firstName.v1";
 
 export function normalizeFirstName(value: string): string {
-  return value.trim().replace(/\s+/g, ' ');
+  return value.trim().replaceAll(/\s+/g, " ");
 }
 
 export function useLocalProfile() {
-  const [firstName, setFirstNameState] = useState('');
+  const [firstName, setFirstNameState] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   useEffect(() => {
@@ -17,10 +17,12 @@ export function useLocalProfile() {
     Storage.getItem(PROFILE_FIRST_NAME_KEY)
       .then((value) => {
         if (isActive) {
-          setFirstNameState(value ?? '');
+          setFirstNameState(value ?? "");
         }
       })
-      .catch(() => undefined)
+      .catch(() => {
+        /* empty */
+      })
       .finally(() => {
         if (isActive) {
           setIsLoadingProfile(false);
@@ -35,7 +37,7 @@ export function useLocalProfile() {
   const setFirstName = useCallback(async (value: string) => {
     const nextFirstName = normalizeFirstName(value);
     if (nextFirstName.length > 40) {
-      throw new Error('Name must be 40 characters or fewer');
+      throw new Error("Name must be 40 characters or fewer");
     }
 
     await Storage.setItem(PROFILE_FIRST_NAME_KEY, nextFirstName);

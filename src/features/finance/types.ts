@@ -1,6 +1,11 @@
-export type AccountType = 'general' | 'cash' | 'current' | 'savings' | 'investment';
+export type AccountType =
+  | "general"
+  | "cash"
+  | "current"
+  | "savings"
+  | "investment";
 
-export type Account = {
+export interface Account {
   id: string;
   name: string;
   institution: string;
@@ -12,24 +17,24 @@ export type Account = {
   symbol: string;
   /** Accent hex color for the account card. */
   color: string;
-};
+}
 
-export type TransactionDirection = 'inflow' | 'outflow';
+export type TransactionDirection = "inflow" | "outflow";
 
-export type TransactionTag = {
+export interface TransactionTag {
   id: string;
   name: string;
   color: string;
-};
+}
 
 export type TransactionKind =
-  | 'expense'
-  | 'income'
-  | 'transfer_out'
-  | 'transfer_in'
-  | 'charge';
+  | "expense"
+  | "income"
+  | "transfer_out"
+  | "transfer_in"
+  | "charge";
 
-export type Transaction = {
+export interface Transaction {
   id: string;
   accountId: string;
   accountName: string;
@@ -52,11 +57,11 @@ export type Transaction = {
   fromAccountName?: string;
   toAccountId?: string;
   toAccountName?: string;
-};
+}
 
-export type TransactionTemplateType = 'expense' | 'income' | 'transfer';
+export type TransactionTemplateType = "expense" | "income" | "transfer";
 
-export type TransactionTemplate = {
+export interface TransactionTemplate {
   id: string;
   name: string;
   accountId: string;
@@ -73,11 +78,11 @@ export type TransactionTemplate = {
   toAccountName: string | null;
   transactionCharge: number | null;
   tags: TransactionTag[];
-};
+}
 
-export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly' | 'one_time';
+export type BudgetPeriod = "weekly" | "monthly" | "yearly" | "one_time";
 
-export type Budget = {
+export interface Budget {
   id: string;
   name: string;
   /** Spent so far in minor units (cents). */
@@ -97,15 +102,19 @@ export type Budget = {
   notifyOnOverspend: boolean;
   /** In-app notification when spending crosses 75% of the limit. */
   notifyAtThreshold: boolean;
-};
+}
 
-export type PlannedPaymentFrequency = 'once' | 'weekly' | 'monthly' | 'yearly';
+export type PlannedPaymentFrequency = "once" | "weekly" | "monthly" | "yearly";
 
-export type PlannedPaymentType = 'expense' | 'income';
+export type PlannedPaymentType = "expense" | "income";
 
-export type PlannedPaymentDueStatus = 'overdue' | 'today' | 'upcoming' | 'completed';
+export type PlannedPaymentDueStatus =
+  | "overdue"
+  | "today"
+  | "upcoming"
+  | "completed";
 
-export type PlannedPayment = {
+export interface PlannedPayment {
   id: string;
   name: string;
   description: string;
@@ -130,11 +139,11 @@ export type PlannedPayment = {
   notifyOnDue: boolean;
   notifyOnOverdue: boolean;
   tags: TransactionTag[];
-};
+}
 
-export type PlannedPaymentOccurrenceStatus = 'pending' | 'paid' | 'skipped';
+export type PlannedPaymentOccurrenceStatus = "pending" | "paid" | "skipped";
 
-export type PlannedPaymentOccurrence = {
+export interface PlannedPaymentOccurrence {
   /** ISO timestamp of the occurrence's due date. */
   dueDate: string;
   status: PlannedPaymentOccurrenceStatus;
@@ -144,9 +153,9 @@ export type PlannedPaymentOccurrence = {
   amount: number;
   /** Whole days until due (negative when overdue). */
   daysUntilDue: number;
-};
+}
 
-export type PlannedPaymentDetail = {
+export interface PlannedPaymentDetail {
   id: string;
   name: string;
   description: string;
@@ -166,12 +175,12 @@ export type PlannedPaymentDetail = {
   overdueCount: number;
   tags: TransactionTag[];
   occurrences: PlannedPaymentOccurrence[];
-};
+}
 
-export type FinanceSnapshot = {
+export interface FinanceSnapshot {
   accounts: Account[];
   transactions: Transaction[];
   budgets: Budget[];
   /** Total pending overdue planned-payment occurrences across all payments. */
   plannedPaymentsOverdueCount: number;
-};
+}

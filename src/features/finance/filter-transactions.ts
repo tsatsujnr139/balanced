@@ -1,6 +1,9 @@
-import type { Transaction } from './types';
+import type { Transaction } from "./types";
 
-export function filterTransactions(transactions: Transaction[], query: string): Transaction[] {
+export function filterTransactions(
+  transactions: Transaction[],
+  query: string
+): Transaction[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
     return transactions;

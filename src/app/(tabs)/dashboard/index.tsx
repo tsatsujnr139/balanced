@@ -1,28 +1,26 @@
-import { router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import {
-  Pressable,
-  ScrollView,
-  View,
-  useWindowDimensions,
-  type DimensionValue,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import type { DimensionValue } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { BottomTabInset, MaxContentWidth } from "@/constants/theme";
 import {
   DEFAULT_ACCOUNT_COLOR,
   ACCOUNT_TYPE_LABEL,
-} from '@/features/finance/account-constants';
-import { BudgetList } from '@/features/finance/components/budget-list';
-import { TransactionList } from '@/features/finance/components/transaction-list';
-import { DEFAULT_CURRENCY, formatCurrency } from '@/features/finance/format';
-import type { Account } from '@/features/finance/types';
-import { maskCurrencyValue, useBalanceVisibility } from '@/features/finance/use-balance-visibility';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+} from "@/features/finance/account-constants";
+import { BudgetList } from "@/features/finance/components/budget-list";
+import { TransactionList } from "@/features/finance/components/transaction-list";
+import { DEFAULT_CURRENCY, formatCurrency } from "@/features/finance/format";
+import type { Account } from "@/features/finance/types";
+import {
+  maskCurrencyValue,
+  useBalanceVisibility,
+} from "@/features/finance/use-balance-visibility";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
 
 const HORIZONTAL_PADDING = 16;
 const COLUMN_GAP = 10;
@@ -34,16 +32,16 @@ const GRID_ROWS = 2;
 const ACCOUNTS_PER_PAGE = GRID_COLUMNS * GRID_ROWS;
 const ACCOUNT_CARD_HEIGHT = 104;
 const DEFAULT_NEW_ACCOUNT_PARAMS = {
-  name: 'My Account',
-  balance: '0.00',
-  currency: DEFAULT_CURRENCY,
-  type: 'cash',
+  balance: "0.00",
   color: DEFAULT_ACCOUNT_COLOR,
+  currency: DEFAULT_CURRENCY,
+  name: "My Account",
+  type: "cash",
 } as const;
 
 function SkeletonBlock({
   height,
-  width = '100%',
+  width = "100%",
   borderRadius = 10,
 }: {
   height: number;
@@ -52,7 +50,17 @@ function SkeletonBlock({
 }) {
   const colors = useThemeColors();
 
-  return <View style={{ width, height, borderRadius, backgroundColor: colors.border, opacity: 0.65 }} />;
+  return (
+    <View
+      style={{
+        backgroundColor: colors.border,
+        borderRadius,
+        height,
+        opacity: 0.65,
+        width,
+      }}
+    />
+  );
 }
 
 function ListSkeleton({ rows = 3 }: { rows?: number }) {
@@ -61,14 +69,18 @@ function ListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <View
       style={{
+        backgroundColor: colors.card,
+        borderCurve: "continuous",
+        borderRadius: 22,
         gap: 16,
         padding: 16,
-        borderRadius: 22,
-        borderCurve: 'continuous',
-        backgroundColor: colors.card,
-      }}>
+      }}
+    >
       {Array.from({ length: rows }, (_, index) => (
-        <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View
+          key={index}
+          style={{ alignItems: "center", flexDirection: "row", gap: 10 }}
+        >
           <SkeletonBlock height={38} width={38} borderRadius={19} />
           <View style={{ flex: 1, gap: 7 }}>
             <SkeletonBlock height={13} width="55%" />
@@ -85,9 +97,17 @@ function AccountGridSkeleton({ cardWidth }: { cardWidth: number }) {
   return (
     <View style={{ gap: ROW_GAP }}>
       {[0, 1].map((row) => (
-        <View key={row} style={{ flexDirection: 'row', gap: COLUMN_GAP }}>
-          <SkeletonBlock height={ACCOUNT_CARD_HEIGHT} width={cardWidth} borderRadius={16} />
-          <SkeletonBlock height={ACCOUNT_CARD_HEIGHT} width={cardWidth} borderRadius={16} />
+        <View key={row} style={{ flexDirection: "row", gap: COLUMN_GAP }}>
+          <SkeletonBlock
+            height={ACCOUNT_CARD_HEIGHT}
+            width={cardWidth}
+            borderRadius={16}
+          />
+          <SkeletonBlock
+            height={ACCOUNT_CARD_HEIGHT}
+            width={cardWidth}
+            borderRadius={16}
+          />
         </View>
       ))}
     </View>
@@ -101,12 +121,14 @@ function buildNewAccountParams() {
   };
 }
 
-const ADD_ACCOUNT_SLOT = { id: '__add__', kind: 'add' as const };
+const ADD_ACCOUNT_SLOT = { id: "__add__", kind: "add" as const };
 
 type AccountGridItem = Account | typeof ADD_ACCOUNT_SLOT;
 
-function isAddAccountSlot(item: AccountGridItem): item is typeof ADD_ACCOUNT_SLOT {
-  return 'kind' in item && item.kind === 'add';
+function isAddAccountSlot(
+  item: AccountGridItem
+): item is typeof ADD_ACCOUNT_SLOT {
+  return "kind" in item && item.kind === "add";
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -120,7 +142,10 @@ function chunk<T>(items: T[], size: number): T[][] {
 function buildAccountPages(accounts: Account[]): (AccountGridItem | null)[][] {
   const items: AccountGridItem[] = [...accounts, ADD_ACCOUNT_SLOT];
   const pages = chunk(items, ACCOUNTS_PER_PAGE).map((page) => {
-    const slots: (AccountGridItem | null)[] = Array.from({ length: ACCOUNTS_PER_PAGE }, () => null);
+    const slots: (AccountGridItem | null)[] = Array.from(
+      { length: ACCOUNTS_PER_PAGE },
+      () => null
+    );
 
     page.forEach((item, index) => {
       const column = Math.floor(index / GRID_ROWS);
@@ -131,9 +156,7 @@ function buildAccountPages(accounts: Account[]): (AccountGridItem | null)[][] {
     return slots;
   });
 
-  return pages.length > 0
-    ? pages
-    : [[ADD_ACCOUNT_SLOT, null, null, null]];
+  return pages.length > 0 ? pages : [[ADD_ACCOUNT_SLOT, null, null, null]];
 }
 
 function AccountCard({
@@ -150,37 +173,55 @@ function AccountCard({
   return (
     <Pressable
       accessibilityRole="button"
-      style={{ width, height: ACCOUNT_CARD_HEIGHT }}
+      style={{ height: ACCOUNT_CARD_HEIGHT, width }}
       onPress={() => {
         router.push({
-          pathname: '/account/[id]',
           params: { id: account.id },
+          pathname: "/account/[id]",
         });
-      }}>
+      }}
+    >
       <ThemedView
         variant="card"
         className="h-full justify-between rounded-2xl px-3.5 py-3"
-        style={{ width }}>
+        style={{ width }}
+      >
         <View className="flex-row items-center justify-between">
           <View
             className="size-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: account.color }}>
-            <SymbolView name={account.symbol as never} size={15} tintColor="#fff" />
+            style={{ backgroundColor: account.color }}
+          >
+            <SymbolView
+              name={account.symbol as never}
+              size={15}
+              tintColor="#fff"
+            />
           </View>
-          <ThemedText type="small" color="muted" numberOfLines={1} className="text-xs leading-4">
+          <ThemedText
+            type="small"
+            color="muted"
+            numberOfLines={1}
+            className="text-xs leading-4"
+          >
             {ACCOUNT_TYPE_LABEL[account.type]}
           </ThemedText>
         </View>
         <View className="gap-0">
-          <ThemedText type="small" color="muted" numberOfLines={1} className="text-[15px] leading-5">
+          <ThemedText
+            type="small"
+            color="muted"
+            numberOfLines={1}
+            className="text-[15px] leading-5"
+          >
             {account.name}
           </ThemedText>
           <ThemedText
             type="smallBold"
-            color={account.balance < 0 ? 'negative' : 'foreground'}
+            color={account.balance < 0 ? "negative" : "foreground"}
             numberOfLines={1}
             adjustsFontSizeToFit
-            className="text-xl leading-7">
+            className="text-xl leading-7"
+          >
             {isBalanceVisible ? balance : maskCurrencyValue(balance)}
           </ThemedText>
         </View>
@@ -196,23 +237,30 @@ function AddAccountCard({ width }: { width: number }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Add account"
-      style={{ width, height: ACCOUNT_CARD_HEIGHT }}
+      style={{ height: ACCOUNT_CARD_HEIGHT, width }}
       onPress={() => {
         router.push({
-          pathname: '/add-account',
           params: buildNewAccountParams(),
+          pathname: "/add-account",
         });
-      }}>
+      }}
+    >
       <ThemedView
         variant="card"
         className="h-full items-center justify-center gap-2 rounded-2xl px-3.5 py-3"
-        style={{ width }}>
+        style={{ width }}
+      >
         <View
           className="size-8 items-center justify-center rounded-full"
-          style={{ backgroundColor: colors.border }}>
+          style={{ backgroundColor: colors.border }}
+        >
           <SymbolView name="plus" size={15} tintColor={colors.muted} />
         </View>
-        <ThemedText type="small" color="muted" className="text-[15px] leading-5">
+        <ThemedText
+          type="small"
+          color="muted"
+          className="text-[15px] leading-5"
+        >
           Add account
         </ThemedText>
       </ThemedView>
@@ -224,12 +272,25 @@ export default function DashboardScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const contentWidth = Math.min(width - HORIZONTAL_PADDING * 2, MaxContentWidth);
-  const carouselWidth = Math.min(width, MaxContentWidth + HORIZONTAL_PADDING * 2);
+  const contentWidth = Math.min(
+    width - HORIZONTAL_PADDING * 2,
+    MaxContentWidth
+  );
+  const carouselWidth = Math.min(
+    width,
+    MaxContentWidth + HORIZONTAL_PADDING * 2
+  );
   const pageWidth = contentWidth - ACCOUNT_PAGE_PEEK;
   const cardWidth = (pageWidth - COLUMN_GAP) / GRID_COLUMNS;
-  const { accounts, transactions, budgets, netWorth, totalAssets, totalLiabilities, isLoading } =
-    useFinance();
+  const {
+    accounts,
+    transactions,
+    budgets,
+    netWorth,
+    totalAssets,
+    totalLiabilities,
+    isLoading,
+  } = useFinance();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   const accountPages = buildAccountPages(accounts);
   const netWorthValue = formatCurrency(netWorth);
@@ -243,13 +304,14 @@ export default function DashboardScreen() {
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
         paddingBottom: insets.bottom + BottomTabInset + 24,
-      }}>
+      }}
+    >
       <View className="w-full gap-6" style={{ maxWidth: MaxContentWidth }}>
         {isLoading ? (
           <View style={{ gap: 9 }}>
             <SkeletonBlock height={14} width={62} />
             <SkeletonBlock height={38} width={180} borderRadius={12} />
-            <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flexDirection: "row", gap: 16 }}>
               <SkeletonBlock height={13} width={112} />
               <SkeletonBlock height={13} width={112} />
             </View>
@@ -257,46 +319,68 @@ export default function DashboardScreen() {
         ) : (
           <View className="gap-1">
             <View className="flex-row items-center justify-between">
-              <ThemedText type="smallBold" color="muted" className="text-[15px]">
+              <ThemedText
+                type="smallBold"
+                color="muted"
+                className="text-[15px]"
+              >
                 Balance
               </ThemedText>
               <Pressable
                 accessibilityRole="switch"
                 accessibilityState={{ checked: isBalanceVisible }}
-                accessibilityLabel={isBalanceVisible ? 'Hide balances' : 'Show balances'}
+                accessibilityLabel={
+                  isBalanceVisible ? "Hide balances" : "Show balances"
+                }
                 hitSlop={8}
                 onPress={toggleBalanceVisibility}
                 style={({ pressed }) => ({
-                  height: 34,
-                  width: 34,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 17,
+                  alignItems: "center",
                   backgroundColor: colors.card,
+                  borderRadius: 17,
+                  height: 34,
+                  justifyContent: "center",
                   opacity: pressed ? 0.65 : 1,
-                })}>
+                  width: 34,
+                })}
+              >
                 <SymbolView
-                  name={(isBalanceVisible ? 'eye' : 'eye.slash') as never}
+                  name={(isBalanceVisible ? "eye" : "eye.slash") as never}
                   size={18}
                   tintColor={colors.muted}
                 />
               </Pressable>
             </View>
             <ThemedText type="title" className="text-[34px] leading-[40px]">
-              {isBalanceVisible ? netWorthValue : maskCurrencyValue(netWorthValue)}
+              {isBalanceVisible
+                ? netWorthValue
+                : maskCurrencyValue(netWorthValue)}
             </ThemedText>
             <View className="mt-0.5 flex-row gap-4">
               <View className="flex-row items-center gap-1">
-                <SymbolView name="arrow.up.right" size={12} tintColor={colors.positive} />
+                <SymbolView
+                  name="arrow.up.right"
+                  size={12}
+                  tintColor={colors.positive}
+                />
                 <ThemedText type="small" color="muted">
-                  Income {isBalanceVisible ? totalAssetsValue : maskCurrencyValue(totalAssetsValue)}
+                  Income{" "}
+                  {isBalanceVisible
+                    ? totalAssetsValue
+                    : maskCurrencyValue(totalAssetsValue)}
                 </ThemedText>
               </View>
               <View className="flex-row items-center gap-1">
-                <SymbolView name="arrow.down.right" size={12} tintColor={colors.negative} />
+                <SymbolView
+                  name="arrow.down.right"
+                  size={12}
+                  tintColor={colors.negative}
+                />
                 <ThemedText type="small" color="muted">
-                  Expenses{' '}
-                  {isBalanceVisible ? totalLiabilitiesValue : maskCurrencyValue(totalLiabilitiesValue)}
+                  Expenses{" "}
+                  {isBalanceVisible
+                    ? totalLiabilitiesValue
+                    : maskCurrencyValue(totalLiabilitiesValue)}
                 </ThemedText>
               </View>
             </View>
@@ -317,21 +401,32 @@ export default function DashboardScreen() {
               snapToAlignment="start"
               snapToInterval={pageWidth + PAGE_GAP}
               showsHorizontalScrollIndicator={false}
-              style={{ width: carouselWidth, marginLeft: -HORIZONTAL_PADDING }}
+              style={{ marginLeft: -HORIZONTAL_PADDING, width: carouselWidth }}
               contentContainerStyle={{
                 gap: PAGE_GAP,
                 paddingLeft: HORIZONTAL_PADDING,
                 paddingRight: HORIZONTAL_PADDING + PAGE_GAP,
-              }}>
+              }}
+            >
               {accountPages.map((page, pageIndex) => (
-                <View key={pageIndex} style={{ width: pageWidth, gap: ROW_GAP }}>
+                <View
+                  key={pageIndex}
+                  style={{ gap: ROW_GAP, width: pageWidth }}
+                >
                   {chunk(page, GRID_COLUMNS).map((row, rowIndex) => (
-                    <View key={rowIndex} className="flex-row" style={{ gap: COLUMN_GAP }}>
+                    <View
+                      key={rowIndex}
+                      className="flex-row"
+                      style={{ gap: COLUMN_GAP }}
+                    >
                       {row.map((item, slotIndex) =>
                         item === null ? (
                           <View
                             key={`empty-${pageIndex}-${rowIndex}-${slotIndex}`}
-                            style={{ width: cardWidth, height: ACCOUNT_CARD_HEIGHT }}
+                            style={{
+                              height: ACCOUNT_CARD_HEIGHT,
+                              width: cardWidth,
+                            }}
                           />
                         ) : isAddAccountSlot(item) ? (
                           <AddAccountCard key={item.id} width={cardWidth} />
@@ -362,15 +457,23 @@ export default function DashboardScreen() {
                 accessibilityRole="button"
                 hitSlop={8}
                 onPress={() => {
-                  router.push('/transactions');
-                }}>
-                <ThemedText type="linkPrimary" className="text-[15px] font-semibold">
+                  router.push("/transactions");
+                }}
+              >
+                <ThemedText
+                  type="linkPrimary"
+                  className="text-[15px] font-semibold"
+                >
                   View more
                 </ThemedText>
               </Pressable>
             ) : null}
           </View>
-          {isLoading ? <ListSkeleton /> : <TransactionList transactions={transactions} />}
+          {isLoading ? (
+            <ListSkeleton />
+          ) : (
+            <TransactionList transactions={transactions} />
+          )}
         </View>
 
         <View className="gap-2">
@@ -383,15 +486,23 @@ export default function DashboardScreen() {
                 accessibilityRole="button"
                 hitSlop={8}
                 onPress={() => {
-                  router.push('/budgets');
-                }}>
-                <ThemedText type="linkPrimary" className="text-[15px] font-semibold">
+                  router.push("/budgets");
+                }}
+              >
+                <ThemedText
+                  type="linkPrimary"
+                  className="text-[15px] font-semibold"
+                >
                   View more
                 </ThemedText>
               </Pressable>
             ) : null}
           </View>
-          {isLoading ? <ListSkeleton rows={2} /> : <BudgetList budgets={budgets} />}
+          {isLoading ? (
+            <ListSkeleton rows={2} />
+          ) : (
+            <BudgetList budgets={budgets} />
+          )}
         </View>
       </View>
     </ScrollView>

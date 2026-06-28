@@ -3,12 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./src/assets/*"
-      ]
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./src/assets/*"]
     }
   },
   "include": [
@@ -18,8 +14,5 @@
     "expo-env.d.ts",
     "src/uniwind-types.d.ts"
   ],
-  "exclude": [
-    "convex",
-    "node_modules"
-  ]
+  "exclude": ["convex", "node_modules"]
 }

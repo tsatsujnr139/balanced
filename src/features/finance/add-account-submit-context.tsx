@@ -1,10 +1,10 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from "react";
 
-import type { AccountType } from './types';
+import type { AccountType } from "./types";
 
-export type AccountBalanceUpdateMode = 'record' | 'initial';
+export type AccountBalanceUpdateMode = "record" | "initial";
 
-type AddAccountSubmitContextValue = {
+interface AddAccountSubmitContextValue {
   accountColor: string;
   balanceInput: string;
   balanceUpdateMode: AccountBalanceUpdateMode;
@@ -20,15 +20,18 @@ type AddAccountSubmitContextValue = {
   setType: (type: AccountType) => void;
   submit: () => void;
   type: AccountType;
-};
+}
 
-export const AddAccountSubmitContext = createContext<AddAccountSubmitContextValue | null>(null);
+export const AddAccountSubmitContext =
+  createContext<AddAccountSubmitContextValue | null>(null);
 
 export function useAddAccountSubmit() {
   const context = useContext(AddAccountSubmitContext);
 
   if (!context) {
-    throw new Error('useAddAccountSubmit must be used inside AddAccountSubmitContext.Provider');
+    throw new Error(
+      "useAddAccountSubmit must be used inside AddAccountSubmitContext.Provider"
+    );
   }
 
   return context;

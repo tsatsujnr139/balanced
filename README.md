@@ -100,10 +100,14 @@ Then point the UI at Convex by replacing the body of `useFinance()` in
 `src/features/finance/use-finance.ts`:
 
 ```ts
-import { useQuery } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
-const snapshot = useQuery(api.finance.getSnapshot) ?? { accounts: [], transactions: [], budgets: [] };
+const snapshot = useQuery(api.finance.getSnapshot) ?? {
+  accounts: [],
+  transactions: [],
+  budgets: [],
+};
 ```
 
 The query returns the same `FinanceSnapshot` shape the screens already use, so no

@@ -1,21 +1,19 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform } from 'react-native';
+import { router, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Platform } from "react-native";
 
-import { shouldDisableHeaderBlur } from '@/components/tab-stack-layout';
-import { AddAccountSubmitContext } from '@/features/finance/add-account-submit-context';
-import {
-  DEFAULT_ACCOUNT_COLOR,
-} from '@/features/finance/account-constants';
-import { DEFAULT_CURRENCY } from '@/features/finance/format';
-import type { AccountType } from '@/features/finance/types';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { DEFAULT_ACCOUNT_COLOR } from "@/features/finance/account-constants";
+import { AddAccountSubmitContext } from "@/features/finance/add-account-submit-context";
+import { DEFAULT_CURRENCY } from "@/features/finance/format";
+import type { AccountType } from "@/features/finance/types";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
 
-const DEFAULT_ACCOUNT_NAME = 'My Account';
-const DEFAULT_BALANCE_INPUT = '0.00';
-const DEFAULT_ACCOUNT_TYPE: AccountType = 'cash';
+const DEFAULT_ACCOUNT_NAME = "My Account";
+const DEFAULT_BALANCE_INPUT = "0.00";
+const DEFAULT_ACCOUNT_TYPE: AccountType = "cash";
 
 function closeAddAccount() {
   if (router.canDismiss()) {
@@ -23,7 +21,7 @@ function closeAddAccount() {
     return;
   }
 
-  router.replace('/dashboard');
+  router.replace("/dashboard");
 }
 
 export default function AddAccountLayout() {
@@ -46,24 +44,31 @@ export default function AddAccountLayout() {
     [accounts, id]
   );
   const isEditing = Boolean(id);
-  const title = isEditing ? 'Edit account' : 'Add account';
+  const title = isEditing ? "Edit account" : "Add account";
   const [name, setName] = useState(
-    (Array.isArray(params.name) ? params.name[0] : params.name) ?? DEFAULT_ACCOUNT_NAME
+    (Array.isArray(params.name) ? params.name[0] : params.name) ??
+      DEFAULT_ACCOUNT_NAME
   );
   const [balanceInput, setBalanceInput] = useState(
-    (Array.isArray(params.balance) ? params.balance[0] : params.balance) ?? DEFAULT_BALANCE_INPUT
+    (Array.isArray(params.balance) ? params.balance[0] : params.balance) ??
+      DEFAULT_BALANCE_INPUT
   );
   const [currency, setCurrency] = useState(
-    (Array.isArray(params.currency) ? params.currency[0] : params.currency) ?? DEFAULT_CURRENCY
+    (Array.isArray(params.currency) ? params.currency[0] : params.currency) ??
+      DEFAULT_CURRENCY
   );
   const [type, setType] = useState<AccountType>(
-    ((Array.isArray(params.type) ? params.type[0] : params.type) as AccountType | undefined) ??
-      DEFAULT_ACCOUNT_TYPE
+    ((Array.isArray(params.type) ? params.type[0] : params.type) as
+      | AccountType
+      | undefined) ?? DEFAULT_ACCOUNT_TYPE
   );
   const [accountColor, setAccountColor] = useState(
-    (Array.isArray(params.color) ? params.color[0] : params.color) ?? DEFAULT_ACCOUNT_COLOR
+    (Array.isArray(params.color) ? params.color[0] : params.color) ??
+      DEFAULT_ACCOUNT_COLOR
   );
-  const [balanceUpdateMode, setBalanceUpdateMode] = useState<'record' | 'initial'>('record');
+  const [balanceUpdateMode, setBalanceUpdateMode] = useState<
+    "record" | "initial"
+  >("record");
   const hasHydratedExistingRef = useRef(false);
 
   useEffect(() => {
@@ -132,17 +137,23 @@ export default function AddAccountLayout() {
     <AddAccountSubmitContext.Provider value={submitContext}>
       <Stack
         screenOptions={{
-          headerTransparent: true,
           headerBlurEffect:
-            Platform.OS === 'ios' ? (disableHeaderBlur ? 'none' : 'systemMaterial') : undefined,
+            Platform.OS === "ios"
+              ? disableHeaderBlur
+                ? "none"
+                : "systemMaterial"
+              : undefined,
           headerShadowVisible: false,
-        }}>
+          headerTransparent: true,
+        }}
+      >
         <Stack.Screen
           name="index"
           options={{
             headerLargeTitle: false,
             title,
-          }}>
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Close"
@@ -158,7 +169,7 @@ export default function AddAccountLayout() {
               </Stack.Toolbar.View>
             ) : (
               <Stack.Toolbar.Button
-                accessibilityLabel={isEditing ? 'Save account' : 'Add account'}
+                accessibilityLabel={isEditing ? "Save account" : "Add account"}
                 icon="checkmark"
                 onPress={submit}
                 tintColor={colors.primary}
@@ -172,8 +183,9 @@ export default function AddAccountLayout() {
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
-            title: 'Account name',
-          }}>
+            title: "Account name",
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"
@@ -190,8 +202,9 @@ export default function AddAccountLayout() {
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
-            title: isEditing ? 'Current balance' : 'Amount',
-          }}>
+            title: isEditing ? "Current balance" : "Amount",
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"
@@ -208,8 +221,9 @@ export default function AddAccountLayout() {
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
-            title: 'Currency',
-          }}>
+            title: "Currency",
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"
@@ -226,8 +240,9 @@ export default function AddAccountLayout() {
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
-            title: 'Type',
-          }}>
+            title: "Type",
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"
@@ -244,8 +259,9 @@ export default function AddAccountLayout() {
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
-            title: 'Color',
-          }}>
+            title: "Color",
+          }}
+        >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button
               accessibilityLabel="Back"

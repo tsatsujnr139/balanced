@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useEffect, useState } from "react";
+import { useColorScheme as useRNColorScheme } from "react-native";
 
 /**
  * To support static rendering, this value needs to be re-calculated on the client side for web
@@ -10,7 +10,6 @@ export function useColorScheme() {
   useEffect(() => {
     // Intentional: flip a one-time hydration flag so the client re-reads the
     // real color scheme after static web render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasHydrated(true);
   }, []);
 
@@ -20,5 +19,5 @@ export function useColorScheme() {
     return colorScheme;
   }
 
-  return 'light';
+  return "light";
 }

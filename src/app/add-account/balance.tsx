@@ -1,15 +1,13 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { Stack } from 'expo-router/stack';
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { router, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router/stack";
+import { useState } from "react";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-import {
-  type AccountBalanceUpdateMode,
-  useAddAccountSubmit,
-} from '@/features/finance/add-account-submit-context';
-import { FieldGroup } from '@/features/finance/components/form-fields';
-import { getCurrencySymbol } from '@/features/finance/format';
-import { useThemeColors } from '@/hooks/use-theme';
+import { useAddAccountSubmit } from "@/features/finance/add-account-submit-context";
+import type { AccountBalanceUpdateMode } from "@/features/finance/add-account-submit-context";
+import { FieldGroup } from "@/features/finance/components/form-fields";
+import { getCurrencySymbol } from "@/features/finance/format";
+import { useThemeColors } from "@/hooks/use-theme";
 
 const BALANCE_UPDATE_OPTIONS: {
   description: string;
@@ -17,21 +15,23 @@ const BALANCE_UPDATE_OPTIONS: {
   mode: AccountBalanceUpdateMode;
 }[] = [
   {
-    description: 'Creates an income or expense transaction for the difference.',
-    label: 'Adjust by record',
-    mode: 'record',
+    description: "Creates an income or expense transaction for the difference.",
+    label: "Adjust by record",
+    mode: "record",
   },
   {
-    description: 'Changes the stored balance without adding a transaction.',
-    label: 'Edit initial balance',
-    mode: 'initial',
+    description: "Changes the stored balance without adding a transaction.",
+    label: "Edit initial balance",
+    mode: "initial",
   },
 ];
 
 export default function AccountBalanceScreen() {
   const colors = useThemeColors();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
-  const isEditing = Boolean(Array.isArray(params.id) ? params.id[0] : params.id);
+  const isEditing = Boolean(
+    Array.isArray(params.id) ? params.id[0] : params.id
+  );
   const {
     balanceInput,
     balanceUpdateMode,
@@ -40,22 +40,29 @@ export default function AccountBalanceScreen() {
     setBalanceUpdateMode,
   } = useAddAccountSubmit();
   const currencySymbol = getCurrencySymbol(currency);
-  const [balance, setBalance] = useState(balanceInput === '0.00' ? '' : balanceInput);
+  const [balance, setBalance] = useState(
+    balanceInput === "0.00" ? "" : balanceInput
+  );
   const [mode, setMode] = useState<AccountBalanceUpdateMode>(balanceUpdateMode);
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: 18, paddingHorizontal: 20, paddingBottom: 40 }}
+      contentContainerStyle={{
+        gap: 18,
+        paddingBottom: 40,
+        paddingHorizontal: 20,
+      }}
       keyboardDismissMode="interactive"
-      style={{ flex: 1, backgroundColor: colors.background }}>
+      style={{ backgroundColor: colors.background, flex: 1 }}
+    >
       <Stack.Screen>
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
             accessibilityLabel="Done"
             icon="checkmark"
             onPress={() => {
-              setBalanceInput(balance.trim() || '0.00');
+              setBalanceInput(balance.trim() || "0.00");
               setBalanceUpdateMode(mode);
               router.back();
             }}
@@ -68,13 +75,20 @@ export default function AccountBalanceScreen() {
         <FieldGroup>
           <View
             style={{
-              minHeight: 72,
-              flexDirection: 'row',
-              alignItems: 'center',
+              alignItems: "center",
+              flexDirection: "row",
               gap: 8,
+              minHeight: 72,
               paddingHorizontal: 18,
-            }}>
-            <Text style={{ color: colors.muted, fontSize: currencySymbol.length > 2 ? 22 : 28, fontWeight: '600' }}>
+            }}
+          >
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: currencySymbol.length > 2 ? 22 : 28,
+                fontWeight: "600",
+              }}
+            >
               {currencySymbol}
             </Text>
             <TextInput
@@ -87,7 +101,7 @@ export default function AccountBalanceScreen() {
                 color: colors.foreground,
                 flex: 1,
                 fontSize: 34,
-                fontWeight: '700',
+                fontWeight: "700",
               }}
               value={balance}
             />
@@ -105,50 +119,66 @@ export default function AccountBalanceScreen() {
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   key={option.mode}
-                  onPress={() => setMode(option.mode)}>
+                  onPress={() => setMode(option.mode)}
+                >
                   <View
                     style={{
-                      minHeight: 72,
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      alignItems: "center",
+                      flexDirection: "row",
                       gap: 12,
+                      minHeight: 72,
                       paddingLeft: 18,
-                    }}>
+                    }}
+                  >
                     <View
                       style={{
-                        width: 22,
-                        height: 22,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 11,
+                        alignItems: "center",
                         borderColor: selected ? colors.primary : colors.border,
+                        borderRadius: 11,
                         borderWidth: 2,
-                      }}>
+                        height: 22,
+                        justifyContent: "center",
+                        width: 22,
+                      }}
+                    >
                       {selected ? (
                         <View
                           style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: 5,
                             backgroundColor: colors.primary,
+                            borderRadius: 5,
+                            height: 10,
+                            width: 10,
                           }}
                         />
                       ) : null}
                     </View>
                     <View
                       style={{
-                        minHeight: 72,
-                        flex: 1,
-                        justifyContent: 'center',
                         borderBottomColor: colors.border,
                         borderBottomWidth:
                           index === BALANCE_UPDATE_OPTIONS.length - 1 ? 0 : 1,
+                        flex: 1,
+                        justifyContent: "center",
+                        minHeight: 72,
                         paddingRight: 18,
-                      }}>
-                      <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '500' }}>
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontSize: 17,
+                          fontWeight: "500",
+                        }}
+                      >
                         {option.label}
                       </Text>
-                      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+                      <Text
+                        style={{
+                          color: colors.muted,
+                          fontSize: 13,
+                          marginTop: 2,
+                        }}
+                      >
                         {option.description}
                       </Text>
                     </View>

@@ -1,5 +1,5 @@
-import { ConvexProvider, ConvexReactClient } from 'convex/react';
-import { ReactNode } from 'react';
+import { ConvexProvider, ConvexReactClient } from "convex/react";
+import type { ReactNode } from "react";
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
 
@@ -15,6 +15,8 @@ const convex = convexUrl
  * the URL is in `.env.local`, queries via `useQuery` start flowing.
  */
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  if (!convex) return <>{children}</>;
+  if (!convex) {
+    return <>{children}</>;
+  }
   return <ConvexProvider client={convex}>{children}</ConvexProvider>;
 }

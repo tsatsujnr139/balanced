@@ -1,66 +1,90 @@
-import type { ExpoConfig } from 'expo/config';
+import type { ExpoConfig } from "expo/config";
+
+const BUNDLE_IDENTIFIER = "com.adobees.balanced";
 
 const config: ExpoConfig = {
-  name: 'Balanced',
-  slug: 'balanced',
-  version: '1.0.0',
-  orientation: 'portrait',
-  icon: './src/assets/logo.png',
-  scheme: 'balanced',
-  userInterfaceStyle: 'automatic',
-  ios: {
-    icon: './src/assets/logo.png',
-    bundleIdentifier: 'com.adobees.balanced',
-  },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
-      foregroundImage: './src/assets/logo.png',
-      backgroundImage: './src/assets/logo.png',
-      monochromeImage: './src/assets/logo.png',
+      backgroundColor: "#E6F4FE",
+      backgroundImage: "./src/assets/logo.png",
+      foregroundImage: "./src/assets/logo.png",
+      monochromeImage: "./src/assets/logo.png",
     },
+    package: BUNDLE_IDENTIFIER,
     predictiveBackGestureEnabled: false,
-    package: 'com.adobees.balanced',
   },
-  web: {
-    output: 'static',
-    favicon: './src/assets/logo.png',
+  developmentClient: {
+    silentLaunch: true,
   },
+  experiments: {
+    autolinkingModuleResolution: true,
+    reactCompiler: true,
+    tsconfigPaths: true,
+    typedRoutes: true,
+  },
+  extra: {
+    eas: {
+      projectId: "885d26f8-8dc6-4f2e-a976-a44118ee88a9",
+    },
+  },
+  icon: "./src/assets/logo.png",
+  ios: {
+    appleTeamId: "FG2VJ5V48K",
+    bundleIdentifier: BUNDLE_IDENTIFIER,
+    icon: "./src/assets/logo.png",
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
+    supportsTablet: false,
+  },
+  name: "Balanced",
+  orientation: "portrait",
+  owner: "creion",
+  platforms: ["ios", "android"],
   plugins: [
-    'expo-router',
-    'expo-dev-client',
-    'expo-sqlite',
-    'expo-secure-store',
+    "expo-router",
+    "expo-dev-client",
+    "expo-sqlite",
+    "expo-secure-store",
     [
-      'expo-local-authentication',
+      "expo-local-authentication",
       {
-        faceIDPermission: 'Allow Balanced to use Face ID to keep your financial information private.',
+        faceIDPermission:
+          "Allow Balanced to use Face ID to keep your financial information private.",
       },
     ],
-    '@react-native-community/datetimepicker',
+    "@react-native-community/datetimepicker",
     [
-      'expo-image-picker',
+      "expo-image-picker",
       {
-        photosPermission: 'Allow Balanced to access your photos to attach receipts and documents.',
-        cameraPermission: 'Allow Balanced to use the camera to take photos of receipts.',
+        photosPermission:
+          "Allow Balanced to access your photos to attach receipts and documents.",
+        cameraPermission:
+          "Allow Balanced to use the camera to take photos of receipts.",
         microphonePermission: false,
       },
     ],
     [
-      'expo-splash-screen',
+      "expo-splash-screen",
       {
-        backgroundColor: '#208AEF',
+        backgroundColor: "#208AEF",
         android: {
-          image: './src/assets/logo.png',
+          image: "./src/assets/logo.png",
           imageWidth: 76,
         },
       },
     ],
   ],
-  experiments: {
-    typedRoutes: true,
-    reactCompiler: true,
+  runtimeVersion: {
+    policy: "appVersion",
   },
+  scheme: "balanced",
+  slug: "balanced",
+  updates: {
+    url: "https://u.expo.dev/885d26f8-8dc6-4f2e-a976-a44118ee88a9",
+  },
+  userInterfaceStyle: "automatic",
+  version: "2026.06.01",
 };
 
 export default config;

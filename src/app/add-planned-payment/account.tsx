@@ -1,10 +1,10 @@
-import { router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { router } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import { FlatList, Pressable, Text, View } from "react-native";
 
-import { useAddPlannedPayment } from '@/features/finance/add-planned-payment-context';
-import { useFinance } from '@/features/finance/use-finance';
-import { useThemeColors } from '@/hooks/use-theme';
+import { useAddPlannedPayment } from "@/features/finance/add-planned-payment-context";
+import { useFinance } from "@/features/finance/use-finance";
+import { useThemeColors } from "@/hooks/use-theme";
 
 export default function PlannedPaymentAccountScreen() {
   const colors = useThemeColors();
@@ -14,7 +14,7 @@ export default function PlannedPaymentAccountScreen() {
   return (
     <FlatList
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}
       data={accounts}
       keyExtractor={(account) => account.id}
       renderItem={({ item, index }) => (
@@ -23,37 +23,57 @@ export default function PlannedPaymentAccountScreen() {
           onPress={() => {
             setAccountId(item.id);
             router.back();
-          }}>
-          <View style={{ minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          }}
+        >
+          <View
+            style={{
+              alignItems: "center",
+              flexDirection: "row",
+              gap: 14,
+              minHeight: 62,
+            }}
+          >
             <View
               style={{
-                width: 34,
-                height: 34,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 10,
+                alignItems: "center",
                 backgroundColor: item.color,
-              }}>
-              <SymbolView name={item.symbol as never} size={17} tintColor="#fff" />
+                borderRadius: 10,
+                height: 34,
+                justifyContent: "center",
+                width: 34,
+              }}
+            >
+              <SymbolView
+                name={item.symbol as never}
+                size={17}
+                tintColor="#fff"
+              />
             </View>
             <View
               style={{
-                minHeight: 62,
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
+                alignItems: "center",
                 borderBottomColor: colors.border,
                 borderBottomWidth: index === accounts.length - 1 ? 0 : 1,
-              }}>
-              <Text style={{ flex: 1, color: colors.foreground, fontSize: 17 }}>{item.name}</Text>
+                flex: 1,
+                flexDirection: "row",
+                minHeight: 62,
+              }}
+            >
+              <Text style={{ color: colors.foreground, flex: 1, fontSize: 17 }}>
+                {item.name}
+              </Text>
               {item.id === accountId ? (
-                <SymbolView name="checkmark" size={18} tintColor={colors.primary} />
+                <SymbolView
+                  name="checkmark"
+                  size={18}
+                  tintColor={colors.primary}
+                />
               ) : null}
             </View>
           </View>
         </Pressable>
       )}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ backgroundColor: colors.background, flex: 1 }}
     />
   );
 }

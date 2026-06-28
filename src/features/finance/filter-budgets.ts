@@ -1,4 +1,4 @@
-import type { Budget } from './types';
+import type { Budget } from "./types";
 
 export function filterBudgets(budgets: Budget[], query: string): Budget[] {
   const normalized = query.trim().toLowerCase();
@@ -6,5 +6,7 @@ export function filterBudgets(budgets: Budget[], query: string): Budget[] {
     return budgets;
   }
 
-  return budgets.filter((budget) => budget.name.toLowerCase().includes(normalized));
+  return budgets.filter((budget) =>
+    budget.name.toLowerCase().includes(normalized)
+  );
 }

@@ -1,17 +1,17 @@
-import { useCSSVariable } from 'uniwind';
+import { useCSSVariable } from "uniwind";
 
-import type { ThemeToken } from '@/constants/theme';
+import type { ThemeToken } from "@/constants/theme";
 
 const TOKEN_VARS: Record<ThemeToken, `--color-${string}`> = {
-  background: '--color-background',
-  foreground: '--color-foreground',
-  card: '--color-card',
-  muted: '--color-muted',
-  border: '--color-border',
-  selected: '--color-selected',
-  primary: '--color-primary',
-  positive: '--color-positive',
-  negative: '--color-negative',
+  background: "--color-background",
+  border: "--color-border",
+  card: "--color-card",
+  foreground: "--color-foreground",
+  muted: "--color-muted",
+  negative: "--color-negative",
+  positive: "--color-positive",
+  primary: "--color-primary",
+  selected: "--color-selected",
 };
 
 /**
@@ -43,14 +43,14 @@ export function useThemeColors() {
 
   return {
     background: background as string,
-    foreground: foreground as string,
-    card: card as string,
-    muted: muted as string,
     border: border as string,
-    selected: selected as string,
-    primary: primary as string,
-    positive: positive as string,
+    card: card as string,
+    foreground: foreground as string,
+    muted: muted as string,
     negative: negative as string,
+    positive: positive as string,
+    primary: primary as string,
+    selected: selected as string,
   };
 }
 
