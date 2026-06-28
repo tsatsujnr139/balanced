@@ -4,10 +4,11 @@ import { DatePicker, Host } from '@expo/ui/swift-ui';
 import { datePickerStyle, environment, tint } from '@expo/ui/swift-ui/modifiers';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Platform,
   ScrollView,
   Pressable,
@@ -17,13 +18,15 @@ import {
   useColorScheme,
 } from 'react-native';
 
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { useAddTransaction } from '@/features/finance/add-transaction-context';
+import { TransactionDescriptionSuggestions } from '@/features/finance/components/transaction-description-suggestions';
 import { clearTransactionEditPrefill } from '@/features/finance/edit-transaction-prefill';
 import { DEFAULT_CURRENCY, getCurrencySymbol } from '@/features/finance/format';
+import { getTransactionDescriptionSuggestions } from '@/features/finance/transaction-description-suggestions';
 import { TRANSACTION_CATEGORIES, TRANSFER_CATEGORY } from '@/features/finance/transaction-categories';
 import { useFinance } from '@/features/finance/use-finance';
 import { useThemeColors } from '@/hooks/use-theme';
@@ -312,7 +315,10 @@ export default function AddTransactionScreen() {
   const { transactionId } = useLocalSearchParams<{ transactionId?: string | string[] }>();
   const editingTransactionId = Array.isArray(transactionId) ? transactionId[0] : transactionId;
   const deleteTransaction = useMutation(api.finance.deleteTransaction);
+  const previousTransactions = useQuery(api.finance.listTransactions);
+  const selectedDescriptionRef = useRef<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
   const { accounts } = useFinance();
   const {
     accountId,
@@ -347,6 +353,28 @@ export default function AddTransactionScreen() {
     narration.trim() ||
     selectedCategory?.name ||
     (isTransfer ? 'Transfer' : 'This transaction');
+  const descriptionSuggestions = useMemo(
+    () => getTransactionDescriptionSuggestions(previousTransactions ?? [], narration),
+    [narration, previousTransactions]
+  );
+  const showDescriptionSuggestions = isDescriptionFocused && descriptionSuggestions.length > 0;
+
+  const selectDescriptionSuggestion = useCallback(
+    (description: string) => {
+      if (selectedDescriptionRef.current === description) {
+        return;
+      }
+
+      selectedDescriptionRef.current = description;
+      setNarration(description);
+      setIsDescriptionFocused(false);
+      Keyboard.dismiss();
+      requestAnimationFrame(() => {
+        selectedDescriptionRef.current = null;
+      });
+    },
+    [setNarration]
+  );
 
   const confirmDeleteTransaction = useCallback(() => {
     if (!editingTransactionId || isDeleting) {
@@ -390,6 +418,7 @@ export default function AddTransactionScreen() {
         paddingBottom: 40,
       }}
       keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
       style={{ flex: 1, backgroundColor: colors.background }}>
       <SegmentedControl
         appearance={colorScheme === 'dark' ? 'dark' : 'light'}
@@ -490,6 +519,14 @@ export default function AddTransactionScreen() {
         <View style={{ borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: 18 }}>
           <TextInput
             onChangeText={setNarration}
+            onBlur={() => {
+              setTimeout(() => {
+                setIsDescriptionFocused(false);
+              }, 120);
+            }}
+            onFocus={() => {
+              setIsDescriptionFocused(true);
+            }}
             placeholder="Description (optional)"
             placeholderTextColor={colors.muted}
             multiline
@@ -503,6 +540,12 @@ export default function AddTransactionScreen() {
             value={narration}
           />
         </View>
+        {showDescriptionSuggestions ? (
+          <TransactionDescriptionSuggestions
+            onSelect={selectDescriptionSuggestion}
+            suggestions={descriptionSuggestions}
+          />
+        ) : null}
       </FieldGroup>
 
       <FieldGroup clip={false}>
@@ -569,6 +612,29 @@ export default function AddTransactionScreen() {
         />
       </FieldGroup>
 
+      {!editingTransactionId ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose transaction template"
+          onPress={() => router.push('/add-transaction/templates')}
+          style={({ pressed }) => ({
+            minHeight: 56,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 18,
+            borderCurve: 'continuous',
+            backgroundColor: colors.card,
+            opacity: pressed ? 0.7 : 1,
+          })}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <SymbolView name="rectangle.stack.fill" size={18} tintColor={colors.primary} />
+            <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+              Templates
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       {editingTransactionId ? (
         <Pressable
           accessibilityRole="button"
@@ -590,7 +656,7 @@ export default function AddTransactionScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <SymbolView name="trash" size={18} tintColor={colors.negative} />
               <Text style={{ color: colors.negative, fontSize: 17, fontWeight: '600' }}>
-                Delete transaction
+                Delete
               </Text>
             </View>
           )}

@@ -42,6 +42,8 @@ export type Transaction = {
   date: string;
   symbol: string;
   color: string;
+  /** Name snapshot of the profile when this transaction was created. */
+  createdByName: string;
   tags: TransactionTag[];
   transactionKind?: TransactionKind;
   transactionChargeAmount?: number | null;
@@ -50,6 +52,27 @@ export type Transaction = {
   fromAccountName?: string;
   toAccountId?: string;
   toAccountName?: string;
+};
+
+export type TransactionTemplateType = 'expense' | 'income' | 'transfer';
+
+export type TransactionTemplate = {
+  id: string;
+  name: string;
+  accountId: string;
+  accountName: string;
+  merchant: string;
+  category: string;
+  /** Positive amount in minor units (cents); sign is derived from type. */
+  amount: number;
+  type: TransactionTemplateType;
+  currency: string;
+  symbol: string;
+  color: string;
+  toAccountId: string | null;
+  toAccountName: string | null;
+  transactionCharge: number | null;
+  tags: TransactionTag[];
 };
 
 export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly' | 'one_time';

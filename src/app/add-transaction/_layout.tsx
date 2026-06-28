@@ -24,7 +24,9 @@ import {
   TRANSFER_CATEGORY,
   type TransactionCategory,
 } from '@/features/finance/transaction-categories';
+import type { TransactionTemplate } from '@/features/finance/types';
 import { useFinance } from '@/features/finance/use-finance';
+import { useLocalProfile } from '@/features/finance/use-local-profile';
 import { useThemeColors } from '@/hooks/use-theme';
 
 function amountInputToMinorUnits(value: string): number {
@@ -70,6 +72,7 @@ export default function AddTransactionLayout() {
       : 'skip'
   );
   const { accounts } = useFinance();
+  const { firstName } = useLocalProfile();
   const hasHydratedRef = useRef(Boolean(initialEditState));
   const [accountId, setAccountId] = useState<string | null>(initialEditState?.accountId ?? null);
   const [amount, setAmount] = useState(initialEditState?.amount ?? '');
@@ -184,6 +187,37 @@ export default function AddTransactionLayout() {
   const removeAttachment = useCallback((id: string) => {
     setAttachments((current) => current.filter((attachment) => attachment.id !== id));
   }, []);
+  const applyTemplate = useCallback((template: TransactionTemplate) => {
+    setAccountId(template.accountId);
+    setAmount(minorUnitsToAmountInput(template.amount));
+    setNarration(template.merchant);
+    setTags(template.tags);
+    setToAccountId(template.toAccountId);
+    setTransactionCharge(
+      template.transactionCharge ? minorUnitsToAmountInput(template.transactionCharge) : ''
+    );
+    setTransactionTypeIndex(
+      template.type === 'transfer' ? 2 : template.type === 'income' ? 1 : 0
+    );
+
+    if (template.type === 'transfer') {
+      setCategory(TRANSFER_CATEGORY.name);
+      return;
+    }
+
+    setCategory(template.category);
+    const isBuiltInCategory = TRANSACTION_CATEGORIES.some(
+      (item) => item.name === template.category
+    );
+    if (!isBuiltInCategory) {
+      addCustomCategory({
+        name: template.category,
+        symbol: template.symbol,
+        color: template.color,
+        keywords: [],
+      });
+    }
+  }, [addCustomCategory]);
   const toggleTag = useCallback((tag: TransactionTag) => {
     setTags((current) =>
       current.some((item) => item.id === tag.id)
@@ -195,6 +229,7 @@ export default function AddTransactionLayout() {
     () => ({
       addCustomCategory,
       addAttachments,
+      applyTemplate,
       accountId: effectiveAccountId,
       amount,
       attachments,
@@ -222,6 +257,7 @@ export default function AddTransactionLayout() {
     [
       addCustomCategory,
       addAttachments,
+      applyTemplate,
       effectiveAccountId,
       amount,
       attachments,
@@ -296,6 +332,7 @@ export default function AddTransactionLayout() {
             transactionType === 'expense' && chargeInMinorUnits > 0
               ? chargeInMinorUnits
               : undefined,
+          createdByName: firstName,
           type: transactionType,
         });
         closeAddTransaction();
@@ -339,6 +376,7 @@ export default function AddTransactionLayout() {
           transactionType === 'expense' && chargeInMinorUnits > 0
             ? chargeInMinorUnits
             : undefined,
+        createdByName: firstName,
         type: transactionType,
       });
       closeAddTransaction();
@@ -357,6 +395,7 @@ export default function AddTransactionLayout() {
     date,
     editingTransactionId,
     effectiveAccountId,
+    firstName,
     generateAttachmentUploadUrl,
     isEditing,
     isLoadingExisting,
@@ -523,6 +562,25 @@ export default function AddTransactionLayout() {
               icon="chevron.left"
               onPress={() => router.back()}
               separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="templates"
+          options={{ headerBackVisible: false, title: 'Templates' }}>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add template"
+              icon="plus"
+              onPress={() => router.push('/add-template')}
             />
           </Stack.Toolbar>
         </Stack.Screen>

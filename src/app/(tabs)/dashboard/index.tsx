@@ -20,6 +20,7 @@ import { BudgetList } from '@/features/finance/components/budget-list';
 import { TransactionList } from '@/features/finance/components/transaction-list';
 import { DEFAULT_CURRENCY, formatCurrency } from '@/features/finance/format';
 import type { Account } from '@/features/finance/types';
+import { maskCurrencyValue, useBalanceVisibility } from '@/features/finance/use-balance-visibility';
 import { useFinance } from '@/features/finance/use-finance';
 import { useThemeColors } from '@/hooks/use-theme';
 
@@ -138,10 +139,14 @@ function buildAccountPages(accounts: Account[]): (AccountGridItem | null)[][] {
 function AccountCard({
   account,
   width,
+  isBalanceVisible,
 }: {
   account: Account;
   width: number;
+  isBalanceVisible: boolean;
 }) {
+  const balance = formatCurrency(account.balance, account.currency);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -176,7 +181,7 @@ function AccountCard({
             numberOfLines={1}
             adjustsFontSizeToFit
             className="text-xl leading-7">
-            {formatCurrency(account.balance, account.currency)}
+            {isBalanceVisible ? balance : maskCurrencyValue(balance)}
           </ThemedText>
         </View>
       </ThemedView>
@@ -225,7 +230,11 @@ export default function DashboardScreen() {
   const cardWidth = (pageWidth - COLUMN_GAP) / GRID_COLUMNS;
   const { accounts, transactions, budgets, netWorth, totalAssets, totalLiabilities, isLoading } =
     useFinance();
+  const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   const accountPages = buildAccountPages(accounts);
+  const netWorthValue = formatCurrency(netWorth);
+  const totalAssetsValue = formatCurrency(totalAssets);
+  const totalLiabilitiesValue = formatCurrency(totalLiabilities);
 
   return (
     <ScrollView
@@ -247,23 +256,47 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <View className="gap-1">
-            <ThemedText type="smallBold" color="muted" className="text-[15px]">
-              Balance
-            </ThemedText>
+            <View className="flex-row items-center justify-between">
+              <ThemedText type="smallBold" color="muted" className="text-[15px]">
+                Balance
+              </ThemedText>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: isBalanceVisible }}
+                accessibilityLabel={isBalanceVisible ? 'Hide balances' : 'Show balances'}
+                hitSlop={8}
+                onPress={toggleBalanceVisibility}
+                style={({ pressed }) => ({
+                  height: 34,
+                  width: 34,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 17,
+                  backgroundColor: colors.card,
+                  opacity: pressed ? 0.65 : 1,
+                })}>
+                <SymbolView
+                  name={(isBalanceVisible ? 'eye' : 'eye.slash') as never}
+                  size={18}
+                  tintColor={colors.muted}
+                />
+              </Pressable>
+            </View>
             <ThemedText type="title" className="text-[34px] leading-[40px]">
-              {formatCurrency(netWorth)}
+              {isBalanceVisible ? netWorthValue : maskCurrencyValue(netWorthValue)}
             </ThemedText>
             <View className="mt-0.5 flex-row gap-4">
               <View className="flex-row items-center gap-1">
                 <SymbolView name="arrow.up.right" size={12} tintColor={colors.positive} />
                 <ThemedText type="small" color="muted">
-                  Income {formatCurrency(totalAssets)}
+                  Income {isBalanceVisible ? totalAssetsValue : maskCurrencyValue(totalAssetsValue)}
                 </ThemedText>
               </View>
               <View className="flex-row items-center gap-1">
                 <SymbolView name="arrow.down.right" size={12} tintColor={colors.negative} />
                 <ThemedText type="small" color="muted">
-                  Expenses {formatCurrency(totalLiabilities)}
+                  Expenses{' '}
+                  {isBalanceVisible ? totalLiabilitiesValue : maskCurrencyValue(totalLiabilitiesValue)}
                 </ThemedText>
               </View>
             </View>
@@ -303,7 +336,12 @@ export default function DashboardScreen() {
                         ) : isAddAccountSlot(item) ? (
                           <AddAccountCard key={item.id} width={cardWidth} />
                         ) : (
-                          <AccountCard key={item.id} account={item} width={cardWidth} />
+                          <AccountCard
+                            key={item.id}
+                            account={item}
+                            width={cardWidth}
+                            isBalanceVisible={isBalanceVisible}
+                          />
                         )
                       )}
                     </View>

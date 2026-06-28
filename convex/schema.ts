@@ -36,6 +36,11 @@ export const plannedPaymentType = v.union(v.literal('expense'), v.literal('incom
 export const plannedPaymentEntryStatus = v.union(v.literal('paid'), v.literal('skipped'));
 
 export default defineSchema({
+  profiles: defineTable({
+    key: v.string(),
+    firstName: v.string(),
+  }).index('by_key', ['key']),
+
   accounts: defineTable({
     userId: v.optional(v.string()),
     name: v.string(),
@@ -64,6 +69,8 @@ export default defineSchema({
     date: v.number(),
     symbol: v.string(),
     color: v.string(),
+    /** Name snapshot of the local profile when this transaction was created. */
+    createdByName: v.optional(v.string()),
     transactionKind: v.optional(transactionKind),
     /** Linked leg: charge, transfer pair, etc. */
     pairTransactionId: v.optional(v.id('transactions')),
@@ -105,6 +112,24 @@ export default defineSchema({
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
   }).index('by_transactionId', ['transactionId']),
+
+  transactionTemplates: defineTable({
+    userId: v.optional(v.string()),
+    name: v.string(),
+    accountId: v.id('accounts'),
+    merchant: v.string(),
+    category: v.string(),
+    /** Positive amount in minor units (cents); sign derived from type. */
+    amount: v.number(),
+    type: v.union(v.literal('expense'), v.literal('income'), v.literal('transfer')),
+    currency: v.string(),
+    symbol: v.string(),
+    color: v.string(),
+    toAccountId: v.optional(v.id('accounts')),
+    transactionCharge: v.optional(v.number()),
+    tagIds: v.array(v.id('tags')),
+    order: v.number(),
+  }).index('by_user', ['userId']),
 
   budgets: defineTable({
     userId: v.optional(v.string()),

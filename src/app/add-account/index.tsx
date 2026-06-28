@@ -18,6 +18,7 @@ import {
 import { getCurrencySymbol } from '@/features/finance/format';
 import type { AccountType } from '@/features/finance/types';
 import { useFinance } from '@/features/finance/use-finance';
+import { useLocalProfile } from '@/features/finance/use-local-profile';
 import { useThemeColors } from '@/hooks/use-theme';
 
 function closeAddAccount() {
@@ -193,6 +194,7 @@ export default function AddAccountScreen() {
   }>();
   const id = firstParam(params.id);
   const { accounts } = useFinance();
+  const { firstName } = useLocalProfile();
   const createAccount = useMutation(api.finance.createAccount);
   const deleteAccount = useMutation(api.finance.deleteAccount);
   const updateAccount = useMutation(api.finance.updateAccount);
@@ -277,6 +279,7 @@ export default function AddAccountScreen() {
           id: existingAccount.id as Id<'accounts'>,
           ...payload,
           balanceUpdateMode,
+          createdByName: firstName,
         });
       } else {
         await createAccount(payload);
@@ -295,6 +298,7 @@ export default function AddAccountScreen() {
     createAccount,
     currency,
     existingAccount,
+    firstName,
     isSubmitting,
     name,
     type,
@@ -406,7 +410,7 @@ export default function AddAccountScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <SymbolView name="trash" size={18} tintColor={colors.negative} />
               <Text style={{ color: colors.negative, fontSize: 17, fontWeight: '600' }}>
-                Delete account
+                Delete
               </Text>
             </View>
           )}

@@ -1,0 +1,167 @@
+diff --git a/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift b/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift
+index a0e3e24d6070c5ec0a220af3cb56fe3373fe1968..7ec8548c3773ba3fc1339540148c1a9e2b31f0dc 100644
+--- a/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift
++++ b/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift
+@@ -141,82 +141,19 @@ open class JavaScriptRuntime: Equatable, @unchecked Sendable {
+     getPropertyNames: @escaping @JavaScriptActor () -> [String] = { [] },
+     dealloc: @escaping @JavaScriptActor () -> Void = {}
+   ) -> JavaScriptObject {
+-    func getter(context: UnsafeMutableRawPointer, propertyName: UnsafePointer<CChar>) -> facebook.jsi.Value {
+-      let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeUnretainedValue()
+-      let propertyName = String(cString: propertyName)
+-
+-      guard let runtime = context.runtime else {
+-        FatalError.runtimeLost()
+-      }
+-      return JavaScriptActor.assumeIsolated {
+-        return forwardingSwiftErrorsToJS(runtime: runtime) {
+-          return try context.get(propertyName).asJSIValue()
+-        }
+-      }
+-    }
+-
+-    func setter(
+-      context: UnsafeMutableRawPointer, propertyName: UnsafePointer<CChar>, valuePointer: UnsafeMutableRawPointer
+-    ) {
+-      let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeUnretainedValue()
+-
+-      guard let runtime = context.runtime else {
+-        FatalError.runtimeLost()
+-      }
+-      guard let set = context.set else {
+-        // Unreachable in practice: when the user passed `nil` for `set`, the call site
+-        // below at `expo.HostObjectCallbacks(...)` also passes `nil` to C++, and
+-        // `HostObjectCallbacks::set` throws a `jsi::JSError` directly instead of
+-        // calling back into Swift. Trap loudly so a future C++ refactor can't silently
+-        // swallow assignments.
+-        FatalError.readOnlyHostObjectSetterInvoked()
+-      }
+-      let value = JavaScriptValue(runtime, valuePointer.assumingMemoryBound(to: facebook.jsi.Value.self).move())
+-      let propertyName = String(cString: propertyName)
+-
+-      JavaScriptActor.assumeIsolated {
+-        forwardingSwiftErrorsToJS(runtime: runtime) {
+-          try set(propertyName, value)
+-        }
+-      }
+-    }
+-
+-    func propertyNamesGetter(context: UnsafeMutableRawPointer) -> expo.HostObjectCallbacks.PropNameIds {
+-      let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeUnretainedValue()
+-
+-      guard let runtime = context.runtime else {
+-        FatalError.runtimeLost()
+-      }
+-      // Get property names within the actor isolation, but build the vector outside
+-      // to avoid returning a non-copyable C++ type through `assumeIsolated`
+-      // (its `withoutActuallyEscaping` forces a copy of the return value).
+-      let propertyNames: [String] = JavaScriptActor.assumeIsolated {
+-        return context.getPropertyNames()
+-      }
+-      var vector = expo.HostObjectCallbacks.PropNameIds()
+-
+-      vector.reserve(propertyNames.count)
+-
+-      for propertyName in propertyNames {
+-        let propNameId = facebook.jsi.PropNameID.forUtf8(runtime.pointee, std.string(propertyName))
+-        vector.push_back(consuming: propNameId)
+-      }
+-      return vector
+-    }
+-
+-    func deallocate(context: UnsafeMutableRawPointer) {
+-      let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeRetainedValue()
+-      JavaScriptActor.assumeIsolated {
+-        context.dealloc()
+-      }
+-    }
+-
+     let context = Unmanaged.passRetained(HostObjectContext(runtime: self, get, set, getPropertyNames, dealloc))
+       .toOpaque()
+     // Pass a null setter to C++ when the Swift setter is nil so that JS assignment
+     // raises a `jsi::JSError` directly, without crossing the Swift boundary.
++    if set == nil {
++      let callbacks = expo.HostObjectCallbacks(
++        context, hostObjectGetter, nil, hostObjectPropertyNamesGetter, hostObjectDeallocate)
++      let hostObject = expo.HostObject.makeObject(pointee, consume callbacks)
++      return JavaScriptObject(self, hostObject)
++    }
++
+     let callbacks = expo.HostObjectCallbacks(
+-      context, getter, set == nil ? nil : setter, propertyNamesGetter, deallocate)
++      context, hostObjectGetter, hostObjectSetter, hostObjectPropertyNamesGetter, hostObjectDeallocate)
+     let hostObject = expo.HostObject.makeObject(pointee, consume callbacks)
+ 
+     return JavaScriptObject(self, hostObject)
+@@ -587,6 +524,71 @@ open class JavaScriptRuntime: Equatable, @unchecked Sendable {
+   internal var propNameIdsRegistry: [String: JavaScriptPropNameID] = [:]
+ }
+ 
++private func hostObjectGetter(context: UnsafeMutableRawPointer, propertyName: UnsafePointer<CChar>) -> facebook.jsi.Value {
++  let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeUnretainedValue()
++  let propertyName = String(cString: propertyName)
++
++  guard let runtime = context.runtime else {
++    FatalError.runtimeLost()
++  }
++  return JavaScriptActor.assumeIsolated {
++    return forwardingSwiftErrorsToJS(runtime: runtime) {
++      return try context.get(propertyName).asJSIValue()
++    }
++  }
++}
++
++private func hostObjectSetter(
++  context: UnsafeMutableRawPointer, propertyName: UnsafePointer<CChar>, valuePointer: UnsafeMutableRawPointer
++) {
++  let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeUnretainedValue()
++
++  guard let runtime = context.runtime else {
++    FatalError.runtimeLost()
++  }
++  guard let set = context.set else {
++    FatalError.readOnlyHostObjectSetterInvoked()
++  }
++  let value = JavaScriptValue(runtime, valuePointer.assumingMemoryBound(to: facebook.jsi.Value.self).move())
++  let propertyName = String(cString: propertyName)
++
++  JavaScriptActor.assumeIsolated {
++    forwardingSwiftErrorsToJS(runtime: runtime) {
++      try set(propertyName, value)
++    }
++  }
++}
++
++private func hostObjectPropertyNamesGetter(context: UnsafeMutableRawPointer) -> expo.HostObjectCallbacks.PropNameIds {
++  let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeUnretainedValue()
++
++  guard let runtime = context.runtime else {
++    FatalError.runtimeLost()
++  }
++  // Get property names within the actor isolation, but build the vector outside
++  // to avoid returning a non-copyable C++ type through `assumeIsolated`
++  // (its `withoutActuallyEscaping` forces a copy of the return value).
++  let propertyNames: [String] = JavaScriptActor.assumeIsolated {
++    return context.getPropertyNames()
++  }
++  var vector = expo.HostObjectCallbacks.PropNameIds()
++
++  vector.reserve(propertyNames.count)
++
++  for propertyName in propertyNames {
++    let propNameId = facebook.jsi.PropNameID.forUtf8(runtime.pointee, std.string(propertyName))
++    vector.push_back(consuming: propNameId)
++  }
++  return vector
++}
++
++private func hostObjectDeallocate(context: UnsafeMutableRawPointer) {
++  let context = Unmanaged<HostObjectContext>.fromOpaque(context).takeRetainedValue()
++  JavaScriptActor.assumeIsolated {
++    context.dealloc()
++  }
++}
++
+ private func createFunctionClosure(
+   runtime: JavaScriptRuntime, name: String? = nil, _ closure: @escaping JavaScriptRuntime.SyncFunctionClosure
+ ) -> expo.HostFunctionClosure {

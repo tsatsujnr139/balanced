@@ -31,6 +31,7 @@ export const seedDemo = mutation({
     for (const table of [
       'transactions',
       'accounts',
+      'profiles',
       'budgets',
       'plannedPayments',
       'plannedPaymentEntries',

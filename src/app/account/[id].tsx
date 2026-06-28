@@ -1,12 +1,14 @@
 import { usePaginatedQuery } from 'convex/react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router/stack';
+import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { TransactionList } from '@/features/finance/components/transaction-list';
 import { formatCurrency } from '@/features/finance/format';
+import { maskCurrencyValue, useBalanceVisibility } from '@/features/finance/use-balance-visibility';
 import { useFinance } from '@/features/finance/use-finance';
 import { useThemeColors } from '@/hooks/use-theme';
 
@@ -15,7 +17,9 @@ export default function AccountScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const accountId = Array.isArray(id) ? id[0] : id;
   const { accounts, isLoading: isLoadingAccounts } = useFinance();
+  const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   const account = accounts.find((item) => item.id === accountId);
+  const accountBalance = account ? formatCurrency(account.balance, account.currency) : '';
   const {
     results: transactions,
     status,
@@ -50,7 +54,30 @@ export default function AccountScreen() {
                 backgroundColor: colors.card,
               }}>
               <View style={{ gap: 4 }}>
-                <Text style={{ color: colors.muted, fontSize: 14 }}>Account balance</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: colors.muted, fontSize: 14 }}>Account balance</Text>
+                  <Pressable
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: isBalanceVisible }}
+                    accessibilityLabel={isBalanceVisible ? 'Hide balances' : 'Show balances'}
+                    hitSlop={8}
+                    onPress={toggleBalanceVisibility}
+                    style={({ pressed }) => ({
+                      height: 34,
+                      width: 34,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 17,
+                      backgroundColor: colors.background,
+                      opacity: pressed ? 0.65 : 1,
+                    })}>
+                    <SymbolView
+                      name={(isBalanceVisible ? 'eye' : 'eye.slash') as never}
+                      size={18}
+                      tintColor={colors.muted}
+                    />
+                  </Pressable>
+                </View>
                 <Text
                   style={{
                     color: account.balance < 0 ? colors.negative : colors.foreground,
@@ -58,7 +85,7 @@ export default function AccountScreen() {
                     fontWeight: '700',
                     fontVariant: ['tabular-nums'],
                   }}>
-                  {formatCurrency(account.balance, account.currency)}
+                  {isBalanceVisible ? accountBalance : maskCurrencyValue(accountBalance)}
                 </Text>
               </View>
             </View>

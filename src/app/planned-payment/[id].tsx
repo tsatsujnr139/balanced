@@ -18,6 +18,7 @@ import {
 } from '@/features/finance/format';
 import { PLANNED_OVERDUE_COLOR, PLANNED_TODAY_COLOR } from '@/features/finance/planned-payment-constants';
 import type { PlannedPaymentOccurrence } from '@/features/finance/types';
+import { useLocalProfile } from '@/features/finance/use-local-profile';
 import { useThemeColors } from '@/hooks/use-theme';
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -151,6 +152,7 @@ export default function PlannedPaymentDetailScreen() {
     id ? { id: id as Id<'plannedPayments'> } : 'skip'
   );
   const markPaid = useMutation(api.finance.markPlannedPaymentPaid);
+  const { firstName } = useLocalProfile();
   const [busyDueDate, setBusyDueDate] = useState<string | null>(null);
 
   const openEditor = () => {
@@ -165,6 +167,7 @@ export default function PlannedPaymentDetailScreen() {
       await markPaid({
         id: id as Id<'plannedPayments'>,
         dueDate: new Date(occurrence.dueDate).getTime(),
+        createdByName: firstName,
       });
     } catch (error) {
       Alert.alert(

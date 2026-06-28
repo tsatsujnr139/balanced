@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
 import type { TransactionCategory } from './transaction-categories';
+import type { TransactionTemplate } from './types';
 
 export type TransactionAttachmentDraft = {
   id: string;
@@ -37,6 +38,7 @@ type AddTransactionContextValue = {
   customCategories: TransactionCategory[];
   addCustomCategory: (category: TransactionCategory) => void;
   addAttachments: (attachments: TransactionAttachmentDraft[]) => void;
+  applyTemplate: (template: TransactionTemplate) => void;
   removeAttachment: (id: string) => void;
   setAccountId: (accountId: string) => void;
   setAmount: (amount: string) => void;

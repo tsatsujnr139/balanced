@@ -118,6 +118,11 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
         <ThemedText type="small" color="muted" numberOfLines={1} className="text-[15px] italic leading-[21px]">
           {transaction.category}
         </ThemedText>
+        {transaction.createdByName ? (
+          <ThemedText type="small" color="muted" numberOfLines={1} className="text-[15px] leading-[21px]">
+            Created by {transaction.createdByName}
+          </ThemedText>
+        ) : null}
         {transaction.tags.length > 0 ? (
           <View className="mt-1 flex-row flex-wrap gap-1.5">
             {transaction.tags.map((tag) => (

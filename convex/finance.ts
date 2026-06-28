@@ -12,8 +12,15 @@ import {
 } from './schema';
 
 const DAY_MS = 86_400_000;
-
 type BudgetPeriod = 'weekly' | 'monthly' | 'yearly' | 'one_time';
+
+function normalizeFirstName(value: string): string {
+  const firstName = value.trim().replace(/\s+/g, ' ');
+  if (firstName.length > 40) {
+    throw new Error('Name must be 40 characters or fewer');
+  }
+  return firstName;
+}
 
 /** Epoch millis for the start of a budget's current period window. */
 function budgetPeriodStart(period: BudgetPeriod, now: number): number {
@@ -211,6 +218,7 @@ async function enrichTransactions(
       date: new Date(transaction.date).toISOString(),
       symbol: transaction.symbol,
       color: transaction.color,
+      createdByName: transaction.createdByName ?? '',
       transactionKind: kind,
       transactionChargeAmount,
       parentTransactionId: transaction.parentTransactionId,
@@ -448,9 +456,10 @@ export const updateAccount = mutation({
     id: v.id('accounts'),
     ...accountArgs,
     balanceUpdateMode: v.optional(v.union(v.literal('record'), v.literal('initial'))),
+    createdByName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { balanceUpdateMode, id, ...patch } = args;
+    const { balanceUpdateMode, createdByName: createdByNameArg, id, ...patch } = args;
     const existing = await ctx.db.get(id);
     if (!existing) {
       throw new Error('Account not found');
@@ -463,6 +472,7 @@ export const updateAccount = mutation({
     });
 
     if ((balanceUpdateMode ?? 'initial') === 'record' && balanceDelta !== 0) {
+      const createdByName = normalizeFirstName(createdByNameArg ?? '');
       await ctx.db.insert('transactions', {
         accountId: id,
         amount: balanceDelta,
@@ -472,6 +482,7 @@ export const updateAccount = mutation({
         date: Date.now(),
         merchant: BALANCE_ADJUSTMENT_CATEGORY.name,
         symbol: BALANCE_ADJUSTMENT_CATEGORY.symbol,
+        createdByName,
         transactionKind: balanceDelta > 0 ? 'income' : 'expense',
       });
     }
@@ -701,6 +712,7 @@ export const createTransaction = mutation({
     ),
     toAccountId: v.optional(v.id('accounts')),
     transactionCharge: v.optional(v.number()),
+    createdByName: v.optional(v.string()),
     type: v.union(v.literal('expense'), v.literal('income'), v.literal('transfer')),
   },
   handler: async (ctx, args) => {
@@ -713,6 +725,8 @@ export const createTransaction = mutation({
     ) {
       throw new Error('Transaction charge must be positive');
     }
+
+    const createdByName = normalizeFirstName(args.createdByName ?? '');
 
     if (args.type === 'transfer') {
       if (!args.toAccountId) {
@@ -741,6 +755,7 @@ export const createTransaction = mutation({
         date: args.date,
         merchant,
         symbol: TRANSFER_CATEGORY.symbol,
+        createdByName,
         transactionKind: 'transfer_out',
         toAccountId: args.toAccountId,
       });
@@ -753,6 +768,7 @@ export const createTransaction = mutation({
         date: args.date,
         merchant: `Transfer from ${fromAccount.name}`,
         symbol: TRANSFER_CATEGORY.symbol,
+        createdByName,
         transactionKind: 'transfer_in',
       });
 
@@ -796,6 +812,7 @@ export const createTransaction = mutation({
       date: args.date,
       merchant,
       symbol: args.symbol,
+      createdByName,
       transactionKind: args.type,
     });
 
@@ -818,6 +835,7 @@ export const createTransaction = mutation({
         date: args.date,
         merchant: `${merchant} TC`,
         symbol: 'creditcard.fill',
+        createdByName,
         transactionKind: 'charge',
         parentTransactionId: mainTransactionId,
       });
@@ -846,6 +864,7 @@ export const updateTransaction = mutation({
     tagIds: v.array(v.id('tags')),
     toAccountId: v.optional(v.id('accounts')),
     transactionCharge: v.optional(v.number()),
+    createdByName: v.optional(v.string()),
     type: v.union(v.literal('expense'), v.literal('income'), v.literal('transfer')),
   },
   handler: async (ctx, args) => {
@@ -889,6 +908,7 @@ export const updateTransaction = mutation({
         : null;
       const oldToAccountId = existing.toAccountId ?? oldInLeg?.accountId;
       const oldAmount = Math.abs(existing.amount);
+      const createdByName = existing.createdByName ?? normalizeFirstName(args.createdByName ?? '');
 
       if (oldToAccountId) {
         const oldFromAccount = await ctx.db.get('accounts', oldFromAccountId);
@@ -942,6 +962,7 @@ export const updateTransaction = mutation({
           date: args.date,
           merchant: `Transfer from ${fromAccount.name}`,
           symbol: TRANSFER_CATEGORY.symbol,
+          createdByName,
           transactionKind: 'transfer_in',
           pairTransactionId: existing._id,
         });
@@ -1034,6 +1055,7 @@ export const updateTransaction = mutation({
         await ctx.db.patch(existing._id, { pairTransactionId: undefined });
       }
     } else if (nextCharge > 0) {
+      const createdByName = existing.createdByName ?? normalizeFirstName(args.createdByName ?? '');
       const chargeId = await ctx.db.insert('transactions', {
         accountId: args.accountId,
         amount: -nextCharge,
@@ -1043,6 +1065,7 @@ export const updateTransaction = mutation({
         date: args.date,
         merchant: `${merchant} TC`,
         symbol: 'creditcard.fill',
+        createdByName,
         transactionKind: 'charge',
         parentTransactionId: existing._id,
       });
@@ -1137,6 +1160,194 @@ export const deleteTransaction = mutation({
     await deleteTransactionDocument(ctx, charge);
     await deleteTransactionDocument(ctx, existing);
     return existing._id;
+  },
+});
+
+const transactionTemplateType = v.union(
+  v.literal('expense'),
+  v.literal('income'),
+  v.literal('transfer')
+);
+
+async function loadTemplateTags(ctx: QueryCtx, tagIds: Id<'tags'>[]) {
+  return await loadPlannedPaymentTags(ctx, tagIds);
+}
+
+async function enrichTransactionTemplate(
+  ctx: QueryCtx,
+  template: Doc<'transactionTemplates'>
+) {
+  const [account, toAccount, tags] = await Promise.all([
+    ctx.db.get(template.accountId),
+    template.toAccountId ? ctx.db.get(template.toAccountId) : Promise.resolve(null),
+    loadTemplateTags(ctx, template.tagIds),
+  ]);
+
+  return {
+    id: template._id,
+    name: template.name,
+    accountId: template.accountId,
+    accountName: account?.name ?? 'Unknown',
+    merchant: template.merchant,
+    category: template.category,
+    amount: template.amount,
+    type: template.type,
+    currency: template.currency,
+    symbol: template.symbol,
+    color: template.color,
+    toAccountId: template.toAccountId ?? null,
+    toAccountName: toAccount?.name ?? null,
+    transactionCharge: template.transactionCharge ?? null,
+    tags,
+  };
+}
+
+export const listTransactionTemplates = query({
+  args: {},
+  handler: async (ctx) => {
+    const templates = await ctx.db.query('transactionTemplates').collect();
+    const enriched = await Promise.all(
+      templates.sort((a, b) => a.order - b.order).map((template) => enrichTransactionTemplate(ctx, template))
+    );
+    return enriched;
+  },
+});
+
+export const getTransactionTemplate = query({
+  args: { id: v.id('transactionTemplates') },
+  handler: async (ctx, args) => {
+    const template = await ctx.db.get(args.id);
+    if (!template) {
+      return null;
+    }
+    return await enrichTransactionTemplate(ctx, template);
+  },
+});
+
+const transactionTemplateArgs = {
+  name: v.string(),
+  accountId: v.id('accounts'),
+  merchant: v.string(),
+  category: v.string(),
+  amount: v.number(),
+  type: transactionTemplateType,
+  symbol: v.string(),
+  color: v.string(),
+  toAccountId: v.optional(v.id('accounts')),
+  transactionCharge: v.optional(v.number()),
+  tagIds: v.array(v.id('tags')),
+};
+
+async function validateTransactionTemplateArgs(
+  ctx: MutationCtx,
+  args: {
+    name: string;
+    accountId: Id<'accounts'>;
+    amount: number;
+    type: 'expense' | 'income' | 'transfer';
+    toAccountId?: Id<'accounts'>;
+    transactionCharge?: number;
+  }
+) {
+  const name = args.name.trim();
+  if (!name || name.length > 80) {
+    throw new Error('Template name must contain between 1 and 80 characters');
+  }
+  if (!Number.isFinite(args.amount) || args.amount <= 0) {
+    throw new Error('Template amount must be positive');
+  }
+  if (
+    args.transactionCharge !== undefined &&
+    (!Number.isFinite(args.transactionCharge) || args.transactionCharge <= 0)
+  ) {
+    throw new Error('Transaction charge must be positive');
+  }
+
+  const account = await ctx.db.get(args.accountId);
+  if (!account) {
+    throw new Error('Account not found');
+  }
+
+  if (args.type === 'transfer') {
+    if (!args.toAccountId) {
+      throw new Error('Transfer templates require a destination account');
+    }
+    if (args.accountId === args.toAccountId) {
+      throw new Error('Transfer accounts must be different');
+    }
+    const toAccount = await ctx.db.get(args.toAccountId);
+    if (!toAccount) {
+      throw new Error('Destination account not found');
+    }
+    if (account.currency !== toAccount.currency) {
+      throw new Error('Transfer accounts must use the same currency');
+    }
+  }
+
+  return { name, account };
+}
+
+export const createTransactionTemplate = mutation({
+  args: transactionTemplateArgs,
+  handler: async (ctx, args) => {
+    const { name, account } = await validateTransactionTemplateArgs(ctx, args);
+    const templates = await ctx.db.query('transactionTemplates').collect();
+    const nextOrder =
+      templates.length === 0 ? 0 : Math.max(...templates.map((template) => template.order)) + 1;
+
+    return await ctx.db.insert('transactionTemplates', {
+      name,
+      accountId: args.accountId,
+      merchant: args.merchant.trim(),
+      category: args.type === 'transfer' ? TRANSFER_CATEGORY.name : args.category,
+      amount: args.amount,
+      type: args.type,
+      currency: account.currency,
+      symbol: args.type === 'transfer' ? TRANSFER_CATEGORY.symbol : args.symbol,
+      color: args.type === 'transfer' ? TRANSFER_CATEGORY.color : args.color,
+      toAccountId: args.type === 'transfer' ? args.toAccountId : undefined,
+      transactionCharge:
+        args.type === 'expense' && args.transactionCharge ? args.transactionCharge : undefined,
+      tagIds: [...new Set(args.tagIds)],
+      order: nextOrder,
+    });
+  },
+});
+
+export const updateTransactionTemplate = mutation({
+  args: { id: v.id('transactionTemplates'), ...transactionTemplateArgs },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error('Template not found');
+    }
+    const { name, account } = await validateTransactionTemplateArgs(ctx, args);
+
+    await ctx.db.patch(args.id, {
+      name,
+      accountId: args.accountId,
+      merchant: args.merchant.trim(),
+      category: args.type === 'transfer' ? TRANSFER_CATEGORY.name : args.category,
+      amount: args.amount,
+      type: args.type,
+      currency: account.currency,
+      symbol: args.type === 'transfer' ? TRANSFER_CATEGORY.symbol : args.symbol,
+      color: args.type === 'transfer' ? TRANSFER_CATEGORY.color : args.color,
+      toAccountId: args.type === 'transfer' ? args.toAccountId : undefined,
+      transactionCharge:
+        args.type === 'expense' && args.transactionCharge ? args.transactionCharge : undefined,
+      tagIds: [...new Set(args.tagIds)],
+    });
+
+    return args.id;
+  },
+});
+
+export const deleteTransactionTemplate = mutation({
+  args: { id: v.id('transactionTemplates') },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return args.id;
   },
 });
 
@@ -1506,7 +1717,11 @@ export const deletePlannedPayment = mutation({
 });
 
 export const markPlannedPaymentPaid = mutation({
-  args: { id: v.id('plannedPayments'), dueDate: v.number() },
+  args: {
+    id: v.id('plannedPayments'),
+    dueDate: v.number(),
+    createdByName: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const payment = await ctx.db.get('plannedPayments', args.id);
     if (!payment) {
@@ -1529,6 +1744,7 @@ export const markPlannedPaymentPaid = mutation({
 
     const signedAmount = payment.type === 'expense' ? -payment.amount : payment.amount;
     const merchant = payment.description.trim() || payment.name;
+    const createdByName = normalizeFirstName(args.createdByName ?? '');
     const transactionId = await ctx.db.insert('transactions', {
       accountId: payment.accountId,
       amount: signedAmount,
@@ -1538,6 +1754,7 @@ export const markPlannedPaymentPaid = mutation({
       date: args.dueDate,
       merchant,
       symbol: payment.categorySymbol,
+      createdByName,
       transactionKind: payment.type,
     });
     await replaceTransactionTags(ctx, transactionId, payment.tagIds);

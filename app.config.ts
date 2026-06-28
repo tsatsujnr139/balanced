@@ -30,6 +30,13 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-dev-client',
     'expo-sqlite',
+    'expo-secure-store',
+    [
+      'expo-local-authentication',
+      {
+        faceIDPermission: 'Allow Balanced to use Face ID to keep your financial information private.',
+      },
+    ],
     '@react-native-community/datetimepicker',
     [
       'expo-image-picker',

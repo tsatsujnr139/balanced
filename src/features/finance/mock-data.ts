@@ -77,6 +77,7 @@ export const mockSnapshot: FinanceSnapshot = {
       date: daysAgo(0, 18),
       symbol: 'cart.fill',
       color: '#16A34A',
+      createdByName: '',
       tags: [{ id: 'tag_groceries', name: 'Essentials', color: '#16A34A' }],
       transactionKind: 'expense',
     },
@@ -91,6 +92,7 @@ export const mockSnapshot: FinanceSnapshot = {
       date: daysAgo(0, 8),
       symbol: 'arrow.down.circle.fill',
       color: '#16A34A',
+      createdByName: '',
       tags: [],
       transactionKind: 'income',
     },
@@ -105,6 +107,7 @@ export const mockSnapshot: FinanceSnapshot = {
       date: daysAgo(1, 21),
       symbol: 'car.fill',
       color: '#2563EB',
+      createdByName: '',
       tags: [{ id: 'tag_commute', name: 'Commute', color: '#2563EB' }],
     },
     {
@@ -118,6 +121,7 @@ export const mockSnapshot: FinanceSnapshot = {
       date: daysAgo(2, 6),
       symbol: 'play.tv.fill',
       color: '#DC2626',
+      createdByName: '',
       tags: [],
     },
     {
@@ -131,6 +135,7 @@ export const mockSnapshot: FinanceSnapshot = {
       date: daysAgo(3, 10),
       symbol: 'cup.and.saucer.fill',
       color: '#B45309',
+      createdByName: '',
       tags: [{ id: 'tag_treats', name: 'Treats', color: '#F59E0B' }],
     },
     {
@@ -144,6 +149,7 @@ export const mockSnapshot: FinanceSnapshot = {
       date: daysAgo(4, 12),
       symbol: 'arrow.left.arrow.right',
       color: '#6366F1',
+      createdByName: '',
       tags: [],
       transactionKind: 'transfer_out',
       fromAccountId: 'acc_checking',

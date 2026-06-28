@@ -11,6 +11,7 @@ export function filterTransactions(transactions: Transaction[], query: string): 
       txn.merchant.toLowerCase().includes(normalized) ||
       txn.category.toLowerCase().includes(normalized) ||
       txn.accountName.toLowerCase().includes(normalized) ||
+      txn.createdByName.toLowerCase().includes(normalized) ||
       txn.tags.some((tag) => tag.name.toLowerCase().includes(normalized))
   );
 }

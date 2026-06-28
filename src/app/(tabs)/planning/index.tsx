@@ -88,6 +88,14 @@ export default function PlanningScreen() {
       color: '#0A84FF',
       href: '/budgets',
     },
+    {
+      id: 'templates',
+      title: 'Templates',
+      subtitle: 'Reusable transactions',
+      symbol: 'rectangle.stack.fill',
+      color: '#34C759',
+      href: '/templates',
+    },
   ];
 
   return (
