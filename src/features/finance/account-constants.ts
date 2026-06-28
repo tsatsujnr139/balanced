@@ -2,17 +2,21 @@ import type { AccountType } from "./types";
 
 export const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = {
   cash: "Cash",
+  crypto: "Crypto",
   current: "Current",
   general: "General",
   investment: "Investment",
+  mobile_money: "Mobile money",
   savings: "Savings",
 };
 
 export const ACCOUNT_TYPE_SYMBOL: Record<AccountType, string> = {
   cash: "banknote.fill",
+  crypto: "bitcoinsign.circle.fill",
   current: "building.columns.fill",
   general: "wallet.pass.fill",
   investment: "chart.line.uptrend.xyaxis",
+  mobile_money: "phone.fill",
   savings: "tray.full.fill",
 };
 
@@ -21,6 +25,8 @@ export const DEFAULT_ACCOUNT_COLOR = "#34C7B5";
 export const ACCOUNT_TYPES = [
   "general",
   "cash",
+  "mobile_money",
+  "crypto",
   "current",
   "savings",
   "investment",

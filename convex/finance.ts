@@ -1363,8 +1363,8 @@ async function validateTransactionTemplateArgs(
   if (!name || name.length > 80) {
     throw new Error("Template name must contain between 1 and 80 characters");
   }
-  if (!Number.isFinite(args.amount) || args.amount <= 0) {
-    throw new Error("Template amount must be positive");
+  if (!Number.isFinite(args.amount) || args.amount < 0) {
+    throw new Error("Template amount must be zero or positive");
   }
   if (
     args.transactionCharge !== undefined &&

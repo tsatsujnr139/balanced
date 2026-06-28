@@ -2,6 +2,191 @@ import { mutation } from "./_generated/server";
 
 const DAY = 86_400_000;
 
+const DEFAULT_CATEGORIES = [
+  {
+    color: "#34C759",
+    name: "Groceries",
+    symbol: "cart.fill",
+  },
+  {
+    color: "#AF52DE",
+    name: "Grooming",
+    symbol: "scissors",
+  },
+  {
+    color: "#FF9500",
+    name: "Eating Out",
+    symbol: "fork.knife",
+  },
+  {
+    color: "#A2845E",
+    name: "Fuel",
+    symbol: "fuelpump.fill",
+  },
+  {
+    color: "#0A84FF",
+    name: "Transportation",
+    symbol: "bus.fill",
+  },
+  {
+    color: "#5E5CE6",
+    name: "Subscriptions",
+    symbol: "repeat.circle.fill",
+  },
+  {
+    color: "#30B05A",
+    name: "Fitness",
+    symbol: "figure.run",
+  },
+  {
+    color: "#8E8E93",
+    name: "Miscell",
+    symbol: "square.grid.2x2.fill",
+  },
+  {
+    color: "#FF2D55",
+    name: "Charity & Gifts",
+    symbol: "gift.fill",
+  },
+  {
+    color: "#FF3B30",
+    name: "Health & Wellness",
+    symbol: "heart.fill",
+  },
+  {
+    color: "#8E6B48",
+    name: "Home Maintenance",
+    symbol: "hammer.fill",
+  },
+  {
+    color: "#BF5AF2",
+    name: "Home Improvement",
+    symbol: "paintbrush.fill",
+  },
+  {
+    color: "#5AC8FA",
+    name: "Work & Career",
+    symbol: "briefcase.fill",
+  },
+  {
+    color: "#5856D6",
+    name: "Education",
+    symbol: "graduationcap.fill",
+  },
+  {
+    color: "#00A7A5",
+    name: "Travel",
+    symbol: "airplane",
+  },
+  {
+    color: "#636366",
+    name: "Vehicle Maintenance",
+    symbol: "wrench.and.screwdriver.fill",
+  },
+  {
+    color: "#007AFF",
+    name: "Vehicle Insurance",
+    symbol: "car.fill",
+  },
+  {
+    color: "#00A86B",
+    name: "Savings & Investment",
+    symbol: "chart.line.uptrend.xyaxis",
+  },
+  {
+    color: "#FF375F",
+    name: "Clothing",
+    symbol: "tshirt.fill",
+  },
+  {
+    color: "#FF9F0A",
+    name: "Outing",
+    symbol: "ticket.fill",
+  },
+  {
+    color: "#8E8E93",
+    name: "Transaction charges",
+    symbol: "creditcard.fill",
+  },
+  {
+    color: "#AC8E68",
+    name: "Ministry",
+    symbol: "building.columns.fill",
+  },
+  {
+    color: "#64D2FF",
+    name: "Lending",
+    symbol: "person.2.fill",
+  },
+  {
+    color: "#30D158",
+    name: "Refunds",
+    symbol: "arrow.uturn.left.circle.fill",
+  },
+  {
+    color: "#32D74B",
+    name: "Interest & Dividends",
+    symbol: "percent",
+  },
+  {
+    color: "#34C759",
+    name: "Salary",
+    symbol: "banknote.fill",
+  },
+  {
+    color: "#30B05A",
+    name: "Income",
+    symbol: "arrow.down.circle.fill",
+  },
+  {
+    color: "#FF2D55",
+    name: "Gifts",
+    symbol: "gift.fill",
+  },
+  {
+    color: "#007AFF",
+    name: "Insurance",
+    symbol: "shield.fill",
+  },
+  {
+    color: "#5856D6",
+    name: "Rent",
+    symbol: "house.fill",
+  },
+  {
+    color: "#FFCC00",
+    name: "Electricity",
+    symbol: "bolt.fill",
+  },
+  {
+    color: "#0A84FF",
+    name: "Water",
+    symbol: "drop.fill",
+  },
+  {
+    color: "#FF6B00",
+    name: "Gas",
+    symbol: "flame.fill",
+  },
+  {
+    color: "#5E5CE6",
+    name: "Internet",
+    symbol: "network",
+  },
+  {
+    color: "#30B05A",
+    name: "Airtime",
+    symbol: "phone.fill",
+  },
+  {
+    color: "#007AFF",
+    name: "Data",
+    symbol: "antenna.radiowaves.left.and.right",
+  },
+] as const;
+
+const normalizeLookupName = (name: string) => name.trim().toLocaleLowerCase();
+
 /** Deletes all tags and transaction-tag links. Run: npx convex run seed:clearAllTags */
 export const clearAllTags = mutation({
   args: {},
@@ -17,6 +202,43 @@ export const clearAllTags = mutation({
     }
 
     return { deletedLinks: transactionTags.length, deletedTags: tags.length };
+  },
+});
+
+/** Upserts default app categories. Run: npx convex run seed:seedDefaultCategories */
+export const seedDefaultCategories = mutation({
+  args: {},
+  handler: async (ctx) => {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const category of DEFAULT_CATEGORIES) {
+      const normalizedName = normalizeLookupName(category.name);
+      const existing = await ctx.db
+        .query("categories")
+        .withIndex("by_normalizedName", (q) =>
+          q.eq("normalizedName", normalizedName)
+        )
+        .unique();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          color: category.color,
+          name: category.name,
+          symbol: category.symbol,
+        });
+        updated += 1;
+        continue;
+      }
+
+      await ctx.db.insert("categories", {
+        ...category,
+        normalizedName,
+      });
+      inserted += 1;
+    }
+
+    return { inserted, updated };
   },
 });
 

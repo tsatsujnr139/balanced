@@ -1,6 +1,8 @@
 export type AccountType =
   | "general"
   | "cash"
+  | "mobile_money"
+  | "crypto"
   | "current"
   | "savings"
   | "investment";

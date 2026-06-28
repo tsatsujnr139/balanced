@@ -114,8 +114,8 @@ export default function AddTemplateLayout() {
       Alert.alert("Missing name", "Enter a template name to continue.");
       return;
     }
-    if (amountInMinorUnits <= 0) {
-      Alert.alert("Missing amount", "Enter an amount to continue.");
+    if (amountInMinorUnits < 0) {
+      Alert.alert("Invalid amount", "Enter a valid amount to continue.");
       return;
     }
     if (!account || !selectedCategory) {

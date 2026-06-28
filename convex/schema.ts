@@ -4,6 +4,8 @@ import { v } from "convex/values";
 export const accountType = v.union(
   v.literal("general"),
   v.literal("cash"),
+  v.literal("mobile_money"),
+  v.literal("crypto"),
   v.literal("current"),
   v.literal("savings"),
   v.literal("investment")

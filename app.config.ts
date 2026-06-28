@@ -1,6 +1,15 @@
 import type { ExpoConfig } from "expo/config";
 
-const BUNDLE_IDENTIFIER = "com.adobees.balanced";
+const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? "prod";
+const isDevEnv = APP_ENV === "dev";
+
+const DEFAULT_APP_NAME = "Balanced";
+const DEFAULT_BUNDLE_IDENTIFIER = "com.adobees.balanced";
+const BUNDLE_IDENTIFIER = isDevEnv
+  ? `${DEFAULT_BUNDLE_IDENTIFIER}.dev`
+  : DEFAULT_BUNDLE_IDENTIFIER;
+const APP_NAME =
+  process.env.APP_NAME ?? (isDevEnv ? "Balanced (Dev)" : DEFAULT_APP_NAME);
 
 const config: ExpoConfig = {
   android: {
@@ -37,7 +46,7 @@ const config: ExpoConfig = {
     },
     supportsTablet: false,
   },
-  name: "Balanced",
+  name: APP_NAME,
   orientation: "portrait",
   owner: "creion",
   platforms: ["ios", "android"],
