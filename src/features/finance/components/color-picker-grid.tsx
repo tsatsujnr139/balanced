@@ -5,7 +5,6 @@ import { ACCOUNT_COLOR_GROUPS } from "@/features/finance/account-constants";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const COLUMNS = 6;
-const SWATCH_SIZE = 44;
 
 interface Props {
   onSelect: (color: string) => void;
@@ -35,7 +34,7 @@ export function ColorPickerGrid({ onSelect, selectedColor }: Props) {
       {rows.map((row, rowIndex) => (
         <View
           key={rowIndex}
-          style={{ flexDirection: "row", gap: 10, justifyContent: "flex-start" }}
+          style={{ flexDirection: "row", gap: 8 }}
         >
           {row.map((color) => {
             const selected = color === selectedColor;
@@ -53,13 +52,13 @@ export function ColorPickerGrid({ onSelect, selectedColor }: Props) {
                 }}
                 style={{
                   alignItems: "center",
+                  aspectRatio: 1,
                   backgroundColor: color,
                   borderColor: selected ? colors.foreground : "transparent",
-                  borderRadius: SWATCH_SIZE / 2,
+                  borderRadius: 999,
                   borderWidth: selected ? 2 : 0,
-                  height: SWATCH_SIZE,
+                  flex: 1,
                   justifyContent: "center",
-                  width: SWATCH_SIZE,
                 }}
               >
                 {selected ? (

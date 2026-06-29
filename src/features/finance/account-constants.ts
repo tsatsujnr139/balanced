@@ -59,7 +59,7 @@ export const ACCOUNT_COLOR_GROUPS = [
   { colors: ["#D8B4FE", "#9333EA", "#581C87"], id: "purple" },
   { colors: ["#C7D2FE", "#6366F1", "#3730A3"], id: "indigo" },
   { colors: ["#E7D4C4", "#A2845E", "#5C4033"], id: "brown" },
-  { colors: ["#E5E7EB", "#8E8E93", "#374151"], id: "grey" },
+  { colors: ["#F9FAFB", "#E5E7EB", "#9CA3AF", "#6B7280", "#374151", "#111827"], id: "grey" },
 ] as const;
 
 export const ACCOUNT_COLOR_OPTIONS = ACCOUNT_COLOR_GROUPS.flatMap((group) => [
