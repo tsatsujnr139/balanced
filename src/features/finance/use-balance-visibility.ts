@@ -1,6 +1,18 @@
+import Storage from "expo-sqlite/kv-store";
 import { useSyncExternalStore } from "react";
 
-let balancesVisible = true;
+const BALANCE_VISIBILITY_KEY = "finance.balanceVisible.v1";
+
+function readPersistedVisibility(): boolean {
+  try {
+    // Default to visible when nothing has been persisted yet.
+    return Storage.getItemSync(BALANCE_VISIBILITY_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+let balancesVisible = readPersistedVisibility();
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -20,6 +32,13 @@ function setBalancesVisible(nextVisible: boolean) {
   }
 
   balancesVisible = nextVisible;
+
+  try {
+    Storage.setItemSync(BALANCE_VISIBILITY_KEY, nextVisible ? "true" : "false");
+  } catch {
+    /* Persisting visibility is best-effort. */
+  }
+
   listeners.forEach((listener) => {
     listener();
   });
