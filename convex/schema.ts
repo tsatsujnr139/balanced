@@ -206,5 +206,6 @@ export default defineSchema({
     .index("by_account", ["accountId"])
     .index("by_accountId_and_date", ["accountId", "date"])
     .index("by_user_and_date", ["userId", "date"])
+    .index("by_currency_and_date", ["currency", "date"])
     .index("by_parentTransactionId", ["parentTransactionId"]),
 });

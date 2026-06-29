@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColors } from "@/hooks/use-theme";
 import { useRemoteUpdate } from "@/lib/updates";
 
-const RESTART_KEY = "update:restarting-for";
+const RESTART_KEY = "update.restarting-for";
 
 export function UpdateBanner() {
   const insets = useSafeAreaInsets();
@@ -40,7 +40,9 @@ export function UpdateBanner() {
   }, [downloadedUpdate?.updateId]);
 
   useEffect(() => {
-    if (__DEV__) return;
+    if (__DEV__) {
+      return;
+    }
 
     checkForUpdateAsync();
 

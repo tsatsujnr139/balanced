@@ -12,6 +12,7 @@ import {
 } from "./schema";
 
 const DAY_MS = 86_400_000;
+const DEFAULT_CURRENCY = "GHS";
 type BudgetPeriod = "weekly" | "monthly" | "yearly" | "one_time";
 
 function normalizeFirstName(value: string): string {
@@ -411,6 +412,346 @@ export const getSnapshot = query({
         visibleTransactions,
         accountNameById
       ),
+    };
+  },
+});
+
+type StatsPeriod = "weekly" | "monthly" | "yearly";
+
+interface SpendingGroup {
+  key: string;
+  label: string;
+  color: string;
+  symbol: string;
+  amount: number;
+  count: number;
+}
+
+interface TrendBucket {
+  label: string;
+  amount: number;
+}
+
+interface BudgetPerformance {
+  id: string;
+  name: string;
+  color: string;
+  symbol: string;
+  limit: number;
+  spent: number;
+  currency: string;
+}
+
+const UNTAGGED_KEY = "__untagged__";
+const UNTAGGED_COLOR = "#8E8E93";
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** Currency used by the most accounts, used as the default for stats. */
+function mostCommonCurrency(accounts: Doc<"accounts">[]): string | null {
+  if (accounts.length === 0) {
+    return null;
+  }
+  const counts = new Map<string, number>();
+  for (const account of accounts) {
+    counts.set(account.currency, (counts.get(account.currency) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [currency, count] of counts) {
+    if (count > bestCount) {
+      best = currency;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/** True for real outflows: excludes transfers and balance adjustments. */
+function isSpendTransaction(transaction: Doc<"transactions">): boolean {
+  if (transaction.amount >= 0) {
+    return false;
+  }
+  const kind = resolveTransactionKind(transaction);
+  if (kind === "transfer_in" || kind === "transfer_out") {
+    return false;
+  }
+  return transaction.category !== BALANCE_ADJUSTMENT_CATEGORY.name;
+}
+
+/** True for real inflows: excludes transfers and balance adjustments. */
+function isIncomeTransaction(transaction: Doc<"transactions">): boolean {
+  if (transaction.amount <= 0) {
+    return false;
+  }
+  const kind = resolveTransactionKind(transaction);
+  if (kind === "transfer_in" || kind === "transfer_out") {
+    return false;
+  }
+  return transaction.category !== BALANCE_ADJUSTMENT_CATEGORY.name;
+}
+
+/** Period transactions in a currency, fetched via the date-range index. */
+async function loadCurrencyWindow(
+  ctx: QueryCtx,
+  currency: string,
+  start: number,
+  end: number
+): Promise<Doc<"transactions">[]> {
+  return await ctx.db
+    .query("transactions")
+    .withIndex("by_currency_and_date", (q) =>
+      q.eq("currency", currency).gte("date", start).lt("date", end)
+    )
+    .collect();
+}
+
+/** Sums spend amounts by category snapshot. */
+function groupByCategory(spend: Doc<"transactions">[]): SpendingGroup[] {
+  const map = new Map<string, SpendingGroup>();
+  for (const transaction of spend) {
+    const amount = Math.abs(transaction.amount);
+    const existing = map.get(transaction.category);
+    if (existing) {
+      existing.amount += amount;
+      existing.count += 1;
+    } else {
+      map.set(transaction.category, {
+        amount,
+        color: transaction.color,
+        count: 1,
+        key: transaction.category,
+        label: transaction.category,
+        symbol: transaction.symbol,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * Sums spend amounts by tag. A transaction's amount is split evenly across its
+ * tags so totals stay comparable; untagged spend lands in an "Untagged" group.
+ */
+async function groupByTag(
+  ctx: QueryCtx,
+  spend: Doc<"transactions">[]
+): Promise<SpendingGroup[]> {
+  const linksByTxn = await Promise.all(
+    spend.map((transaction) =>
+      ctx.db
+        .query("transactionTags")
+        .withIndex("by_transactionId", (q) =>
+          q.eq("transactionId", transaction._id)
+        )
+        .collect()
+    )
+  );
+
+  const uniqueTagIds = new Set<Id<"tags">>();
+  for (const links of linksByTxn) {
+    for (const link of links) {
+      uniqueTagIds.add(link.tagId);
+    }
+  }
+  const tagDocs = await Promise.all(
+    [...uniqueTagIds].map((tagId) => ctx.db.get("tags", tagId))
+  );
+  const tagById = new Map(
+    tagDocs
+      .filter((tag): tag is Doc<"tags"> => tag !== null)
+      .map((tag) => [tag._id, tag])
+  );
+
+  const map = new Map<string, SpendingGroup>();
+  const add = (group: Omit<SpendingGroup, "count">) => {
+    const existing = map.get(group.key);
+    if (existing) {
+      existing.amount += group.amount;
+      existing.count += 1;
+    } else {
+      map.set(group.key, { ...group, count: 1 });
+    }
+  };
+
+  for (const [index, transaction] of spend.entries()) {
+    const amount = Math.abs(transaction.amount);
+    const links = linksByTxn[index];
+    if (links.length === 0) {
+      add({
+        amount,
+        color: UNTAGGED_COLOR,
+        key: UNTAGGED_KEY,
+        label: "Untagged",
+        symbol: "tag.slash.fill",
+      });
+      continue;
+    }
+    const share = amount / links.length;
+    for (const link of links) {
+      const tag = tagById.get(link.tagId);
+      add({
+        amount: share,
+        color: tag?.color ?? UNTAGGED_COLOR,
+        key: link.tagId,
+        label: tag?.name ?? "Tag",
+        symbol: "tag.fill",
+      });
+    }
+  }
+
+  return [...map.values()]
+    .map((group) => ({ ...group, amount: Math.round(group.amount) }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+/** Spend-over-time buckets: daily for week/month, monthly for year. */
+function buildTrend(
+  period: StatsPeriod,
+  start: number,
+  end: number,
+  spend: Doc<"transactions">[]
+): TrendBucket[] {
+  if (period === "yearly") {
+    const startMonth = new Date(start).getUTCMonth();
+    const startYear = new Date(start).getUTCFullYear();
+    const buckets: TrendBucket[] = Array.from({ length: 12 }, (_, index) => ({
+      amount: 0,
+      label: MONTH_LABELS[(startMonth + index) % 12],
+    }));
+    for (const transaction of spend) {
+      const date = new Date(transaction.date);
+      const index =
+        (date.getUTCFullYear() - startYear) * 12 +
+        (date.getUTCMonth() - startMonth);
+      if (index >= 0 && index < 12) {
+        buckets[index].amount += Math.abs(transaction.amount);
+      }
+    }
+    return buckets;
+  }
+
+  const dayCount = Math.max(1, Math.round((end - start) / DAY_MS));
+  const buckets: TrendBucket[] = Array.from(
+    { length: dayCount },
+    (_, index) => ({
+      amount: 0,
+      label:
+        period === "weekly" ? (WEEKDAY_LABELS[index] ?? "") : String(index + 1),
+    })
+  );
+  for (const transaction of spend) {
+    const index = Math.floor((transaction.date - start) / DAY_MS);
+    if (index >= 0 && index < dayCount) {
+      buckets[index].amount += Math.abs(transaction.amount);
+    }
+  }
+  return buckets;
+}
+
+/** Per-budget spend within the window, for budgets matching the currency. */
+async function loadBudgetPerformance(
+  ctx: QueryCtx,
+  currency: string,
+  spend: Doc<"transactions">[]
+): Promise<BudgetPerformance[]> {
+  const budgets = await ctx.db.query("budgets").collect();
+  const spentByCategory = new Map<string, number>();
+  for (const transaction of spend) {
+    spentByCategory.set(
+      transaction.category,
+      (spentByCategory.get(transaction.category) ?? 0) +
+        Math.abs(transaction.amount)
+    );
+  }
+  return budgets
+    .filter(
+      (budget) => budget.currency === currency && Boolean(budget.category)
+    )
+    .sort((a, b) => a.order - b.order)
+    .map((budget) => ({
+      color: budget.color,
+      currency: budget.currency,
+      id: budget._id,
+      limit: budget.limit,
+      name: budget.name,
+      spent: budget.category
+        ? (spentByCategory.get(budget.category) ?? 0)
+        : (budget.spent ?? 0),
+      symbol: budget.symbol,
+    }));
+}
+
+/**
+ * Period-based spending insights for a single currency: category and tag
+ * breakdowns, income/cashflow totals, a spend-over-time trend, and budget
+ * performance. Transfers and balance adjustments are excluded; charges count
+ * as spend. `previous*` totals cover the immediately preceding window.
+ */
+export const getSpendingStats = query({
+  args: {
+    start: v.number(),
+    end: v.number(),
+    periodType: v.union(
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("yearly")
+    ),
+    currency: v.optional(v.string()),
+    prevStart: v.optional(v.number()),
+    prevEnd: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const accounts = await ctx.db.query("accounts").collect();
+    const targetCurrency =
+      args.currency ?? mostCommonCurrency(accounts) ?? DEFAULT_CURRENCY;
+    const prevStart = args.prevStart ?? args.start - (args.end - args.start);
+    const prevEnd = args.prevEnd ?? args.start;
+
+    const [current, previous] = await Promise.all([
+      loadCurrencyWindow(ctx, targetCurrency, args.start, args.end),
+      loadCurrencyWindow(ctx, targetCurrency, prevStart, prevEnd),
+    ]);
+
+    const spend = current.filter(isSpendTransaction);
+    const income = current.filter(isIncomeTransaction);
+    const sumAbs = (rows: Doc<"transactions">[]) =>
+      rows.reduce((total, row) => total + Math.abs(row.amount), 0);
+
+    const totalSpent = sumAbs(spend);
+    const totalIncome = sumAbs(income);
+    const previousTotalSpent = sumAbs(previous.filter(isSpendTransaction));
+    const previousTotalIncome = sumAbs(previous.filter(isIncomeTransaction));
+
+    const [tags, budgets] = await Promise.all([
+      groupByTag(ctx, spend),
+      loadBudgetPerformance(ctx, targetCurrency, spend),
+    ]);
+
+    return {
+      budgets,
+      categories: groupByCategory(spend),
+      currency: targetCurrency,
+      previousTotalIncome,
+      previousTotalSpent,
+      tags,
+      totalIncome,
+      totalSpent,
+      transactionCount: spend.length,
+      trend: buildTrend(args.periodType, args.start, args.end, spend),
     };
   },
 });

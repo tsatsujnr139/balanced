@@ -1,3 +1,4 @@
+import type { Id } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 
 const DAY = 86_400_000;
@@ -186,6 +187,203 @@ const DEFAULT_CATEGORIES = [
 ] as const;
 
 const normalizeLookupName = (name: string) => name.trim().toLocaleLowerCase();
+
+const CATEGORY_META: Record<string, { color: string; symbol: string }> =
+  Object.fromEntries(
+    DEFAULT_CATEGORIES.map((category) => [
+      category.name,
+      { color: category.color, symbol: category.symbol },
+    ])
+  );
+
+interface SeedSpend {
+  category: string;
+  merchant: string;
+  major: number;
+}
+
+// Expenses (cedis) for the current month — varied categories and sizes.
+const THIS_MONTH_SPEND: SeedSpend[] = [
+  { category: "Groceries", major: 320, merchant: "Whole Foods" },
+  { category: "Groceries", major: 145.5, merchant: "Marina Market" },
+  { category: "Eating Out", major: 88, merchant: "Burger Joint" },
+  { category: "Fuel", major: 410, merchant: "Shell" },
+  { category: "Transportation", major: 64.2, merchant: "Uber" },
+  { category: "Subscriptions", major: 55, merchant: "Netflix" },
+  { category: "Health & Wellness", major: 120, merchant: "Pharmacy" },
+  { category: "Clothing", major: 230, merchant: "Zara" },
+];
+
+// Expenses (cedis) for the previous month — different totals to show a delta.
+const LAST_MONTH_SPEND: SeedSpend[] = [
+  { category: "Groceries", major: 280, merchant: "Whole Foods" },
+  { category: "Groceries", major: 90, merchant: "Corner Shop" },
+  { category: "Eating Out", major: 150, merchant: "Sushi Place" },
+  { category: "Fuel", major: 380, merchant: "Total" },
+  { category: "Transportation", major: 95, merchant: "Bolt" },
+  { category: "Subscriptions", major: 43, merchant: "Spotify" },
+  { category: "Education", major: 200, merchant: "Udemy" },
+  { category: "Outing", major: 75, merchant: "Cinema" },
+];
+
+const SEED_SPEND_DAYS = [3, 5, 9, 12, 15, 18, 22, 25];
+
+/**
+ * Adds categorized expenses across this month and last month so the stats
+ * screen has data to visualize. Does NOT clear existing rows — additive only.
+ * Run: npx convex run seed:seedStatsTransactions
+ */
+export const seedStatsTransactions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const accounts = await ctx.db.query("accounts").collect();
+    let accountId =
+      accounts.find((account) => account.currency === "GHS")?._id ??
+      accounts[0]?._id;
+    if (!accountId) {
+      accountId = await ctx.db.insert("accounts", {
+        balance: 482_355,
+        color: "#2F6BFF",
+        currency: "GHS",
+        institution: "Chase",
+        name: "Everyday",
+        order: 0,
+        symbol: "creditcard.fill",
+        type: "current",
+      });
+    }
+
+    const now = new Date();
+    const salaryMeta = CATEGORY_META.Income ?? {
+      color: "#30B05A",
+      symbol: "arrow.down.circle.fill",
+    };
+
+    const insertMonth = async (monthOffset: number, spend: SeedSpend[]) => {
+      const year = now.getFullYear();
+      const month = now.getMonth() + monthOffset;
+      const isCurrentMonth = monthOffset === 0;
+      for (const [index, entry] of spend.entries()) {
+        const day = SEED_SPEND_DAYS[index] ?? index + 1;
+        // Keep current-month entries in the past, not the future.
+        const clampedDay = isCurrentMonth ? Math.min(day, now.getDate()) : day;
+        const meta = CATEGORY_META[entry.category] ?? {
+          color: "#8E8E93",
+          symbol: "square.grid.2x2.fill",
+        };
+        await ctx.db.insert("transactions", {
+          accountId,
+          amount: -Math.round(entry.major * 100),
+          category: entry.category,
+          color: meta.color,
+          currency: "GHS",
+          date: new Date(year, month, clampedDay, 12).getTime(),
+          merchant: entry.merchant,
+          symbol: meta.symbol,
+          transactionKind: "expense",
+        });
+      }
+
+      // One income per month — should be excluded from spend stats.
+      await ctx.db.insert("transactions", {
+        accountId,
+        amount: 412_500,
+        category: "Income",
+        color: salaryMeta.color,
+        currency: "GHS",
+        date: new Date(year, month, 1, 9).getTime(),
+        merchant: "Acme Payroll",
+        symbol: salaryMeta.symbol,
+        transactionKind: "income",
+      });
+    };
+
+    await insertMonth(0, THIS_MONTH_SPEND);
+    await insertMonth(-1, LAST_MONTH_SPEND);
+
+    return {
+      inserted: THIS_MONTH_SPEND.length + LAST_MONTH_SPEND.length + 2,
+    };
+  },
+});
+
+const TAG_BY_CATEGORY: Record<string, string> = {
+  Clothing: "Discretionary",
+  "Eating Out": "Discretionary",
+  Education: "Discretionary",
+  Fuel: "Essentials",
+  Groceries: "Essentials",
+  "Health & Wellness": "Essentials",
+  Outing: "Discretionary",
+  Subscriptions: "Discretionary",
+  Transportation: "Essentials",
+};
+
+const TAG_COLORS: Record<string, string> = {
+  Discretionary: "#FF9F0A",
+  Essentials: "#34C759",
+};
+
+/**
+ * Tags existing expense transactions as Essentials/Discretionary so the stats
+ * "Tags" breakdown has data. Idempotent. Run: npx convex run seed:seedStatsTags
+ */
+export const seedStatsTags = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const upsertTag = async (name: string): Promise<Id<"tags">> => {
+      const normalizedName = normalizeLookupName(name);
+      const existing = await ctx.db
+        .query("tags")
+        .withIndex("by_normalizedName", (q) =>
+          q.eq("normalizedName", normalizedName)
+        )
+        .unique();
+      if (existing) {
+        return existing._id;
+      }
+      return await ctx.db.insert("tags", {
+        color: TAG_COLORS[name] ?? "#8E8E93",
+        name,
+        normalizedName,
+      });
+    };
+
+    const tagIdByName = new Map<string, Id<"tags">>();
+    for (const name of new Set(Object.values(TAG_BY_CATEGORY))) {
+      tagIdByName.set(name, await upsertTag(name));
+    }
+
+    const transactions = await ctx.db.query("transactions").collect();
+    let linked = 0;
+    for (const transaction of transactions) {
+      if (transaction.amount >= 0) {
+        continue;
+      }
+      const tagName = TAG_BY_CATEGORY[transaction.category];
+      const tagId = tagName ? tagIdByName.get(tagName) : undefined;
+      if (!tagId) {
+        continue;
+      }
+      const existingLinks = await ctx.db
+        .query("transactionTags")
+        .withIndex("by_transactionId", (q) =>
+          q.eq("transactionId", transaction._id)
+        )
+        .collect();
+      if (existingLinks.some((link) => link.tagId === tagId)) {
+        continue;
+      }
+      await ctx.db.insert("transactionTags", {
+        tagId,
+        transactionId: transaction._id,
+      });
+      linked += 1;
+    }
+
+    return { linked, tags: tagIdByName.size };
+  },
+});
 
 /** Deletes all tags and transaction-tag links. Run: npx convex run seed:clearAllTags */
 export const clearAllTags = mutation({

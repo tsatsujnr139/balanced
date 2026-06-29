@@ -391,7 +391,7 @@ export default function DashboardScreen() {
               showsHorizontalScrollIndicator={false}
               style={{ marginLeft: -HORIZONTAL_PADDING, width: carouselWidth }}
               contentContainerStyle={{
-                gap: 42,
+                gap: 32,
                 paddingLeft: HORIZONTAL_PADDING,
                 paddingRight: HORIZONTAL_PADDING,
               }}

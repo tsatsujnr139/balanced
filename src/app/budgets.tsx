@@ -14,7 +14,9 @@ import {
   BudgetList,
   BudgetProgressRow,
 } from "@/features/finance/components/budget-list";
+import { BudgetSummary } from "@/features/finance/components/budget-summary";
 import { filterBudgets } from "@/features/finance/filter-budgets";
+import { DEFAULT_CURRENCY } from "@/features/finance/format";
 import type { Budget, BudgetPeriod } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -48,6 +50,16 @@ export default function BudgetsScreen() {
     () => groupBudgetsByPeriod(filteredBudgets),
     [filteredBudgets]
   );
+  const totals = useMemo(() => {
+    let budgeted = 0;
+    let spent = 0;
+    for (const budget of filteredBudgets) {
+      budgeted += budget.limit;
+      spent += budget.spent;
+    }
+    return { budgeted, spent };
+  }, [filteredBudgets]);
+  const currency = filteredBudgets[0]?.currency ?? DEFAULT_CURRENCY;
   const shouldFocusSearch = focusSearch === "1";
 
   useFocusEffect(
@@ -82,42 +94,49 @@ export default function BudgetsScreen() {
         {filteredBudgets.length === 0 ? (
           <BudgetList budgets={filteredBudgets} />
         ) : (
-          groups.map(([period, periodBudgets]) => (
-            <ThemedView
-              key={period}
-              variant="card"
-              className="rounded-[22px] p-4"
-            >
-              <ThemedText
-                type="subtitle"
-                className="mb-3 text-[20px] leading-7"
+          <>
+            <BudgetSummary
+              currency={currency}
+              totalBudgeted={totals.budgeted}
+              totalSpent={totals.spent}
+            />
+            {groups.map(([period, periodBudgets]) => (
+              <ThemedView
+                key={period}
+                variant="card"
+                className="rounded-[22px] p-4"
               >
-                {BUDGET_PERIOD_LABEL[period]}
-              </ThemedText>
-              <View
-                className="mb-4 h-px"
-                style={{ backgroundColor: colors.border }}
-              />
-              {periodBudgets.map((budget, index) => (
-                <View
-                  key={budget.id}
-                  className={
-                    index < periodBudgets.length - 1 ? "mb-5" : undefined
-                  }
+                <ThemedText
+                  type="subtitle"
+                  className="mb-3 text-[20px] leading-7"
                 >
-                  <BudgetProgressRow
-                    budget={budget}
-                    onPress={() => {
-                      router.push({
-                        params: { id: budget.id },
-                        pathname: "/budget/[id]",
-                      });
-                    }}
-                  />
-                </View>
-              ))}
-            </ThemedView>
-          ))
+                  {BUDGET_PERIOD_LABEL[period]}
+                </ThemedText>
+                <View
+                  className="mb-4 h-px"
+                  style={{ backgroundColor: colors.border }}
+                />
+                {periodBudgets.map((budget, index) => (
+                  <View
+                    key={budget.id}
+                    className={
+                      index < periodBudgets.length - 1 ? "mb-5" : undefined
+                    }
+                  >
+                    <BudgetProgressRow
+                      budget={budget}
+                      onPress={() => {
+                        router.push({
+                          params: { id: budget.id },
+                          pathname: "/budget/[id]",
+                        });
+                      }}
+                    />
+                  </View>
+                ))}
+              </ThemedView>
+            ))}
+          </>
         )}
       </ScrollView>
 
