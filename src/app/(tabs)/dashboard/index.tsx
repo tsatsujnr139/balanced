@@ -521,7 +521,17 @@ export default function DashboardScreen() {
           {isLoading ? (
             <ListSkeleton rows={2} />
           ) : (
-            <BudgetList budgets={budgets} />
+            <BudgetList
+              budgets={[...budgets].sort(
+                (a, b) => b.spent / (b.limit || 1) - a.spent / (a.limit || 1)
+              )}
+              onPressBudget={(budget) => {
+                router.push({
+                  params: { id: budget.id },
+                  pathname: "/budget/[id]",
+                });
+              }}
+            />
           )}
         </View>
       </View>

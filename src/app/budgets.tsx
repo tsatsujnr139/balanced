@@ -29,9 +29,12 @@ function groupBudgetsByPeriod(budgets: Budget[]): [BudgetPeriod, Budget[]][] {
     byPeriod.set(budget.period, list);
   }
 
-  return [...byPeriod.entries()].sort(
-    ([a], [b]) => BUDGET_PERIOD_ORDER[a] - BUDGET_PERIOD_ORDER[b]
-  );
+  return [...byPeriod.entries()]
+    .sort(([a], [b]) => BUDGET_PERIOD_ORDER[a] - BUDGET_PERIOD_ORDER[b])
+    .map(([period, list]) => [
+      period,
+      [...list].sort((a, b) => a.name.localeCompare(b.name)),
+    ]);
 }
 
 export default function BudgetsScreen() {
