@@ -4,6 +4,9 @@ import { Pressable, View } from "react-native";
 import { ACCOUNT_COLOR_GROUPS } from "@/features/finance/account-constants";
 import { useThemeColors } from "@/hooks/use-theme";
 
+const COLUMNS = 6;
+const SWATCH_SIZE = 44;
+
 interface Props {
   onSelect: (color: string) => void;
   selectedColor: string;
@@ -21,45 +24,52 @@ function isLightSwatch(color: string): boolean {
 export function ColorPickerGrid({ onSelect, selectedColor }: Props) {
   const colors = useThemeColors();
 
+  const allColors = ACCOUNT_COLOR_GROUPS.flatMap((group) => group.colors);
+  const rows: string[][] = [];
+  for (let i = 0; i < allColors.length; i += COLUMNS) {
+    rows.push(allColors.slice(i, i + COLUMNS));
+  }
+
   return (
-    <View style={{ gap: 14 }}>
-      {ACCOUNT_COLOR_GROUPS.map((group) => (
-        <View key={group.id} style={{ flexDirection: "row", gap: 10 }}>
-          {group.colors.map((color) => {
+    <View style={{ gap: 12 }}>
+      {rows.map((row, rowIndex) => (
+        <View
+          key={rowIndex}
+          style={{ flexDirection: "row", gap: 10, justifyContent: "flex-start" }}
+        >
+          {row.map((color) => {
             const selected = color === selectedColor;
             const checkmarkColor = isLightSwatch(color)
               ? colors.foreground
               : "#fff";
 
             return (
-              <View key={color} style={{ alignItems: "center", flex: 1 }}>
-                <Pressable
-                  accessibilityLabel={`Select ${color}`}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    onSelect(color);
-                  }}
-                  style={{
-                    alignItems: "center",
-                    aspectRatio: 1,
-                    backgroundColor: color,
-                    borderColor: selected ? colors.foreground : "transparent",
-                    borderRadius: 999,
-                    borderWidth: selected ? 2 : 0,
-                    justifyContent: "center",
-                    maxWidth: 56,
-                    width: "100%",
-                  }}
-                >
-                  {selected ? (
-                    <SymbolView
-                      name="checkmark"
-                      size={22}
-                      tintColor={checkmarkColor}
-                    />
-                  ) : null}
-                </Pressable>
-              </View>
+              <Pressable
+                key={color}
+                accessibilityLabel={`Select ${color}`}
+                accessibilityRole="button"
+                onPress={() => {
+                  onSelect(color);
+                }}
+                style={{
+                  alignItems: "center",
+                  backgroundColor: color,
+                  borderColor: selected ? colors.foreground : "transparent",
+                  borderRadius: SWATCH_SIZE / 2,
+                  borderWidth: selected ? 2 : 0,
+                  height: SWATCH_SIZE,
+                  justifyContent: "center",
+                  width: SWATCH_SIZE,
+                }}
+              >
+                {selected ? (
+                  <SymbolView
+                    name="checkmark"
+                    size={18}
+                    tintColor={checkmarkColor}
+                  />
+                ) : null}
+              </Pressable>
             );
           })}
         </View>

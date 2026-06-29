@@ -20,9 +20,10 @@ import {
   useBalanceVisibility,
 } from "@/features/finance/use-balance-visibility";
 import { useFinance } from "@/features/finance/use-finance";
+import type { CurrencyBalance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
-const HORIZONTAL_PADDING = 16;
+const HORIZONTAL_PADDING = 20;
 const COLUMN_GAP = 10;
 const ROW_GAP = 10;
 const PAGE_GAP = 10;
@@ -268,6 +269,49 @@ function AddAccountCard({ width }: { width: number }) {
   );
 }
 
+function CurrencyBalanceCard({
+  item,
+  isBalanceVisible,
+}: {
+  item: CurrencyBalance;
+  isBalanceVisible: boolean;
+}) {
+  const colors = useThemeColors();
+  const netWorthValue = formatCurrency(item.netWorth, item.currency);
+  const totalAssetsValue = formatCurrency(item.totalAssets, item.currency);
+  const totalLiabilitiesValue = formatCurrency(
+    item.totalLiabilities,
+    item.currency
+  );
+
+  return (
+    <View className="gap-1" style={{ width: 220 }}>
+      <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit className="text-[34px] leading-[40px]">
+        {isBalanceVisible ? netWorthValue : maskCurrencyValue(netWorthValue)}
+      </ThemedText>
+      <View className="mt-0.5 flex-row gap-4">
+        <View className="flex-row items-center gap-1">
+          <SymbolView name="arrow.up.right" size={12} tintColor={colors.positive} />
+          <ThemedText type="small" color="muted">
+            {item.currency}{" "}
+            {isBalanceVisible
+              ? totalAssetsValue
+              : maskCurrencyValue(totalAssetsValue)}
+          </ThemedText>
+        </View>
+        <View className="flex-row items-center gap-1">
+          <SymbolView name="arrow.down.right" size={12} tintColor={colors.negative} />
+          <ThemedText type="small" color="muted">
+            {isBalanceVisible
+              ? totalLiabilitiesValue
+              : maskCurrencyValue(totalLiabilitiesValue)}
+          </ThemedText>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function DashboardScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -286,106 +330,81 @@ export default function DashboardScreen() {
     accounts,
     transactions,
     budgets,
-    netWorth,
-    totalAssets,
-    totalLiabilities,
+    balanceByCurrency,
     isLoading,
   } = useFinance();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   const accountPages = buildAccountPages(accounts);
-  const netWorthValue = formatCurrency(netWorth);
-  const totalAssetsValue = formatCurrency(totalAssets);
-  const totalLiabilitiesValue = formatCurrency(totalLiabilities);
 
   return (
     <ScrollView
       className="flex-1 bg-background"
-      contentContainerClassName="items-center px-4"
+      contentContainerClassName="items-center px-5"
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
         paddingBottom: insets.bottom + BottomTabInset + 24,
       }}
     >
       <View className="w-full gap-6" style={{ maxWidth: MaxContentWidth }}>
-        {isLoading ? (
-          <View style={{ gap: 9 }}>
-            <SkeletonBlock height={14} width={62} />
-            <SkeletonBlock height={38} width={180} borderRadius={12} />
-            <View style={{ flexDirection: "row", gap: 16 }}>
-              <SkeletonBlock height={13} width={112} />
-              <SkeletonBlock height={13} width={112} />
-            </View>
-          </View>
-        ) : (
-          <View className="gap-1">
-            <View className="flex-row items-center justify-between">
-              <ThemedText
-                type="smallBold"
-                color="muted"
-                className="text-[15px]"
-              >
-                Balance
-              </ThemedText>
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityState={{ checked: isBalanceVisible }}
-                accessibilityLabel={
-                  isBalanceVisible ? "Hide balances" : "Show balances"
-                }
-                hitSlop={8}
-                onPress={toggleBalanceVisibility}
-                style={({ pressed }) => ({
-                  alignItems: "center",
-                  backgroundColor: colors.card,
-                  borderRadius: 17,
-                  height: 34,
-                  justifyContent: "center",
-                  opacity: pressed ? 0.65 : 1,
-                  width: 34,
-                })}
-              >
-                <SymbolView
-                  name={(isBalanceVisible ? "eye" : "eye.slash") as never}
-                  size={18}
-                  tintColor={colors.muted}
-                />
-              </Pressable>
-            </View>
-            <ThemedText type="title" className="text-[34px] leading-[40px]">
-              {isBalanceVisible
-                ? netWorthValue
-                : maskCurrencyValue(netWorthValue)}
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between">
+            <ThemedText type="smallBold" color="muted" className="text-[15px]">
+              Balance
             </ThemedText>
-            <View className="mt-0.5 flex-row gap-4">
-              <View className="flex-row items-center gap-1">
-                <SymbolView
-                  name="arrow.up.right"
-                  size={12}
-                  tintColor={colors.positive}
-                />
-                <ThemedText type="small" color="muted">
-                  Income{" "}
-                  {isBalanceVisible
-                    ? totalAssetsValue
-                    : maskCurrencyValue(totalAssetsValue)}
-                </ThemedText>
-              </View>
-              <View className="flex-row items-center gap-1">
-                <SymbolView
-                  name="arrow.down.right"
-                  size={12}
-                  tintColor={colors.negative}
-                />
-                <ThemedText type="small" color="muted">
-                  Expenses{" "}
-                  {isBalanceVisible
-                    ? totalLiabilitiesValue
-                    : maskCurrencyValue(totalLiabilitiesValue)}
-                </ThemedText>
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isBalanceVisible }}
+              accessibilityLabel={
+                isBalanceVisible ? "Hide balances" : "Show balances"
+              }
+              hitSlop={8}
+              onPress={toggleBalanceVisibility}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.card,
+                borderRadius: 17,
+                height: 34,
+                justifyContent: "center",
+                opacity: pressed ? 0.65 : 1,
+                width: 34,
+              })}
+            >
+              <SymbolView
+                name={(isBalanceVisible ? "eye" : "eye.slash") as never}
+                size={18}
+                tintColor={colors.muted}
+              />
+            </Pressable>
+          </View>
+          {isLoading ? (
+            <View style={{ gap: 9 }}>
+              <SkeletonBlock height={38} width={180} borderRadius={12} />
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <SkeletonBlock height={13} width={112} />
+                <SkeletonBlock height={13} width={112} />
               </View>
             </View>
-          </View>
-        )}
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginLeft: -HORIZONTAL_PADDING, width: carouselWidth }}
+              contentContainerStyle={{
+                gap: PAGE_GAP,
+                paddingLeft: HORIZONTAL_PADDING,
+                paddingRight: HORIZONTAL_PADDING,
+              }}
+            >
+              {balanceByCurrency.map((item) => (
+                <CurrencyBalanceCard
+                  key={item.currency}
+                  item={item}
+                  isBalanceVisible={isBalanceVisible}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
 
         <View className="gap-2">
           <ThemedText type="subtitle" className="text-[22px] leading-7">

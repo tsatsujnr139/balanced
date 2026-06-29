@@ -1,6 +1,6 @@
 import { SymbolView } from "expo-symbols";
 import { useEffect } from "react";
-import { ActivityIndicator, AppState, Pressable, Text, View } from "react-native";
+import { AppState, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemeColors } from "@/hooks/use-theme";
@@ -10,7 +10,6 @@ export function UpdateBanner() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const {
-    isChecking,
     isUpdateAvailable,
     isUpdatePending,
     isDownloading,
@@ -39,12 +38,9 @@ export function UpdateBanner() {
     }
   }, [isUpdateAvailable, isDownloading, fetchUpdateAsync]);
 
-  if (!isUpdatePending && !isChecking && !isDownloading) {
+  if (!isUpdatePending) {
     return null;
   }
-
-  const isReady = isUpdatePending;
-  const isInProgress = isChecking || isDownloading;
 
   return (
     <View
@@ -60,37 +56,27 @@ export function UpdateBanner() {
         }}
       >
         <View className="size-10 items-center justify-center rounded-xl bg-primary/10">
-          {isInProgress ? (
-            <ActivityIndicator color={colors.primary} size="small" />
-          ) : (
-            <SymbolView
-              name="arrow.down.circle.fill"
-              size={22}
-              tintColor={colors.primary}
-            />
-          )}
+          <SymbolView
+            name="arrow.down.circle.fill"
+            size={22}
+            tintColor={colors.primary}
+          />
         </View>
 
         <View className="flex-1">
           <Text className="text-sm font-semibold text-foreground">
-            {isReady ? "Update ready" : "Downloading update…"}
+            Update ready
           </Text>
-          <Text className="text-xs text-muted">
-            {isReady
-              ? "Restart the app to apply."
-              : "This will only take a moment."}
-          </Text>
+          <Text className="text-xs text-muted">Restart the app to apply.</Text>
         </View>
 
-        {isReady ? (
-          <Pressable
-            accessibilityRole="button"
-            className="rounded-xl bg-primary px-4 py-2"
-            onPress={reloadApp}
-          >
-            <Text className="text-sm font-semibold text-white">Restart</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          className="rounded-xl bg-primary px-4 py-2"
+          onPress={reloadApp}
+        >
+          <Text className="text-sm font-semibold text-white">Restart</Text>
+        </Pressable>
       </View>
     </View>
   );

@@ -1,13 +1,7 @@
 import { SymbolView } from "expo-symbols";
 import { useEffect } from "react";
 import type { PropsWithChildren } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -44,72 +38,49 @@ export function AppLockGate({ children }: PropsWithChildren) {
     return children;
   }
 
-  const statusMessage =
-    errorMessage ??
-    (capability?.canAuthenticate
-      ? `Use ${capability.label} or your device passcode to continue.`
-      : "Device authentication is not available. Check your system settings and try again.");
+  const canAuthenticate = capability?.canAuthenticate ?? false;
+  const buttonLabel = canAuthenticate
+    ? `Unlock with ${capability?.label}`
+    : "Unlock";
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerStyle={{
-        flexGrow: 1,
-        justifyContent: "center",
-        padding: 24,
-      }}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <View className="items-center gap-5">
-        <View
-          className="items-center justify-center bg-card"
-          style={{
-            borderCurve: "continuous",
-            borderRadius: 28,
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.10)",
-            height: 86,
-            width: 86,
-          }}
-        >
-          <SymbolView
-            name="lock.shield.fill"
-            size={42}
-            tintColor={colors.primary}
-          />
-        </View>
+    <View className="flex-1 items-center justify-center bg-background px-8">
+      <SymbolView name="lock.fill" size={40} tintColor={colors.primary} />
 
-        <View className="items-center gap-2">
-          <ThemedText className="text-center" type="subtitle">
-            Balanced is locked
-          </ThemedText>
-          <ThemedText
-            className="max-w-[320px] text-center"
-            color="muted"
-            selectable
-            type="small"
-          >
-            {statusMessage}
-          </ThemedText>
-        </View>
+      <ThemedText className="mt-4 text-center text-[28px] font-bold">
+        Balanced Locked
+      </ThemedText>
 
-        <Pressable
-          accessibilityRole="button"
-          className="min-h-14 w-full max-w-[320px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary px-5"
-          disabled={isAuthenticating || !capability?.canAuthenticate}
-          onPress={() => {
-            unlock();
-          }}
-          style={{
-            opacity:
-              isAuthenticating || !capability?.canAuthenticate ? 0.55 : 1,
-          }}
+      {errorMessage ? (
+        <ThemedText
+          className="mt-2 max-w-[320px] text-center"
+          color="muted"
+          selectable
+          type="small"
         >
-          {isAuthenticating ? <ActivityIndicator color="#FFFFFF" /> : null}
-          <Text className="text-base font-semibold text-white">
-            {isAuthenticating ? "Unlocking..." : "Unlock Balanced"}
-          </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+          {errorMessage}
+        </ThemedText>
+      ) : null}
+
+      <Pressable
+        accessibilityRole="button"
+        className="mt-6 min-h-12 flex-row items-center justify-center gap-2 rounded-full bg-card px-7"
+        disabled={isAuthenticating || !canAuthenticate}
+        onPress={() => {
+          unlock();
+        }}
+        style={{ opacity: isAuthenticating || !canAuthenticate ? 0.55 : 1 }}
+      >
+        {isAuthenticating ? (
+          <ActivityIndicator color={colors.foreground} size="small" />
+        ) : null}
+        <Text
+          className="text-base font-medium"
+          style={{ color: colors.foreground }}
+        >
+          {isAuthenticating ? "Unlocking…" : buttonLabel}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
