@@ -85,6 +85,7 @@ export default function NewTagScreen() {
         </Stack.Toolbar>
       </Stack.Screen>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

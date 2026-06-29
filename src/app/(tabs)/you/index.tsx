@@ -148,6 +148,7 @@ export default function YouScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       className="flex-1 bg-background"
       contentContainerStyle={{
         gap: 24,

@@ -66,6 +66,7 @@ export default function BudgetsScreen() {
   return (
     <>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

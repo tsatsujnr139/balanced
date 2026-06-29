@@ -16,7 +16,7 @@ export const ACCOUNT_TYPE_SYMBOL: Record<AccountType, string> = {
   current: "building.columns.fill",
   general: "wallet.pass.fill",
   investment: "chart.line.uptrend.xyaxis",
-  mobile_money: "phone.fill",
+  mobile_money: "iphone",
   savings: "tray.full.fill",
 };
 

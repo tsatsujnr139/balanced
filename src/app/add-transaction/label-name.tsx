@@ -22,6 +22,7 @@ export default function LabelNameScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
         gap: 18,

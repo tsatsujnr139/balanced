@@ -263,6 +263,7 @@ export default function PlannedPaymentDetailScreen() {
         />
       </Stack.Toolbar>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

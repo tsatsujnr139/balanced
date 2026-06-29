@@ -266,6 +266,7 @@ export default function AddPlannedPaymentScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{

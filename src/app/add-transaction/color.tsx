@@ -11,6 +11,7 @@ export default function LabelColorScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
         gap: 18,

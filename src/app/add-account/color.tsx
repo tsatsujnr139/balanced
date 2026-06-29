@@ -11,6 +11,7 @@ export default function AddAccountColorScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
         gap: 18,

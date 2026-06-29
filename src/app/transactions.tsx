@@ -21,6 +21,7 @@ export default function TransactionsScreen() {
   return (
     <>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

@@ -126,6 +126,7 @@ export default function PlanningScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       className="flex-1 bg-background"
       contentContainerClassName="items-center px-4"
       contentInsetAdjustmentBehavior="automatic"

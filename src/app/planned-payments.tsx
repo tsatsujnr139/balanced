@@ -58,6 +58,7 @@ export default function PlannedPaymentsScreen() {
   return (
     <>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

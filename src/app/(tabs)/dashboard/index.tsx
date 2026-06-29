@@ -338,6 +338,7 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       className="flex-1 bg-background"
       contentContainerClassName="items-center px-5"
       contentInsetAdjustmentBehavior="automatic"

@@ -113,6 +113,7 @@ export default function NewCategoryScreen() {
         </Stack.Toolbar>
       </Stack.Screen>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

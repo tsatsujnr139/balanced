@@ -138,6 +138,7 @@ export default function AddTemplateScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{

@@ -15,6 +15,7 @@ export default function BudgetPeriodScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
         paddingBottom: 40,

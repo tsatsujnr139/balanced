@@ -16,6 +16,7 @@ export default function AccountTypeScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}
       style={{ backgroundColor: colors.background, flex: 1 }}

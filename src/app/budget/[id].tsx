@@ -274,6 +274,7 @@ export default function BudgetDetailScreen() {
       </Stack.Toolbar>
 
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 18,

@@ -45,6 +45,7 @@ export default function AccountScreen() {
   return (
     <>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           gap: 24,
