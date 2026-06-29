@@ -19,6 +19,8 @@ const CHART_LABEL_FONT_SIZE = 11;
 const CHART_AMOUNT_LABEL_FONT_SIZE = 9;
 const CHART_AMOUNT_LABEL_AREA = 16;
 const COMPACT_AXIS_AMOUNT_THRESHOLD = 100_000;
+const CHART_PRESS_DELAY_MS = 100;
+const CHART_SCROLL_FAIL_OFFSET_Y: [number, number] = [-8, 8];
 const WEEKLY_TICK_COUNT = 7;
 const YEARLY_TICK_COUNT = 12;
 
@@ -122,7 +124,12 @@ export function SpendingTrend({
         {hasData ? (
           <>
             <CartesianChart
-              chartPressConfig={{ pan: { activateAfterLongPress: 0 } }}
+              chartPressConfig={{
+                pan: {
+                  activateAfterLongPress: CHART_PRESS_DELAY_MS,
+                  failOffsetY: CHART_SCROLL_FAIL_OFFSET_Y,
+                },
+              }}
               chartPressState={chartPressState}
               data={data}
               domainPadding={{ left: 10, right: 10, top: 14 }}
