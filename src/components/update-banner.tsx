@@ -1,10 +1,13 @@
+import * as SecureStore from "expo-secure-store";
 import { SymbolView } from "expo-symbols";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppState, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemeColors } from "@/hooks/use-theme";
 import { useRemoteUpdate } from "@/lib/updates";
+
+const RESTART_KEY = "update:restarting-for";
 
 export function UpdateBanner() {
   const insets = useSafeAreaInsets();
@@ -13,10 +16,28 @@ export function UpdateBanner() {
     isUpdateAvailable,
     isUpdatePending,
     isDownloading,
+    downloadedUpdate,
     reloadApp,
     checkForUpdateAsync,
     fetchUpdateAsync,
   } = useRemoteUpdate();
+
+  // Tracks whether we've already triggered a restart for the pending update.
+  // reloadAsync() reloads the JS runtime but the native pending-update flag
+  // isn't cleared until a full cold start, so without this the banner would
+  // reappear on the reloaded bundle.
+  const [suppressed, setSuppressed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    SecureStore.getItemAsync(RESTART_KEY).then((storedId) => {
+      if (storedId && storedId === downloadedUpdate?.updateId) {
+        setSuppressed(true);
+        SecureStore.deleteItemAsync(RESTART_KEY);
+      } else {
+        setSuppressed(false);
+      }
+    });
+  }, [downloadedUpdate?.updateId]);
 
   useEffect(() => {
     if (__DEV__) return;
@@ -38,7 +59,14 @@ export function UpdateBanner() {
     }
   }, [isUpdateAvailable, isDownloading, fetchUpdateAsync]);
 
-  if (!isUpdatePending) {
+  const handleRestart = async () => {
+    if (downloadedUpdate?.updateId) {
+      await SecureStore.setItemAsync(RESTART_KEY, downloadedUpdate.updateId);
+    }
+    await reloadApp();
+  };
+
+  if (!isUpdatePending || suppressed !== false) {
     return null;
   }
 
@@ -73,7 +101,7 @@ export function UpdateBanner() {
         <Pressable
           accessibilityRole="button"
           className="rounded-xl bg-primary px-4 py-2"
-          onPress={reloadApp}
+          onPress={handleRestart}
         >
           <Text className="text-sm font-semibold text-white">Restart</Text>
         </Pressable>
