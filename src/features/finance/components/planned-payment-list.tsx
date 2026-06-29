@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 
 import {
   formatCurrency,
-  plannedPaymentDueLabel,
+  formatShortDate,
   plannedPaymentScheduleLabel,
 } from "../format";
 import {
@@ -121,7 +121,7 @@ function PlannedPaymentRow({ payment }: { payment: PlannedPayment }) {
           style={dueColor ? { color: dueColor } : undefined}
           className="text-[13px] font-semibold leading-[18px]"
         >
-          {plannedPaymentDueLabel(payment.daysUntilDue)}
+          {payment.nextDueDate ? formatShortDate(payment.nextDueDate) : "Completed"}
         </ThemedText>
       </View>
     </Pressable>

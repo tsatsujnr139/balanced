@@ -185,6 +185,14 @@ export function plannedOccurrenceDueLabel(daysUntilDue: number): string {
   return `Due date in ${daysUntilDue} day${daysUntilDue === 1 ? "" : "s"}`;
 }
 
+/** Short date label, e.g. "29 Jun". */
+export function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 /** Full date label, e.g. "July 25, 2026". */
 export function formatPlannedDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
