@@ -29,7 +29,7 @@ function groupBudgetsByPeriod(budgets: Budget[]): [BudgetPeriod, Budget[]][] {
     byPeriod.set(budget.period, list);
   }
 
-  return [...byPeriod.entries()].toSorted(
+  return [...byPeriod.entries()].sort(
     ([a], [b]) => BUDGET_PERIOD_ORDER[a] - BUDGET_PERIOD_ORDER[b]
   );
 }

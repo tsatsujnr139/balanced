@@ -60,7 +60,7 @@ function groupTransactionsByDay(
   }
 
   return [...groups.entries()]
-    .toSorted(([left], [right]) => right.localeCompare(left))
+    .sort(([left], [right]) => right.localeCompare(left))
     .map(([key, items]) => ({
       key,
       title: formatTransactionSectionDate(items[0]!.date),

@@ -228,7 +228,7 @@ export default function BudgetDetailScreen() {
         (transaction) =>
           isCurrentMonth(transaction.date) && matchesBudget(transaction, budget)
       )
-      .toSorted((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [budget, transactions]);
   const currentMonthSpent = useMemo(
     () =>

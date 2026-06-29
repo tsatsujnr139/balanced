@@ -20,7 +20,7 @@ export default function TransactionTagsScreen() {
     const query = search.trim().toLocaleLowerCase();
     return (availableTags ?? [])
       .filter((tag) => !query || tag.name.toLocaleLowerCase().includes(query))
-      .toSorted((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [availableTags, search]);
   const hasExactMatch = (availableTags ?? []).some(
     (tag) => tag.name.toLocaleLowerCase() === search.trim().toLocaleLowerCase()

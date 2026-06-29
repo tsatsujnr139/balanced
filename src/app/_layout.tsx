@@ -9,6 +9,8 @@ import "@/global.css";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AppLockGate } from "@/components/app-lock-gate";
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { UpdateBanner } from "@/components/update-banner";
+import { applyStartupUpdate } from "@/lib/updates";
 import { AppLockProvider } from "@/providers/app-lock-provider";
 import { ConvexClientProvider } from "@/providers/convex-provider";
 
@@ -17,6 +19,7 @@ export default function TabLayout() {
 
   useEffect(() => {
     Uniwind.setTheme("system");
+    applyStartupUpdate();
   }, []);
 
   return (
@@ -167,6 +170,7 @@ export default function TabLayout() {
               />
             </Stack>
           </AppLockGate>
+          <UpdateBanner />
         </AppLockProvider>
       </ThemeProvider>
     </ConvexClientProvider>

@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { PropsWithChildren } from "react";
@@ -92,6 +93,12 @@ export function AppLockProvider({ children }: PropsWithChildren) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Tracked via a ref so the AppState listener reads the live value
+  // synchronously instead of a stale closure. The biometric prompt flips
+  // the app to `inactive`/`background`; without this guard those
+  // self-inflicted transitions can arm the relock timer mid-auth.
+  const isAuthenticatingRef = useRef(false);
+
   const refreshCapability = useCallback(async () => {
     const nextCapability = await getBiometricCapability();
     setCapability(nextCapability);
@@ -100,16 +107,21 @@ export function AppLockProvider({ children }: PropsWithChildren) {
 
   const unlock = useCallback(
     async (reason = "Unlock Balanced") => {
+      isAuthenticatingRef.current = true;
       setIsAuthenticating(true);
       setErrorMessage(null);
 
       const nextCapability = await refreshCapability();
       const result = await authenticateForAppLock(reason);
 
+      isAuthenticatingRef.current = false;
       setIsAuthenticating(false);
 
       if (result.ok) {
         setIsUnlocked(true);
+        // Clear the relock timer so the `active` event fired when the
+        // biometric prompt dismisses doesn't immediately re-lock the app.
+        setLastBackgroundedAt(null);
         await notify(Haptics.NotificationFeedbackType.Success);
         return result;
       }
@@ -125,6 +137,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     await setAppLockEnabled(enabled);
     setIsEnabled(enabled);
     setIsUnlocked(true);
+    setLastBackgroundedAt(null);
     setErrorMessage(null);
   }, []);
 
@@ -156,11 +169,15 @@ export function AppLockProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     function handleAppStateChange(nextState: AppStateStatus) {
-      if (isAuthenticating) {
+      // Ignore transitions caused by the biometric prompt itself.
+      if (isAuthenticatingRef.current) {
         return;
       }
 
-      if (nextState === "background" || nextState === "inactive") {
+      // Only a genuine background arms the relock timer. `inactive` is
+      // transient on iOS (Control Center, notification shade, incoming
+      // calls, the auth prompt) and must not start the lock countdown.
+      if (nextState === "background") {
         setLastBackgroundedAt(Date.now());
         return;
       }
@@ -181,7 +198,9 @@ export function AppLockProvider({ children }: PropsWithChildren) {
           setIsUnlocked(false);
         }
 
-        return previousBackgroundedAt;
+        // Reset after evaluating so returning to the foreground is a
+        // one-shot check and can't relock again on the next `active` event.
+        return null;
       });
     }
 
@@ -192,7 +211,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticating, isEnabled]);
+  }, [isEnabled]);
 
   const value = useMemo<AppLockContextValue>(
     () => ({

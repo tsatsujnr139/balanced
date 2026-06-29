@@ -41,7 +41,7 @@ export default function TransactionCategoryScreen() {
               category.name.toLocaleLowerCase()
           ) === index
       )
-      .toSorted((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     if (!query) {
       return allCategories;
