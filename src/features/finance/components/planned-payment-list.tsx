@@ -21,10 +21,10 @@ interface Props {
   plannedPayments: PlannedPayment[];
 }
 
-function dueLabelColor(payment: PlannedPayment): "muted" | undefined {
+function dueLabelColor(payment: PlannedPayment): "primary" | undefined {
   return payment.dueStatus === "overdue" || payment.dueStatus === "today"
     ? undefined
-    : "muted";
+    : "primary";
 }
 
 function OverdueBadge({ count }: { count: number }) {
