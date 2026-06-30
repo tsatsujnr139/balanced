@@ -6,12 +6,12 @@ import { api } from "../../../convex/_generated/api";
 import { DEFAULT_CURRENCY } from "./format";
 import type { FinanceSnapshot } from "./types";
 
-export type CurrencyBalance = {
+export interface CurrencyBalance {
   currency: string;
   netWorth: number;
   totalAssets: number;
   totalLiabilities: number;
-};
+}
 
 export type FinanceData = FinanceSnapshot & {
   /** Per-currency net worth, assets, and liabilities. */
@@ -95,7 +95,10 @@ export function useFinance(): FinanceData {
   }, [convexSnapshot]);
 
   return useMemo(() => {
-    const currencyMap = new Map<string, { assets: number; liabilities: number }>();
+    const currencyMap = new Map<
+      string,
+      { assets: number; liabilities: number }
+    >();
 
     for (const account of snapshot.accounts) {
       const { currency, balance } = account;
@@ -110,7 +113,7 @@ export function useFinance(): FinanceData {
       }
     }
 
-    const entries = Array.from(currencyMap.entries())
+    const entries = [...currencyMap.entries()]
       .map(([currency, { assets, liabilities }]) => ({
         currency,
         netWorth: assets - liabilities,
@@ -118,15 +121,26 @@ export function useFinance(): FinanceData {
         totalLiabilities: liabilities,
       }))
       .sort((a, b) => {
-        if (a.currency === DEFAULT_CURRENCY) return -1;
-        if (b.currency === DEFAULT_CURRENCY) return 1;
+        if (a.currency === DEFAULT_CURRENCY) {
+          return -1;
+        }
+        if (b.currency === DEFAULT_CURRENCY) {
+          return 1;
+        }
         return a.currency.localeCompare(b.currency);
       });
 
     const balanceByCurrency: CurrencyBalance[] =
       entries.length > 0
         ? entries
-        : [{ currency: DEFAULT_CURRENCY, netWorth: 0, totalAssets: 0, totalLiabilities: 0 }];
+        : [
+            {
+              currency: DEFAULT_CURRENCY,
+              netWorth: 0,
+              totalAssets: 0,
+              totalLiabilities: 0,
+            },
+          ];
 
     return {
       ...snapshot,

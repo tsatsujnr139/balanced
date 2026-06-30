@@ -148,16 +148,6 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
         >
           {transaction.category}
         </ThemedText>
-        {transaction.createdByName ? (
-          <ThemedText
-            type="small"
-            color="muted"
-            numberOfLines={1}
-            className="text-[15px] leading-[21px]"
-          >
-            Created by {transaction.createdByName}
-          </ThemedText>
-        ) : null}
         {transaction.tags.length > 0 ? (
           <View className="mt-1 flex-row flex-wrap gap-1.5">
             {transaction.tags.map((tag) => (
@@ -176,6 +166,16 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
             signed: true,
           })}
         </ThemedText>
+        {transaction.createdByName ? (
+          <ThemedText
+            type="small"
+            color="muted"
+            numberOfLines={1}
+            className="max-w-[128px] text-right text-xs leading-4"
+          >
+            Added by {transaction.createdByName}
+          </ThemedText>
+        ) : null}
         {transaction.transactionChargeAmount && !isChargeRow(transaction) ? (
           <View className="flex-row items-center gap-1">
             <SymbolView name="creditcard.fill" size={11} tintColor="#8E8E93" />

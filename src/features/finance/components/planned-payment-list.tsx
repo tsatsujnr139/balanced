@@ -121,7 +121,9 @@ function PlannedPaymentRow({ payment }: { payment: PlannedPayment }) {
           style={dueColor ? { color: dueColor } : undefined}
           className="text-[13px] font-semibold leading-[18px]"
         >
-          {payment.nextDueDate ? formatShortDate(payment.nextDueDate) : "Completed"}
+          {payment.nextDueDate
+            ? formatShortDate(payment.nextDueDate)
+            : "Completed"}
         </ThemedText>
       </View>
     </Pressable>

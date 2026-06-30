@@ -161,6 +161,37 @@ async function loadPairTransactions(
   );
 }
 
+async function loadChargeTransactionsByParent(
+  ctx: QueryCtx,
+  transactions: Doc<"transactions">[]
+): Promise<Map<Id<"transactions">, Doc<"transactions">>> {
+  const parentIds = transactions.map((transaction) => transaction._id);
+  const chargeGroups = await Promise.all(
+    parentIds.map((parentId) =>
+      ctx.db
+        .query("transactions")
+        .withIndex("by_parentTransactionId", (q) =>
+          q.eq("parentTransactionId", parentId)
+        )
+        .collect()
+    )
+  );
+
+  return new Map(
+    chargeGroups
+      .map((charges, index) => {
+        const charge = charges.find(
+          (transaction) => resolveTransactionKind(transaction) === "charge"
+        );
+        return charge ? ([parentIds[index], charge] as const) : null;
+      })
+      .filter(
+        (item): item is readonly [Id<"transactions">, Doc<"transactions">] =>
+          item !== null
+      )
+  );
+}
+
 async function enrichTransactions(
   ctx: QueryCtx,
   transactions: Doc<"transactions">[],
@@ -197,15 +228,22 @@ async function enrichTransactions(
       .map((tag) => [tag._id, tag])
   );
   const pairById = await loadPairTransactions(ctx, transactions);
+  const chargeByParentId = await loadChargeTransactionsByParent(
+    ctx,
+    transactions
+  );
 
   return transactions.map((transaction, index) => {
     const kind = resolveTransactionKind(transaction);
     const pair = transaction.pairTransactionId
       ? pairById.get(transaction.pairTransactionId)
       : undefined;
+    const childCharge = chargeByParentId.get(transaction._id);
     let transactionChargeAmount: number | null = null;
     if (pair && resolveTransactionKind(pair) === "charge") {
       transactionChargeAmount = Math.abs(pair.amount);
+    } else if (childCharge) {
+      transactionChargeAmount = Math.abs(childCharge.amount);
     }
 
     let toAccountId: Id<"accounts"> | undefined;
@@ -369,6 +407,23 @@ async function replaceChargeTransactionTags(
 ) {
   const tagId = await getOrCreateTransactionChargesTagId(ctx);
   await replaceTransactionTags(ctx, transactionId, [tagId]);
+}
+
+async function getChargeForParentTransaction(
+  ctx: Pick<QueryCtx, "db">,
+  parentTransactionId: Id<"transactions">
+) {
+  const charges = await ctx.db
+    .query("transactions")
+    .withIndex("by_parentTransactionId", (q) =>
+      q.eq("parentTransactionId", parentTransactionId)
+    )
+    .collect();
+  return (
+    charges.find(
+      (transaction) => resolveTransactionKind(transaction) === "charge"
+    ) ?? null
+  );
 }
 
 /**
@@ -1166,6 +1221,7 @@ export const createTransaction = mutation({
       }
 
       const merchant = args.merchant.trim() || `Transfer to ${toAccount.name}`;
+      const transactionCharge = args.transactionCharge ?? 0;
       const transferOutId = await ctx.db.insert("transactions", {
         accountId: args.accountId,
         amount: -args.amount,
@@ -1208,14 +1264,32 @@ export const createTransaction = mutation({
         });
       }
 
+      let transactionChargeId = null;
+      if (transactionCharge > 0) {
+        transactionChargeId = await ctx.db.insert("transactions", {
+          accountId: args.accountId,
+          amount: -transactionCharge,
+          category: "Transaction charges",
+          color: TRANSACTION_CHARGES_TAG_COLOR,
+          createdByName,
+          currency: fromAccount.currency,
+          date: args.date,
+          merchant: `${merchant} TC`,
+          parentTransactionId: transferOutId,
+          symbol: "creditcard.fill",
+          transactionKind: "charge",
+        });
+        await replaceChargeTransactionTags(ctx, transactionChargeId);
+      }
+
       await ctx.db.patch(args.accountId, {
-        balance: fromAccount.balance - args.amount,
+        balance: fromAccount.balance - args.amount - transactionCharge,
       });
       await ctx.db.patch(args.toAccountId, {
         balance: toAccount.balance + args.amount,
       });
 
-      return { mainTransactionId: transferOutId, transactionChargeId: null };
+      return { mainTransactionId: transferOutId, transactionChargeId };
     }
 
     const account = await ctx.db.get("accounts", args.accountId);
@@ -1338,6 +1412,9 @@ export const updateTransaction = mutation({
         : null;
       const oldToAccountId = existing.toAccountId ?? oldInLeg?.accountId;
       const oldAmount = Math.abs(existing.amount);
+      const oldCharge = await getChargeForParentTransaction(ctx, existing._id);
+      const oldChargeAmount = oldCharge ? Math.abs(oldCharge.amount) : 0;
+      const nextCharge = args.transactionCharge ?? 0;
       const createdByName =
         existing.createdByName ?? normalizeFirstName(args.createdByName ?? "");
 
@@ -1346,7 +1423,7 @@ export const updateTransaction = mutation({
         const oldToAccount = await ctx.db.get("accounts", oldToAccountId);
         if (oldFromAccount) {
           await ctx.db.patch(oldFromAccountId, {
-            balance: oldFromAccount.balance + oldAmount,
+            balance: oldFromAccount.balance + oldAmount + oldChargeAmount,
           });
         }
         if (oldToAccount) {
@@ -1404,7 +1481,7 @@ export const updateTransaction = mutation({
       const updatedToAccount = await ctx.db.get("accounts", args.toAccountId);
       if (updatedFromAccount) {
         await ctx.db.patch(args.accountId, {
-          balance: updatedFromAccount.balance - args.amount,
+          balance: updatedFromAccount.balance - args.amount - nextCharge,
         });
       }
       if (updatedToAccount) {
@@ -1419,6 +1496,37 @@ export const updateTransaction = mutation({
         accountTransferTagId,
       ]);
       await replaceTransactionTags(ctx, transferInId, [accountTransferTagId]);
+
+      if (oldCharge) {
+        if (nextCharge > 0) {
+          await ctx.db.patch(oldCharge._id, {
+            accountId: args.accountId,
+            amount: -nextCharge,
+            currency: fromAccount.currency,
+            date: args.date,
+            merchant: `${merchant} TC`,
+            parentTransactionId: existing._id,
+          });
+          await replaceChargeTransactionTags(ctx, oldCharge._id);
+        } else {
+          await deleteTransactionDocument(ctx, oldCharge);
+        }
+      } else if (nextCharge > 0) {
+        const chargeId = await ctx.db.insert("transactions", {
+          accountId: args.accountId,
+          amount: -nextCharge,
+          category: "Transaction charges",
+          color: TRANSACTION_CHARGES_TAG_COLOR,
+          createdByName,
+          currency: fromAccount.currency,
+          date: args.date,
+          merchant: `${merchant} TC`,
+          parentTransactionId: existing._id,
+          symbol: "creditcard.fill",
+          transactionKind: "charge",
+        });
+        await replaceChargeTransactionTags(ctx, chargeId);
+      }
 
       return existing._id;
     }
@@ -1571,10 +1679,12 @@ export const deleteTransaction = mutation({
       const toAccount = toAccountId
         ? await ctx.db.get("accounts", toAccountId)
         : null;
+      const charge = await getChargeForParentTransaction(ctx, existing._id);
+      const chargeAmount = charge ? Math.abs(charge.amount) : 0;
 
       if (fromAccount) {
         await ctx.db.patch(fromAccount._id, {
-          balance: fromAccount.balance + amount,
+          balance: fromAccount.balance + amount + chargeAmount,
         });
       }
       if (toAccount) {
@@ -1583,6 +1693,7 @@ export const deleteTransaction = mutation({
         });
       }
 
+      await deleteTransactionDocument(ctx, charge);
       await deleteTransactionDocument(ctx, inLeg);
       await deleteTransactionDocument(ctx, existing);
       return existing._id;
@@ -1762,7 +1873,8 @@ export const createTransactionTemplate = mutation({
       tagIds: [...new Set(args.tagIds)],
       toAccountId: args.type === "transfer" ? args.toAccountId : undefined,
       transactionCharge:
-        args.type === "expense" && args.transactionCharge
+        (args.type === "expense" || args.type === "transfer") &&
+        args.transactionCharge
           ? args.transactionCharge
           : undefined,
       type: args.type,
@@ -1792,7 +1904,8 @@ export const updateTransactionTemplate = mutation({
       tagIds: [...new Set(args.tagIds)],
       toAccountId: args.type === "transfer" ? args.toAccountId : undefined,
       transactionCharge:
-        args.type === "expense" && args.transactionCharge
+        (args.type === "expense" || args.type === "transfer") &&
+        args.transactionCharge
           ? args.transactionCharge
           : undefined,
       type: args.type,

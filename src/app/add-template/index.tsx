@@ -203,7 +203,7 @@ export default function AddTemplateScreen() {
             value={amount}
           />
         </View>
-        {type === "expense" ? (
+        {type === "expense" || type === "transfer" ? (
           <View
             style={{
               alignItems: "center",

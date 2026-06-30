@@ -286,12 +286,21 @@ function CurrencyBalanceCard({
 
   return (
     <View className="gap-1" style={{ width: 220 }}>
-      <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit className="text-[34px] leading-[40px]">
+      <ThemedText
+        type="title"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        className="text-[34px] leading-[40px]"
+      >
         {isBalanceVisible ? netWorthValue : maskCurrencyValue(netWorthValue)}
       </ThemedText>
       <View className="mt-0.5 flex-row gap-4">
         <View className="flex-row items-center gap-1">
-          <SymbolView name="arrow.up.right" size={12} tintColor={colors.positive} />
+          <SymbolView
+            name="arrow.up.right"
+            size={12}
+            tintColor={colors.positive}
+          />
           <ThemedText type="small" color="muted">
             {item.currency}{" "}
             {isBalanceVisible
@@ -300,7 +309,11 @@ function CurrencyBalanceCard({
           </ThemedText>
         </View>
         <View className="flex-row items-center gap-1">
-          <SymbolView name="arrow.down.right" size={12} tintColor={colors.negative} />
+          <SymbolView
+            name="arrow.down.right"
+            size={12}
+            tintColor={colors.negative}
+          />
           <ThemedText type="small" color="muted">
             {isBalanceVisible
               ? totalLiabilitiesValue
@@ -326,13 +339,8 @@ export default function DashboardScreen() {
   );
   const pageWidth = contentWidth - ACCOUNT_PAGE_PEEK;
   const cardWidth = (pageWidth - COLUMN_GAP) / GRID_COLUMNS;
-  const {
-    accounts,
-    transactions,
-    budgets,
-    balanceByCurrency,
-    isLoading,
-  } = useFinance();
+  const { accounts, transactions, budgets, balanceByCurrency, isLoading } =
+    useFinance();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   const accountPages = buildAccountPages(accounts);
 

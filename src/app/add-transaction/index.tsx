@@ -544,7 +544,7 @@ export default function AddTransactionScreen() {
             value={amount}
           />
         </View>
-        {transactionTypeIndex === 0 ? (
+        {transactionTypeIndex === 0 || isTransfer ? (
           <View
             style={{
               alignItems: "center",

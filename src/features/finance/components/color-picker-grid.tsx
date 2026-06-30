@@ -32,10 +32,7 @@ export function ColorPickerGrid({ onSelect, selectedColor }: Props) {
   return (
     <View style={{ gap: 12 }}>
       {rows.map((row, rowIndex) => (
-        <View
-          key={rowIndex}
-          style={{ flexDirection: "row", gap: 8 }}
-        >
+        <View key={rowIndex} style={{ flexDirection: "row", gap: 8 }}>
           {row.map((color) => {
             const selected = color === selectedColor;
             const checkmarkColor = isLightSwatch(color)

@@ -24,6 +24,10 @@ import {
 import type { TransactionCategory } from "@/features/finance/transaction-categories";
 import type { TransactionTemplate } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
+import {
+  setLastTransactionAccountId,
+  useLastTransactionAccountId,
+} from "@/features/finance/use-last-transaction-account";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
 
@@ -80,6 +84,7 @@ export default function AddTransactionLayout() {
   );
   const { accounts } = useFinance();
   const { firstName } = useLocalProfile();
+  const lastTransactionAccountId = useLastTransactionAccountId();
   const hasHydratedRef = useRef(Boolean(initialEditState));
   const [accountId, setAccountId] = useState<string | null>(
     initialEditState?.accountId ?? null
@@ -193,6 +198,7 @@ export default function AddTransactionLayout() {
 
   const effectiveAccountId =
     accountId ??
+    accounts.find((account) => account.id === lastTransactionAccountId)?.id ??
     (accounts.find((account) => account.name === "Everyday") ?? accounts[0])
       ?.id ??
     null;
@@ -382,11 +388,13 @@ export default function AddTransactionLayout() {
             ? (toAccount!.id as Id<"accounts">)
             : undefined,
           transactionCharge:
-            transactionType === "expense" && chargeInMinorUnits > 0
+            (transactionType === "expense" || transactionType === "transfer") &&
+            chargeInMinorUnits > 0
               ? chargeInMinorUnits
               : undefined,
           type: transactionType,
         });
+        setLastTransactionAccountId(account!.id);
         closeAddTransaction();
         return;
       }
@@ -434,11 +442,13 @@ export default function AddTransactionLayout() {
         tagIds: tags.map((tag) => tag.id as Id<"tags">),
         toAccountId: isTransfer ? (toAccount!.id as Id<"accounts">) : undefined,
         transactionCharge:
-          transactionType === "expense" && chargeInMinorUnits > 0
+          (transactionType === "expense" || transactionType === "transfer") &&
+          chargeInMinorUnits > 0
             ? chargeInMinorUnits
             : undefined,
         type: transactionType,
       });
+      setLastTransactionAccountId(account!.id);
       closeAddTransaction();
     } catch {
       Alert.alert("Could not save transaction", "Please try again.");

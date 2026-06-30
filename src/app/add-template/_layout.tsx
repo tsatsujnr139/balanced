@@ -141,7 +141,7 @@ export default function AddTemplateLayout() {
         toAccountId:
           type === "transfer" ? (toAccount!.id as Id<"accounts">) : undefined,
         transactionCharge:
-          type === "expense" && chargeInMinorUnits > 0
+          (type === "expense" || type === "transfer") && chargeInMinorUnits > 0
             ? chargeInMinorUnits
             : undefined,
         type,

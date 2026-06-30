@@ -37,12 +37,12 @@ export const applyStartupUpdate = async (): Promise<boolean> => {
     }
 
     const fetchPromise = Updates.fetchUpdateAsync();
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Startup update timed out")),
-        STARTUP_UPDATE_TIMEOUT_MS
-      )
-    );
+    // eslint-disable-next-line promise/avoid-new -- React Native timers do not expose a promise API.
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+      setTimeout(() => {
+        reject(new Error("Startup update timed out"));
+      }, STARTUP_UPDATE_TIMEOUT_MS);
+    });
 
     await Promise.race([fetchPromise, timeoutPromise]);
 
