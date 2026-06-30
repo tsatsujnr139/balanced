@@ -64,7 +64,9 @@ function groupTransactionsByDay(
     .map(([key, items]) => ({
       key,
       title: formatTransactionSectionDate(items[0]!.date),
-      transactions: items,
+      transactions: [...items].sort((left, right) =>
+        right.date.localeCompare(left.date)
+      ),
     }));
 }
 
@@ -166,16 +168,6 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
             signed: true,
           })}
         </ThemedText>
-        {transaction.createdByName ? (
-          <ThemedText
-            type="small"
-            color="muted"
-            numberOfLines={1}
-            className="max-w-[128px] text-right text-xs leading-4"
-          >
-            Added by {transaction.createdByName}
-          </ThemedText>
-        ) : null}
         {transaction.transactionChargeAmount && !isChargeRow(transaction) ? (
           <View className="flex-row items-center gap-1">
             <SymbolView name="creditcard.fill" size={11} tintColor="#8E8E93" />
@@ -193,6 +185,16 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
               )}
             </ThemedText>
           </View>
+        ) : null}
+        {transaction.createdByName ? (
+          <ThemedText
+            type="small"
+            color="muted"
+            numberOfLines={1}
+            className="max-w-[128px] text-right text-xs leading-4"
+          >
+            Added by {transaction.createdByName}
+          </ThemedText>
         ) : null}
       </View>
     </Pressable>

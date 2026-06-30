@@ -437,7 +437,11 @@ export const getSnapshot = query({
     const [accounts, transactions, budgets, plannedPaymentsOverdueCount] =
       await Promise.all([
         ctx.db.query("accounts").collect(),
-        ctx.db.query("transactions").order("desc").take(25),
+        ctx.db
+          .query("transactions")
+          .withIndex("by_date")
+          .order("desc")
+          .take(25),
         loadBudgetsWithSpend(ctx),
         countOverduePlannedPayments(ctx),
       ]);
@@ -842,7 +846,7 @@ export const listTransactions = query({
   handler: async (ctx) => {
     const [accounts, transactions] = await Promise.all([
       ctx.db.query("accounts").collect(),
-      ctx.db.query("transactions").order("desc").take(500),
+      ctx.db.query("transactions").withIndex("by_date").order("desc").take(500),
     ]);
     const accountNameById = new Map(
       accounts.map((account) => [account._id, account.name])

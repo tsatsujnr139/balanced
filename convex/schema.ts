@@ -203,6 +203,7 @@ export default defineSchema({
     userId: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
+    .index("by_date", ["date"])
     .index("by_account", ["accountId"])
     .index("by_accountId_and_date", ["accountId", "date"])
     .index("by_user_and_date", ["userId", "date"])
