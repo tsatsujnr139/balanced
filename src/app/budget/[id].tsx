@@ -1,8 +1,16 @@
+import { useMutation } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { SymbolView } from "expo-symbols";
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -15,6 +23,9 @@ import {
 import type { Budget, Transaction } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
+
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 type TabKey = "overview" | "transactions";
 
@@ -218,6 +229,10 @@ export default function BudgetDetailScreen() {
   const colors = useThemeColors();
   const { budgets, transactions } = useFinance();
   const [tab, setTab] = useState<TabKey>("overview");
+  const [isPausing, setIsPausing] = useState(false);
+  const pauseBudget = useMutation(api.finance.pauseBudget);
+  const resumeBudget = useMutation(api.finance.resumeBudget);
+  const endBudget = useMutation(api.finance.endBudget);
   const budget = budgets.find((item) => item.id === id);
   const budgetTransactions = useMemo(() => {
     if (!budget) {
@@ -238,6 +253,79 @@ export default function BudgetDetailScreen() {
       ),
     [budgetTransactions]
   );
+
+  const confirmPause = useCallback(() => {
+    if (!budget || isPausing) {
+      return;
+    }
+
+    const budgetLabel = budget.name;
+    const isPaused = budget.status === "paused";
+    Alert.alert(
+      isPaused ? "Resume budget?" : "Pause budget?",
+      isPaused
+        ? `"${budgetLabel}" will be active again and included in your monthly budget calculations.`
+        : `"${budgetLabel}" will be excluded from your monthly budget calculations.`,
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsPausing(true);
+            try {
+              if (isPaused) {
+                await resumeBudget({ id: budget._id as Id<"budgets"> });
+              } else {
+                await pauseBudget({ id: budget._id as Id<"budgets"> });
+              }
+              router.back();
+            } catch (error) {
+              Alert.alert(
+                isPaused ? "Could not resume budget" : "Could not pause budget",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsPausing(false);
+            }
+          },
+          style: isPaused ? "default" : "destructive",
+          text: isPaused ? "Resume" : "Pause",
+        },
+      ]
+    );
+  }, [budget, isPausing, pauseBudget, resumeBudget]);
+
+  const confirmEnd = useCallback(() => {
+    if (!budget || isPausing) {
+      return;
+    }
+
+    const budgetLabel = budget.name;
+    Alert.alert(
+      "End budget?",
+      `"${budgetLabel}" will be permanently ended and excluded from your monthly budget calculations. You can delete it later if needed.`,
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsPausing(true);
+            try {
+              await endBudget({ id: budget._id as Id<"budgets"> });
+              router.back();
+            } catch (error) {
+              Alert.alert(
+                "Could not end budget",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsPausing(false);
+            }
+          },
+          style: "destructive",
+          text: "End",
+        },
+      ]
+    );
+  }, [budget, isPausing, endBudget]);
 
   if (!budget) {
     return (
@@ -300,6 +388,102 @@ export default function BudgetDetailScreen() {
         ) : (
           <TransactionList transactions={budgetTransactions} />
         )}
+
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Pause or resume budget"
+              disabled={isPausing}
+              onPress={confirmPause}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderCurve: "continuous",
+                borderRadius: 12,
+                borderWidth: 1,
+                flex: 1,
+                justifyContent: "center",
+                minHeight: 56,
+                opacity: pressed || isPausing ? 0.6 : 1,
+              })}
+            >
+              {isPausing ? (
+                <ActivityIndicator color={colors.foreground} />
+              ) : (
+                <View
+                  style={{
+                    alignItems: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  <SymbolView
+                    name="pause.circle"
+                    size={18}
+                    tintColor={colors.primary}
+                  />
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontSize: 17,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Pause
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="End budget"
+              disabled={isPausing}
+              onPress={confirmEnd}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.card,
+                borderColor: colors.negative,
+                borderCurve: "continuous",
+                borderRadius: 12,
+                borderWidth: 1,
+                flex: 1,
+                justifyContent: "center",
+                minHeight: 56,
+                opacity: pressed || isPausing ? 0.6 : 1,
+              })}
+            >
+              {isPausing ? (
+                <ActivityIndicator color={colors.foreground} />
+              ) : (
+                <View
+                  style={{
+                    alignItems: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  <SymbolView
+                    name="stop.circle"
+                    size={18}
+                    tintColor={colors.negative}
+                  />
+                  <Text
+                    style={{
+                      color: colors.negative,
+                      fontSize: 17,
+                      fontWeight: "600",
+                    }}
+                  >
+                    End
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
     </>
   );

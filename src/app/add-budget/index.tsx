@@ -254,9 +254,11 @@ export default function AddBudgetScreen() {
               onPress={confirmPause}
               style={({ pressed }) => ({
                 alignItems: "center",
-                backgroundColor: colors.secondary,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
                 borderCurve: "continuous",
                 borderRadius: 12,
+                borderWidth: 1,
                 flex: 1,
                 justifyContent: "center",
                 minHeight: 56,
@@ -276,7 +278,7 @@ export default function AddBudgetScreen() {
                   <SymbolView
                     name="pause.circle"
                     size={18}
-                    tintColor={colors.foreground}
+                    tintColor={colors.primary}
                   />
                   <Text
                     style={{
@@ -298,9 +300,11 @@ export default function AddBudgetScreen() {
               onPress={confirmEnd}
               style={({ pressed }) => ({
                 alignItems: "center",
-                backgroundColor: colors.destructive,
+                backgroundColor: colors.card,
+                borderColor: colors.negative,
                 borderCurve: "continuous",
                 borderRadius: 12,
+                borderWidth: 1,
                 flex: 1,
                 justifyContent: "center",
                 minHeight: 56,
@@ -320,11 +324,11 @@ export default function AddBudgetScreen() {
                   <SymbolView
                     name="stop.circle"
                     size={18}
-                    tintColor={colors.foreground}
+                    tintColor={colors.negative}
                   />
                   <Text
                     style={{
-                      color: colors.foreground,
+                      color: colors.negative,
                       fontSize: 17,
                       fontWeight: "600",
                     }}
