@@ -24,6 +24,7 @@ interface AddBudgetContextValue {
   notifyAtThreshold: boolean;
   isSubmitting: boolean;
   isDeleting: boolean;
+  isPausing: boolean;
   canDelete: boolean;
   setAmount: (amount: string) => void;
   setName: (name: string) => void;
@@ -33,6 +34,8 @@ interface AddBudgetContextValue {
   setNotifyAtThreshold: (value: boolean) => void;
   submit: () => void;
   confirmDelete: () => void;
+  confirmPause: () => void;
+  confirmEnd: () => void;
   toggleTag: (tag: BudgetTagSelection) => void;
 }
 

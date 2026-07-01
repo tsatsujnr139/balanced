@@ -96,7 +96,10 @@ export default function AddBudgetScreen() {
     canDelete,
     category,
     confirmDelete,
+    confirmEnd,
+    confirmPause,
     isDeleting,
+    isPausing,
     name,
     notifyAtThreshold,
     notifyOnOverspend,
@@ -242,40 +245,124 @@ export default function AddBudgetScreen() {
       </View>
 
       {canDelete ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Delete budget"
-          disabled={isDeleting}
-          onPress={confirmDelete}
-          style={({ pressed }) => ({
-            alignItems: "center",
-            backgroundColor: "transparent",
-            borderCurve: "continuous",
-            borderRadius: 18,
-            justifyContent: "center",
-            minHeight: 56,
-            opacity: pressed || isDeleting ? 0.6 : 1,
-          })}
-        >
-          {isDeleting ? (
-            <ActivityIndicator color={colors.negative} />
-          ) : (
-            <View
-              style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
-            >
-              <SymbolView name="trash" size={18} tintColor={colors.negative} />
-              <Text
-                style={{
-                  color: colors.negative,
-                  fontSize: 17,
-                  fontWeight: "600",
-                }}
+        <View style={{ gap: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Pause or resume budget"
+            disabled={isPausing}
+            onPress={confirmPause}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: "transparent",
+              borderCurve: "continuous",
+              borderRadius: 18,
+              justifyContent: "center",
+              minHeight: 56,
+              opacity: pressed || isPausing ? 0.6 : 1,
+            })}
+          >
+            {isPausing ? (
+              <ActivityIndicator color={colors.muted} />
+            ) : (
+              <View
+                style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
               >
-                Delete
-              </Text>
-            </View>
-          )}
-        </Pressable>
+                <SymbolView
+                  name="pause.circle"
+                  size={18}
+                  tintColor={colors.muted}
+                />
+                <Text
+                  style={{
+                    color: colors.muted,
+                    fontSize: 17,
+                    fontWeight: "600",
+                  }}
+                >
+                  Pause budget
+                </Text>
+              </View>
+            )}
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="End budget"
+            disabled={isPausing}
+            onPress={confirmEnd}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: "transparent",
+              borderCurve: "continuous",
+              borderRadius: 18,
+              justifyContent: "center",
+              minHeight: 56,
+              opacity: pressed || isPausing ? 0.6 : 1,
+            })}
+          >
+            {isPausing ? (
+              <ActivityIndicator color={colors.negative} />
+            ) : (
+              <View
+                style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
+              >
+                <SymbolView
+                  name="stop.circle"
+                  size={18}
+                  tintColor={colors.negative}
+                />
+                <Text
+                  style={{
+                    color: colors.negative,
+                    fontSize: 17,
+                    fontWeight: "600",
+                  }}
+                >
+                  End budget
+                </Text>
+              </View>
+            )}
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Delete budget"
+            disabled={isDeleting}
+            onPress={confirmDelete}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: "transparent",
+              borderCurve: "continuous",
+              borderRadius: 18,
+              justifyContent: "center",
+              minHeight: 56,
+              opacity: pressed || isDeleting ? 0.6 : 1,
+            })}
+          >
+            {isDeleting ? (
+              <ActivityIndicator color={colors.negative} />
+            ) : (
+              <View
+                style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
+              >
+                <SymbolView
+                  name="trash"
+                  size={18}
+                  tintColor={colors.negative}
+                />
+                <Text
+                  style={{
+                    color: colors.negative,
+                    fontSize: 17,
+                    fontWeight: "600",
+                  }}
+                >
+                  Delete
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       ) : null}
     </ScrollView>
   );

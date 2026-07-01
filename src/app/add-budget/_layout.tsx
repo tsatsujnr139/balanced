@@ -45,6 +45,9 @@ export default function AddBudgetLayout() {
   const createBudget = useMutation(api.finance.createBudget);
   const updateBudget = useMutation(api.finance.updateBudget);
   const deleteBudget = useMutation(api.finance.deleteBudget);
+  const pauseBudget = useMutation(api.finance.pauseBudget);
+  const resumeBudget = useMutation(api.finance.resumeBudget);
+  const endBudget = useMutation(api.finance.endBudget);
   const { accounts, budgets } = useFinance();
   const editingBudget = budgets.find((budget) => budget.id === editingId);
   const initialCategory = editingBudget?.category
@@ -75,6 +78,7 @@ export default function AddBudgetLayout() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
 
   const submit = useCallback(async () => {
     if (isSubmitting) {
@@ -153,7 +157,7 @@ export default function AddBudgetLayout() {
     const deleteLabel = editingBudget?.name ?? "This budget";
     Alert.alert(
       "Delete budget?",
-      `“${deleteLabel}” will be permanently deleted. Transactions stay intact and will still be counted in your accounts.`,
+      `"${deleteLabel}" will be permanently deleted. Transactions stay intact and will still be counted in your accounts.`,
       [
         { style: "cancel", text: "Cancel" },
         {
@@ -178,13 +182,96 @@ export default function AddBudgetLayout() {
     );
   }, [deleteBudget, editingBudget?.name, editingId, isDeleting]);
 
+  const confirmPause = useCallback(() => {
+    if (!editingId || isPausing) {
+      return;
+    }
+
+    const budgetLabel = editingBudget?.name ?? "This budget";
+    const isPaused = editingBudget?.status === "paused";
+    Alert.alert(
+      isPaused ? "Resume budget?" : "Pause budget?",
+      isPaused
+        ? `"${budgetLabel}" will be active again and included in your monthly budget calculations.`
+        : `"${budgetLabel}" will be excluded from your monthly budget calculations.`,
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsPausing(true);
+            try {
+              if (isPaused) {
+                await resumeBudget({ id: editingId as Id<"budgets"> });
+              } else {
+                await pauseBudget({ id: editingId as Id<"budgets"> });
+              }
+              closeAddBudget();
+            } catch (error) {
+              Alert.alert(
+                isPaused ? "Could not resume budget" : "Could not pause budget",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsPausing(false);
+            }
+          },
+          style: isPaused ? "default" : "destructive",
+          text: isPaused ? "Resume" : "Pause",
+        },
+      ]
+    );
+  }, [
+    editingBudget?.name,
+    editingBudget?.status,
+    editingId,
+    isPausing,
+    pauseBudget,
+    resumeBudget,
+  ]);
+
+  const confirmEnd = useCallback(() => {
+    if (!editingId || isPausing) {
+      return;
+    }
+
+    const budgetLabel = editingBudget?.name ?? "This budget";
+    Alert.alert(
+      "End budget?",
+      `"${budgetLabel}" will be permanently ended and excluded from your monthly budget calculations. You can delete it later if needed.`,
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsPausing(true);
+            try {
+              await endBudget({ id: editingId as Id<"budgets"> });
+              closeAddBudget();
+            } catch (error) {
+              Alert.alert(
+                "Could not end budget",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsPausing(false);
+            }
+          },
+          style: "destructive",
+          text: "End",
+        },
+      ]
+    );
+  }, [editingBudget?.name, editingId, isPausing, endBudget]);
+
   const budgetContext = useMemo(
     () => ({
       amount,
       canDelete: Boolean(editingId),
       category,
       confirmDelete,
+      confirmEnd,
+      confirmPause,
       isDeleting,
+      isPausing,
       isSubmitting,
       name,
       notifyAtThreshold,
@@ -206,8 +293,11 @@ export default function AddBudgetLayout() {
       amount,
       category,
       confirmDelete,
+      confirmEnd,
+      confirmPause,
       editingId,
       isDeleting,
+      isPausing,
       isSubmitting,
       name,
       notifyAtThreshold,
