@@ -5,6 +5,8 @@ import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform } from "react-native";
 
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { AddBudgetContext } from "@/features/finance/add-budget-context";
 import type {
   BudgetCategorySelection,
@@ -15,9 +17,6 @@ import { DEFAULT_CURRENCY } from "@/features/finance/format";
 import type { BudgetPeriod } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 function amountInputToMinorUnits(value: string): number {
   const parsed = Number.parseFloat(value.replaceAll(/[^0-9.]/g, ""));

@@ -14,6 +14,8 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import {
   budgetUsage,
@@ -23,9 +25,6 @@ import {
 import type { Budget, Transaction } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 
 type TabKey = "overview" | "transactions";
 
