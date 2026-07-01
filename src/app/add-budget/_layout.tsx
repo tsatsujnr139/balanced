@@ -44,6 +44,7 @@ export default function AddBudgetLayout() {
   const disableHeaderBlur = shouldDisableHeaderBlur();
   const createBudget = useMutation(api.finance.createBudget);
   const updateBudget = useMutation(api.finance.updateBudget);
+  const deleteBudget = useMutation(api.finance.deleteBudget);
   const { accounts, budgets } = useFinance();
   const editingBudget = budgets.find((budget) => budget.id === editingId);
   const initialCategory = editingBudget?.category
@@ -73,6 +74,7 @@ export default function AddBudgetLayout() {
     editingBudget?.notifyAtThreshold ?? false
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const submit = useCallback(async () => {
     if (isSubmitting) {
@@ -143,10 +145,46 @@ export default function AddBudgetLayout() {
     );
   }, []);
 
+  const confirmDelete = useCallback(() => {
+    if (!editingId || isDeleting) {
+      return;
+    }
+
+    const deleteLabel = editingBudget?.name ?? "This budget";
+    Alert.alert(
+      "Delete budget?",
+      `“${deleteLabel}” will be permanently deleted. Transactions stay intact and will still be counted in your accounts.`,
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteBudget({ id: editingId as Id<"budgets"> });
+              closeAddBudget();
+            } catch (error) {
+              Alert.alert(
+                "Could not delete budget",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+          style: "destructive",
+          text: "Delete",
+        },
+      ]
+    );
+  }, [deleteBudget, editingBudget?.name, editingId, isDeleting]);
+
   const budgetContext = useMemo(
     () => ({
       amount,
+      canDelete: Boolean(editingId),
       category,
+      confirmDelete,
+      isDeleting,
       isSubmitting,
       name,
       notifyAtThreshold,
@@ -167,6 +205,9 @@ export default function AddBudgetLayout() {
     [
       amount,
       category,
+      confirmDelete,
+      editingId,
+      isDeleting,
       isSubmitting,
       name,
       notifyAtThreshold,

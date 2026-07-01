@@ -1,5 +1,14 @@
 import { router } from "expo-router";
-import { ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { SymbolView } from "expo-symbols";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useAddBudget } from "@/features/finance/add-budget-context";
 import { BUDGET_PERIOD_LABEL } from "@/features/finance/budget-constants";
@@ -84,7 +93,10 @@ export default function AddBudgetScreen() {
   const { accounts } = useFinance();
   const {
     amount,
+    canDelete,
     category,
+    confirmDelete,
+    isDeleting,
     name,
     notifyAtThreshold,
     notifyOnOverspend,
@@ -228,6 +240,43 @@ export default function AddBudgetScreen() {
           />
         </FieldGroup>
       </View>
+
+      {canDelete ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete budget"
+          disabled={isDeleting}
+          onPress={confirmDelete}
+          style={({ pressed }) => ({
+            alignItems: "center",
+            backgroundColor: "transparent",
+            borderCurve: "continuous",
+            borderRadius: 18,
+            justifyContent: "center",
+            minHeight: 56,
+            opacity: pressed || isDeleting ? 0.6 : 1,
+          })}
+        >
+          {isDeleting ? (
+            <ActivityIndicator color={colors.negative} />
+          ) : (
+            <View
+              style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
+            >
+              <SymbolView name="trash" size={18} tintColor={colors.negative} />
+              <Text
+                style={{
+                  color: colors.negative,
+                  fontSize: 17,
+                  fontWeight: "600",
+                }}
+              >
+                Delete
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      ) : null}
     </ScrollView>
   );
 }

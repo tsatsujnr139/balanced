@@ -55,8 +55,12 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
     return [];
   }
 
+  const activeBudgets = budgets.filter(
+    (budget) => budget.status !== "paused" && budget.status !== "ended"
+  );
+
   const uniqueTagIds = new Set<Id<"tags">>();
-  for (const budget of budgets) {
+  for (const budget of activeBudgets) {
     const tagIds = budget.tagIds ?? (budget.tagId ? [budget.tagId] : []);
     for (const tagId of tagIds) {
       uniqueTagIds.add(tagId);
@@ -73,12 +77,12 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
 
   const now = Date.now();
   const trackedCategories = new Set(
-    budgets
+    activeBudgets
       .map((budget) => budget.category)
       .filter((name): name is string => Boolean(name))
   );
   const earliestStart = Math.min(
-    ...budgets.map((budget) =>
+    ...activeBudgets.map((budget) =>
       budgetPeriodStart(budget.period ?? "monthly", now)
     )
   );
@@ -93,7 +97,7 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
             trackedCategories.has(transaction.category)
         );
 
-  return budgets.map((budget) => {
+  return activeBudgets.map((budget) => {
     const period = budget.period ?? "monthly";
     const tagIds = budget.tagIds ?? (budget.tagId ? [budget.tagId] : []);
     let spent = budget.spent ?? 0;
@@ -764,7 +768,11 @@ async function loadBudgetPerformance(
   }
   return budgets
     .filter(
-      (budget) => budget.currency === currency && Boolean(budget.category)
+      (budget) =>
+        budget.currency === currency &&
+        Boolean(budget.category) &&
+        budget.status !== "paused" &&
+        budget.status !== "ended"
     )
     .sort((a, b) => a.order - b.order)
     .map((budget) => ({
@@ -1278,6 +1286,7 @@ export const createBudget = mutation({
       notifyOnOverspend: args.notifyOnOverspend,
       order: nextOrder,
       period: args.period,
+      status: "active",
       symbol: args.symbol,
       tagId: tagIds[0],
       tagIds: [...new Set(tagIds)],
@@ -1335,6 +1344,66 @@ export const updateBudget = mutation({
       tagIds: [...new Set(tagIds)],
     });
 
+    return args.id;
+  },
+});
+
+export const deleteBudget = mutation({
+  args: {
+    id: v.id("budgets"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error("Budget not found");
+    }
+
+    await ctx.db.delete(args.id);
+    return args.id;
+  },
+});
+
+export const pauseBudget = mutation({
+  args: {
+    id: v.id("budgets"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error("Budget not found");
+    }
+
+    await ctx.db.patch(args.id, { status: "paused" });
+    return args.id;
+  },
+});
+
+export const resumeBudget = mutation({
+  args: {
+    id: v.id("budgets"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error("Budget not found");
+    }
+
+    await ctx.db.patch(args.id, { status: "active" });
+    return args.id;
+  },
+});
+
+export const endBudget = mutation({
+  args: {
+    id: v.id("budgets"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error("Budget not found");
+    }
+
+    await ctx.db.patch(args.id, { status: "ended" });
     return args.id;
   },
 });

@@ -23,6 +23,8 @@ interface AddBudgetContextValue {
   notifyOnOverspend: boolean;
   notifyAtThreshold: boolean;
   isSubmitting: boolean;
+  isDeleting: boolean;
+  canDelete: boolean;
   setAmount: (amount: string) => void;
   setName: (name: string) => void;
   setCategory: (category: BudgetCategorySelection) => void;
@@ -30,6 +32,7 @@ interface AddBudgetContextValue {
   setNotifyOnOverspend: (value: boolean) => void;
   setNotifyAtThreshold: (value: boolean) => void;
   submit: () => void;
+  confirmDelete: () => void;
   toggleTag: (tag: BudgetTagSelection) => void;
 }
 

@@ -26,6 +26,12 @@ export const budgetPeriod = v.union(
   v.literal("one_time")
 );
 
+export const budgetStatus = v.union(
+  v.literal("active"),
+  v.literal("paused"),
+  v.literal("ended")
+);
+
 export const plannedPaymentFrequency = v.union(
   v.literal("once"),
   v.literal("weekly"),
@@ -80,6 +86,8 @@ export default defineSchema({
      * spend is computed live from matching transactions instead.
      */
     spent: v.optional(v.number()),
+    /** Budget status. Defaults to active when absent. Paused/ended budgets are excluded from monthly calculations. */
+    status: v.optional(budgetStatus),
     symbol: v.string(),
     /** Optional tag association (no effect on spend calculation). */
     tagId: v.optional(v.id("tags")),

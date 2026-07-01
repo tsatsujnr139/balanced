@@ -32,27 +32,23 @@ export default function TagsScreen() {
   }, [search, tags]);
 
   const confirmDelete = (item: ManagedLabelItem) => {
-    Alert.alert(
-      "Delete tag?",
-      `"${item.name}" will be permanently deleted.`,
-      [
-        { style: "cancel", text: "Cancel" },
-        {
-          onPress: async () => {
-            try {
-              await deleteTag({ id: item.id as Id<"tags"> });
-            } catch (error) {
-              Alert.alert(
-                "Could not delete tag",
-                error instanceof Error ? error.message : "Please try again."
-              );
-            }
-          },
-          style: "destructive",
-          text: "Delete",
+    Alert.alert("Delete tag?", `"${item.name}" will be permanently deleted.`, [
+      { style: "cancel", text: "Cancel" },
+      {
+        onPress: async () => {
+          try {
+            await deleteTag({ id: item.id as Id<"tags"> });
+          } catch (error) {
+            Alert.alert(
+              "Could not delete tag",
+              error instanceof Error ? error.message : "Please try again."
+            );
+          }
         },
-      ]
-    );
+        style: "destructive",
+        text: "Delete",
+      },
+    ]);
   };
 
   return (
