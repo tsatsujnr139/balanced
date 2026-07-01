@@ -18,9 +18,33 @@ import {
   FieldSectionLabel,
 } from "@/features/finance/components/form-fields";
 import { CategoryLeading } from "@/features/finance/components/label-form-leads";
-import { DEFAULT_CURRENCY, getCurrencySymbol } from "@/features/finance/format";
-import { useFinance } from "@/features/finance/use-finance";
+import { getCurrencySymbol } from "@/features/finance/format";
 import { useThemeColors } from "@/hooks/use-theme";
+
+function CurrencySymbolLeading({ currency }: { currency: string }) {
+  const symbol = getCurrencySymbol(currency);
+
+  return (
+    <View
+      style={{
+        alignItems: "center",
+        height: 34,
+        justifyContent: "center",
+        width: 34,
+      }}
+    >
+      <Text
+        style={{
+          color: "#8E8E93",
+          fontSize: symbol.length > 2 ? 11 : 18,
+          fontWeight: "600",
+        }}
+      >
+        {symbol}
+      </Text>
+    </View>
+  );
+}
 
 function tagsLabel(tags: { name: string }[]): string {
   if (tags.length === 0) {
@@ -90,7 +114,6 @@ function SwitchRow({
 
 export default function AddBudgetScreen() {
   const colors = useThemeColors();
-  const { accounts } = useFinance();
   const {
     amount,
     canDelete,
@@ -98,6 +121,7 @@ export default function AddBudgetScreen() {
     confirmDelete,
     confirmEnd,
     confirmPause,
+    currency,
     isDeleting,
     isPausing,
     name,
@@ -110,9 +134,7 @@ export default function AddBudgetScreen() {
     setNotifyOnOverspend,
     tags,
   } = useAddBudget();
-  const currencySymbol = getCurrencySymbol(
-    accounts[0]?.currency ?? DEFAULT_CURRENCY
-  );
+  const currencySymbol = getCurrencySymbol(currency);
 
   return (
     <ScrollView
@@ -214,6 +236,12 @@ export default function AddBudgetScreen() {
           iconColor="#0A84FF"
           onPress={() => router.push("/add-budget/period")}
           value={BUDGET_PERIOD_LABEL[period]}
+        />
+        <FieldRow
+          label="Currency"
+          leading={<CurrencySymbolLeading currency={currency} />}
+          onPress={() => router.push("/add-budget/currency")}
+          value={getCurrencySymbol(currency)}
         />
         <FieldRow
           icon="tag"

@@ -131,6 +131,7 @@ export const mockSnapshot: FinanceSnapshot = {
       tags: [],
     },
   ],
+  monthlyTotals: [{ currency: "GHS", totalIn: 450_000, totalOut: 108_432 }],
   plannedPaymentsOverdueCount: 0,
   transactions: [
     {

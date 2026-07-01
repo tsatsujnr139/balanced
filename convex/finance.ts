@@ -107,6 +107,7 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
         .filter(
           (transaction) =>
             transaction.category === budget.category &&
+            transaction.currency === budget.currency &&
             transaction.date >= periodStart
         )
         .reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
@@ -466,6 +467,13 @@ async function getChargeForParentTransaction(
 export const getSnapshot = query({
   args: {},
   handler: async (ctx) => {
+    const now = Date.now();
+    const monthStart = new Date(
+      new Date(now).getFullYear(),
+      new Date(now).getMonth(),
+      1
+    ).getTime();
+
     const [accounts, transactions, budgets, plannedPaymentsOverdueCount] =
       await Promise.all([
         ctx.db.query("accounts").collect(),
@@ -477,6 +485,20 @@ export const getSnapshot = query({
         loadBudgetsWithSpend(ctx),
         countOverduePlannedPayments(ctx),
       ]);
+
+    const currencies = [...new Set(accounts.map((a) => a.currency))];
+    const monthlyTotals = await Promise.all(
+      currencies.map(async (currency) => {
+        const txs = await loadCurrencyWindow(ctx, currency, monthStart, now);
+        const sumAbs = (rows: Doc<"transactions">[]) =>
+          rows.reduce((total, row) => total + Math.abs(row.amount), 0);
+        return {
+          currency,
+          totalIn: sumAbs(txs.filter(isIncomeTransaction)),
+          totalOut: sumAbs(txs.filter(isSpendTransaction)),
+        };
+      })
+    );
 
     const accountNameById = new Map(
       accounts.map((account) => [account._id, account.name])
@@ -497,6 +519,7 @@ export const getSnapshot = query({
           type: a.type,
         })),
       budgets,
+      monthlyTotals,
       plannedPaymentsOverdueCount,
       transactions: await enrichTransactions(
         ctx,

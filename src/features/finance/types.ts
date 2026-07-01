@@ -187,10 +187,18 @@ export interface PlannedPaymentDetail {
   occurrences: PlannedPaymentOccurrence[];
 }
 
+export interface MonthlyTotal {
+  currency: string;
+  totalIn: number;
+  totalOut: number;
+}
+
 export interface FinanceSnapshot {
   accounts: Account[];
   transactions: Transaction[];
   budgets: Budget[];
+  /** Per-currency income and spending totals for the current month. */
+  monthlyTotals: MonthlyTotal[];
   /** Total pending overdue planned-payment occurrences across all payments. */
   plannedPaymentsOverdueCount: number;
 }

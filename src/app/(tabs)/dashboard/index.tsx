@@ -278,11 +278,8 @@ function CurrencyBalanceCard({
 }) {
   const colors = useThemeColors();
   const netWorthValue = formatCurrency(item.netWorth, item.currency);
-  const totalAssetsValue = formatCurrency(item.totalAssets, item.currency);
-  const totalLiabilitiesValue = formatCurrency(
-    item.totalLiabilities,
-    item.currency
-  );
+  const totalInValue = formatCurrency(item.totalIn, item.currency);
+  const totalOutValue = formatCurrency(item.totalOut, item.currency);
 
   return (
     <View className="gap-1" style={{ width: 220 }}>
@@ -303,9 +300,7 @@ function CurrencyBalanceCard({
           />
           <ThemedText type="small" color="muted">
             {item.currency}{" "}
-            {isBalanceVisible
-              ? totalAssetsValue
-              : maskCurrencyValue(totalAssetsValue)}
+            {isBalanceVisible ? totalInValue : maskCurrencyValue(totalInValue)}
           </ThemedText>
         </View>
         <View className="flex-row items-center gap-1">
@@ -316,8 +311,8 @@ function CurrencyBalanceCard({
           />
           <ThemedText type="small" color="muted">
             {isBalanceVisible
-              ? totalLiabilitiesValue
-              : maskCurrencyValue(totalLiabilitiesValue)}
+              ? totalOutValue
+              : maskCurrencyValue(totalOutValue)}
           </ThemedText>
         </View>
       </View>

@@ -17,6 +17,7 @@ export interface BudgetTagSelection {
 interface AddBudgetContextValue {
   amount: string;
   name: string;
+  currency: string;
   category: BudgetCategorySelection | null;
   period: BudgetPeriod;
   tags: BudgetTagSelection[];
@@ -28,6 +29,7 @@ interface AddBudgetContextValue {
   canDelete: boolean;
   setAmount: (amount: string) => void;
   setName: (name: string) => void;
+  setCurrency: (currency: string) => void;
   setCategory: (category: BudgetCategorySelection) => void;
   setPeriod: (period: BudgetPeriod) => void;
   setNotifyOnOverspend: (value: boolean) => void;

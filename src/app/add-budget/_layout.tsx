@@ -47,7 +47,7 @@ export default function AddBudgetLayout() {
   const pauseBudget = useMutation(api.finance.pauseBudget);
   const resumeBudget = useMutation(api.finance.resumeBudget);
   const endBudget = useMutation(api.finance.endBudget);
-  const { accounts, budgets } = useFinance();
+  const { budgets } = useFinance();
   const editingBudget = budgets.find((budget) => budget.id === editingId);
   const initialCategory = editingBudget?.category
     ? {
@@ -60,6 +60,9 @@ export default function AddBudgetLayout() {
     editingBudget ? formatAmountInput(editingBudget.limit) : ""
   );
   const [name, setName] = useState(editingBudget?.name ?? "");
+  const [currency, setCurrency] = useState(
+    editingBudget?.currency ?? DEFAULT_CURRENCY
+  );
   const [category, setCategory] = useState<BudgetCategorySelection | null>(
     initialCategory
   );
@@ -95,7 +98,6 @@ export default function AddBudgetLayout() {
     }
 
     const trimmedName = name.trim() || category.name;
-    const currency = accounts[0]?.currency ?? DEFAULT_CURRENCY;
     const tagIds = tags.map((tag) => tag.id as Id<"tags">);
 
     setIsSubmitting(true);
@@ -126,10 +128,10 @@ export default function AddBudgetLayout() {
       setIsSubmitting(false);
     }
   }, [
-    accounts,
     amount,
     category,
     createBudget,
+    currency,
     editingId,
     isSubmitting,
     name,
@@ -269,6 +271,7 @@ export default function AddBudgetLayout() {
       confirmDelete,
       confirmEnd,
       confirmPause,
+      currency,
       isDeleting,
       isPausing,
       isSubmitting,
@@ -278,6 +281,7 @@ export default function AddBudgetLayout() {
       period,
       setAmount,
       setCategory,
+      setCurrency,
       setName,
       setNotifyAtThreshold,
       setNotifyOnOverspend,
@@ -294,6 +298,7 @@ export default function AddBudgetLayout() {
       confirmDelete,
       confirmEnd,
       confirmPause,
+      currency,
       editingId,
       isDeleting,
       isPausing,
@@ -378,6 +383,23 @@ export default function AddBudgetLayout() {
         <Stack.Screen
           name="period"
           options={{ headerBackVisible: false, title: "Period" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="currency"
+          options={{
+            headerBackVisible: false,
+            headerLargeTitle: false,
+            title: "Currency",
+          }}
         >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button

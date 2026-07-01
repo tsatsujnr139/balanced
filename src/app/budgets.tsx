@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, View, useWindowDimensions } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 
 import { ThemedText } from "@/components/themed-text";
@@ -22,6 +22,37 @@ import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const SEARCH_FOCUS_DELAY_MS = 200;
+const HORIZONTAL_PADDING = 20;
+const SUMMARY_GAP = 20;
+const SUMMARY_PEEK = 32;
+
+interface CurrencyBudgetTotals {
+  currency: string;
+  budgeted: number;
+  spent: number;
+}
+
+function groupTotalsByCurrency(budgets: Budget[]): CurrencyBudgetTotals[] {
+  const byCurrency = new Map<string, { budgeted: number; spent: number }>();
+  for (const budget of budgets) {
+    const entry = byCurrency.get(budget.currency) ?? { budgeted: 0, spent: 0 };
+    entry.budgeted += budget.limit;
+    entry.spent += budget.spent;
+    byCurrency.set(budget.currency, entry);
+  }
+
+  return [...byCurrency.entries()]
+    .map(([currency, totals]) => ({ currency, ...totals }))
+    .sort((a, b) => {
+      if (a.currency === DEFAULT_CURRENCY) {
+        return -1;
+      }
+      if (b.currency === DEFAULT_CURRENCY) {
+        return 1;
+      }
+      return a.currency.localeCompare(b.currency);
+    });
+}
 
 function groupBudgetsByPeriod(budgets: Budget[]): [BudgetPeriod, Budget[]][] {
   const byPeriod = new Map<BudgetPeriod, Budget[]>();
@@ -44,22 +75,21 @@ export default function BudgetsScreen() {
   const { focusSearch } = useLocalSearchParams<{ focusSearch?: string }>();
   const searchBarRef = useRef<SearchBarCommands | null>(null);
   const [query, setQuery] = useState("");
+  const { width } = useWindowDimensions();
   const { budgets } = useFinance();
   const filteredBudgets = filterBudgets(budgets, query);
   const groups = useMemo(
     () => groupBudgetsByPeriod(filteredBudgets),
     [filteredBudgets]
   );
-  const totals = useMemo(() => {
-    let budgeted = 0;
-    let spent = 0;
-    for (const budget of filteredBudgets) {
-      budgeted += budget.limit;
-      spent += budget.spent;
-    }
-    return { budgeted, spent };
-  }, [filteredBudgets]);
-  const currency = filteredBudgets[0]?.currency ?? DEFAULT_CURRENCY;
+  const currencyTotals = useMemo(
+    () => groupTotalsByCurrency(filteredBudgets),
+    [filteredBudgets]
+  );
+  const summaryCardWidth =
+    currencyTotals.length > 1
+      ? width - HORIZONTAL_PADDING * 2 - SUMMARY_PEEK
+      : width - HORIZONTAL_PADDING * 2;
   const shouldFocusSearch = focusSearch === "1";
 
   useFocusEffect(
@@ -95,11 +125,36 @@ export default function BudgetsScreen() {
           <BudgetList budgets={filteredBudgets} />
         ) : (
           <>
-            <BudgetSummary
-              currency={currency}
-              totalBudgeted={totals.budgeted}
-              totalSpent={totals.spent}
-            />
+            {currencyTotals.length === 1 ? (
+              <BudgetSummary
+                currency={currencyTotals[0].currency}
+                totalBudgeted={currencyTotals[0].budgeted}
+                totalSpent={currencyTotals[0].spent}
+              />
+            ) : (
+              <ScrollView
+                horizontal
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                snapToAlignment="start"
+                snapToInterval={summaryCardWidth + SUMMARY_GAP}
+                style={{ marginHorizontal: -HORIZONTAL_PADDING }}
+                contentContainerStyle={{
+                  gap: SUMMARY_GAP,
+                  paddingHorizontal: HORIZONTAL_PADDING,
+                }}
+              >
+                {currencyTotals.map((item) => (
+                  <View key={item.currency} style={{ width: summaryCardWidth }}>
+                    <BudgetSummary
+                      currency={item.currency}
+                      totalBudgeted={item.budgeted}
+                      totalSpent={item.spent}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            )}
             {groups.map(([period, periodBudgets]) => (
               <ThemedView
                 key={period}

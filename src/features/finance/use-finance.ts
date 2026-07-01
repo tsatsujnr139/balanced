@@ -12,6 +12,10 @@ export interface CurrencyBalance {
   netWorth: number;
   totalAssets: number;
   totalLiabilities: number;
+  /** Income received this month. */
+  totalIn: number;
+  /** Spending this month. */
+  totalOut: number;
 }
 
 export type FinanceData = FinanceSnapshot & {
@@ -22,10 +26,11 @@ export type FinanceData = FinanceSnapshot & {
 };
 
 const FINANCE_CACHE_KEY = "finance.snapshot.v1";
-const FINANCE_CACHE_VERSION = 5;
+const FINANCE_CACHE_VERSION = 6;
 const EMPTY_SNAPSHOT: FinanceSnapshot = {
   accounts: [],
   budgets: [],
+  monthlyTotals: [],
   plannedPaymentsOverdueCount: 0,
   transactions: [],
 };
@@ -45,7 +50,8 @@ function isFinanceSnapshot(value: unknown): value is FinanceSnapshot {
   return (
     Array.isArray(snapshot.accounts) &&
     Array.isArray(snapshot.transactions) &&
-    Array.isArray(snapshot.budgets)
+    Array.isArray(snapshot.budgets) &&
+    Array.isArray(snapshot.monthlyTotals)
   );
 }
 
@@ -114,12 +120,21 @@ export function useFinance(): FinanceData {
       }
     }
 
+    const monthlyByCurrency = new Map(
+      snapshot.monthlyTotals.map((t) => [
+        t.currency,
+        { totalIn: t.totalIn, totalOut: t.totalOut },
+      ])
+    );
+
     const entries = [...currencyMap.entries()]
       .map(([currency, { assets, liabilities }]) => ({
         currency,
         netWorth: assets - liabilities,
         totalAssets: assets,
         totalLiabilities: liabilities,
+        totalIn: monthlyByCurrency.get(currency)?.totalIn ?? 0,
+        totalOut: monthlyByCurrency.get(currency)?.totalOut ?? 0,
       }))
       .sort((a, b) => {
         if (a.currency === DEFAULT_CURRENCY) {
@@ -140,6 +155,8 @@ export function useFinance(): FinanceData {
               netWorth: 0,
               totalAssets: 0,
               totalLiabilities: 0,
+              totalIn: 0,
+              totalOut: 0,
             },
           ];
 
