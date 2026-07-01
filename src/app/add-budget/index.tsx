@@ -246,83 +246,95 @@ export default function AddBudgetScreen() {
 
       {canDelete ? (
         <View style={{ gap: 12 }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Pause or resume budget"
-            disabled={isPausing}
-            onPress={confirmPause}
-            style={({ pressed }) => ({
-              alignItems: "center",
-              backgroundColor: "transparent",
-              borderCurve: "continuous",
-              borderRadius: 18,
-              justifyContent: "center",
-              minHeight: 56,
-              opacity: pressed || isPausing ? 0.6 : 1,
-            })}
-          >
-            {isPausing ? (
-              <ActivityIndicator color={colors.muted} />
-            ) : (
-              <View
-                style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
-              >
-                <SymbolView
-                  name="pause.circle"
-                  size={18}
-                  tintColor={colors.muted}
-                />
-                <Text
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Pause or resume budget"
+              disabled={isPausing}
+              onPress={confirmPause}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.secondary,
+                borderCurve: "continuous",
+                borderRadius: 12,
+                flex: 1,
+                justifyContent: "center",
+                minHeight: 56,
+                opacity: pressed || isPausing ? 0.6 : 1,
+              })}
+            >
+              {isPausing ? (
+                <ActivityIndicator color={colors.foreground} />
+              ) : (
+                <View
                   style={{
-                    color: colors.muted,
-                    fontSize: 17,
-                    fontWeight: "600",
+                    alignItems: "center",
+                    flexDirection: "row",
+                    gap: 8,
                   }}
                 >
-                  Pause budget
-                </Text>
-              </View>
-            )}
-          </Pressable>
+                  <SymbolView
+                    name="pause.circle"
+                    size={18}
+                    tintColor={colors.foreground}
+                  />
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontSize: 17,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Pause
+                  </Text>
+                </View>
+              )}
+            </Pressable>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="End budget"
-            disabled={isPausing}
-            onPress={confirmEnd}
-            style={({ pressed }) => ({
-              alignItems: "center",
-              backgroundColor: "transparent",
-              borderCurve: "continuous",
-              borderRadius: 18,
-              justifyContent: "center",
-              minHeight: 56,
-              opacity: pressed || isPausing ? 0.6 : 1,
-            })}
-          >
-            {isPausing ? (
-              <ActivityIndicator color={colors.negative} />
-            ) : (
-              <View
-                style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
-              >
-                <SymbolView
-                  name="stop.circle"
-                  size={18}
-                  tintColor={colors.negative}
-                />
-                <Text
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="End budget"
+              disabled={isPausing}
+              onPress={confirmEnd}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.destructive,
+                borderCurve: "continuous",
+                borderRadius: 12,
+                flex: 1,
+                justifyContent: "center",
+                minHeight: 56,
+                opacity: pressed || isPausing ? 0.6 : 1,
+              })}
+            >
+              {isPausing ? (
+                <ActivityIndicator color={colors.foreground} />
+              ) : (
+                <View
                   style={{
-                    color: colors.negative,
-                    fontSize: 17,
-                    fontWeight: "600",
+                    alignItems: "center",
+                    flexDirection: "row",
+                    gap: 8,
                   }}
                 >
-                  End budget
-                </Text>
-              </View>
-            )}
-          </Pressable>
+                  <SymbolView
+                    name="stop.circle"
+                    size={18}
+                    tintColor={colors.foreground}
+                  />
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontSize: 17,
+                      fontWeight: "600",
+                    }}
+                  >
+                    End
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
 
           <Pressable
             accessibilityRole="button"
