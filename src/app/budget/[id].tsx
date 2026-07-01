@@ -1,3 +1,4 @@
+import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useMutation } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
@@ -10,6 +11,7 @@ import {
   ScrollView,
   Text,
   View,
+  useColorScheme,
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
@@ -26,7 +28,7 @@ import type { Budget, Transaction } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
-type TabKey = "overview" | "transactions";
+const TAB_VALUES = ["Overview", "Transactions"];
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -62,44 +64,6 @@ function dailyRecommended(remaining: number): number {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const remainingDays = Math.max(lastDay - now.getDate() + 1, 1);
   return Math.max(Math.round(remaining / remainingDays), 0);
-}
-
-function TabButton({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  const colors = useThemeColors();
-
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        alignItems: "center",
-        borderBottomColor: active ? colors.primary : colors.border,
-        borderBottomWidth: active ? 3 : 1,
-        flex: 1,
-        paddingBottom: 12,
-        paddingTop: 10,
-      }}
-    >
-      <Text
-        style={{
-          color: active ? colors.primary : colors.foreground,
-          fontSize: 17,
-          fontWeight: "700",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
 }
 
 function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
@@ -226,8 +190,9 @@ export default function BudgetDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = firstParam(params.id);
   const colors = useThemeColors();
+  const colorScheme = useColorScheme();
   const { budgets, transactions } = useFinance();
-  const [tab, setTab] = useState<TabKey>("overview");
+  const [tabIndex, setTabIndex] = useState(0);
   const [isPausing, setIsPausing] = useState(false);
   const pauseBudget = useMutation(api.finance.pauseBudget);
   const resumeBudget = useMutation(api.finance.resumeBudget);
@@ -370,19 +335,17 @@ export default function BudgetDetailScreen() {
         }}
         style={{ backgroundColor: colors.background, flex: 1 }}
       >
-        <View className="flex-row">
-          <TabButton
-            active={tab === "overview"}
-            label="Overview"
-            onPress={() => setTab("overview")}
-          />
-          <TabButton
-            active={tab === "transactions"}
-            label="Transactions"
-            onPress={() => setTab("transactions")}
-          />
-        </View>
-        {tab === "overview" ? (
+        <SegmentedControl
+          appearance={colorScheme === "dark" ? "dark" : "light"}
+          onChange={(event) => {
+            setTabIndex(event.nativeEvent.selectedSegmentIndex);
+          }}
+          selectedIndex={tabIndex}
+          style={{ width: "100%" }}
+          values={TAB_VALUES}
+        />
+
+        {tabIndex === 0 ? (
           <MonthOverview budget={budget} spent={currentMonthSpent} />
         ) : (
           <TransactionList transactions={budgetTransactions} />
