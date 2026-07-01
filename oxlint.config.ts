@@ -4,7 +4,7 @@ const react = require("ultracite/oxlint/react").default;
 
 module.exports = defineConfig({
   extends: [core, react],
-  ignorePatterns: core.ignorePatterns,
+  ignorePatterns: [...core.ignorePatterns, "src/uniwind-types.d.ts"],
   rules: {
     complexity: "allow",
     "func-style": "allow",

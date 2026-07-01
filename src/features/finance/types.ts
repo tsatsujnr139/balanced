@@ -84,8 +84,11 @@ export interface TransactionTemplate {
 
 export type BudgetPeriod = "weekly" | "monthly" | "yearly" | "one_time";
 
+export type BudgetStatus = "active" | "paused" | "ended";
+
 export interface Budget {
   id: string;
+  _id?: string;
   name: string;
   /** Spent so far in minor units (cents). */
   spent: number;
@@ -107,6 +110,8 @@ export interface Budget {
   notifyOnOverspend: boolean;
   /** In-app notification when spending crosses 75% of the limit. */
   notifyAtThreshold: boolean;
+  /** Budget status: active, paused, or ended. */
+  status?: BudgetStatus;
 }
 
 export type PlannedPaymentFrequency = "once" | "weekly" | "monthly" | "yearly";

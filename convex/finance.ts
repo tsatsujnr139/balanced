@@ -113,6 +113,7 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
     }
 
     return {
+      _id: budget._id,
       category: budget.category ?? null,
       color: budget.color,
       currency: budget.currency,
@@ -123,6 +124,7 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
       notifyOnOverspend: budget.notifyOnOverspend ?? false,
       period,
       spent,
+      status: budget.status ?? "active",
       symbol: budget.symbol,
       tagId: budget.tagId ?? null,
       tagIds,

@@ -255,7 +255,7 @@ export default function BudgetDetailScreen() {
   );
 
   const confirmPause = useCallback(() => {
-    if (!budget || isPausing) {
+    if (!budget || isPausing || !budget._id) {
       return;
     }
 
@@ -295,7 +295,7 @@ export default function BudgetDetailScreen() {
   }, [budget, isPausing, pauseBudget, resumeBudget]);
 
   const confirmEnd = useCallback(() => {
-    if (!budget || isPausing) {
+    if (!budget || isPausing || !budget._id) {
       return;
     }
 
