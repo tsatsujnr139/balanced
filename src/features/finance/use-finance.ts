@@ -21,7 +21,7 @@ export type FinanceData = FinanceSnapshot & {
 };
 
 const FINANCE_CACHE_KEY = "finance.snapshot.v1";
-const FINANCE_CACHE_VERSION = 4;
+const FINANCE_CACHE_VERSION = 5;
 const EMPTY_SNAPSHOT: FinanceSnapshot = {
   accounts: [],
   budgets: [],

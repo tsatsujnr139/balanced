@@ -122,6 +122,22 @@ export default function PlanningScreen() {
       symbol: "rectangle.stack.fill",
       title: "Templates",
     },
+    {
+      color: "#5856D6",
+      href: "/tags" as never,
+      id: "tags",
+      subtitle: "Labels across your finances",
+      symbol: "tag.fill",
+      title: "Tags",
+    },
+    {
+      color: "#AF52DE",
+      href: "/categories" as never,
+      id: "categories",
+      subtitle: "Spending and income groups",
+      symbol: "square.grid.2x2.fill",
+      title: "Categories",
+    },
   ];
 
   return (

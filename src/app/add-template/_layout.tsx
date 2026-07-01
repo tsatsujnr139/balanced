@@ -296,10 +296,37 @@ export default function AddTemplateLayout() {
               separateBackground
             />
           </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add category"
+              icon="plus"
+              onPress={() => router.push("/add-category" as never)}
+            />
+          </Stack.Toolbar>
         </Stack.Screen>
         <Stack.Screen
           name="tags"
           options={{ headerBackVisible: false, title: "Tags" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add tag"
+              icon="plus"
+              onPress={() => router.push("/add-template/tag-new" as never)}
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="tag-new"
+          options={{ headerBackVisible: false, title: "Add tag" }}
         >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button

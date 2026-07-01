@@ -98,8 +98,11 @@ export interface Budget {
   period: BudgetPeriod;
   /** Category whose transactions count against this budget. */
   category: string | null;
-  /** Optional tag association. */
+  /** Legacy optional tag association. */
   tagId: string | null;
+  /** Optional tag associations. */
+  tagIds: string[];
+  tags: TransactionTag[];
   /** In-app notification when spending exceeds the limit. */
   notifyOnOverspend: boolean;
   /** In-app notification when spending crosses 75% of the limit. */

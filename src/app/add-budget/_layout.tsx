@@ -63,7 +63,9 @@ export default function AddBudgetLayout() {
   const [period, setPeriod] = useState<BudgetPeriod>(
     editingBudget?.period ?? DEFAULT_BUDGET_PERIOD
   );
-  const [tag, setTag] = useState<BudgetTagSelection | null>(null);
+  const [tags, setTags] = useState<BudgetTagSelection[]>(
+    editingBudget?.tags ?? []
+  );
   const [notifyOnOverspend, setNotifyOnOverspend] = useState(
     editingBudget?.notifyOnOverspend ?? false
   );
@@ -89,6 +91,7 @@ export default function AddBudgetLayout() {
 
     const trimmedName = name.trim() || category.name;
     const currency = accounts[0]?.currency ?? DEFAULT_CURRENCY;
+    const tagIds = tags.map((tag) => tag.id as Id<"tags">);
 
     setIsSubmitting(true);
     try {
@@ -102,7 +105,7 @@ export default function AddBudgetLayout() {
         notifyOnOverspend,
         period,
         symbol: category.symbol,
-        tagId: tag ? (tag.id as Id<"tags">) : undefined,
+        tagIds,
       };
       if (editingId) {
         await updateBudget({ id: editingId as Id<"budgets">, ...payload });
@@ -128,9 +131,17 @@ export default function AddBudgetLayout() {
     notifyAtThreshold,
     notifyOnOverspend,
     period,
-    tag,
+    tags,
     updateBudget,
   ]);
+
+  const toggleTag = useCallback((tag: BudgetTagSelection) => {
+    setTags((current) =>
+      current.some((item) => item.id === tag.id)
+        ? current.filter((item) => item.id !== tag.id)
+        : [...current, tag]
+    );
+  }, []);
 
   const budgetContext = useMemo(
     () => ({
@@ -147,11 +158,11 @@ export default function AddBudgetLayout() {
       setNotifyAtThreshold,
       setNotifyOnOverspend,
       setPeriod,
-      setTag,
       submit: () => {
         void submit();
       },
-      tag,
+      tags,
+      toggleTag,
     }),
     [
       amount,
@@ -162,7 +173,8 @@ export default function AddBudgetLayout() {
       notifyOnOverspend,
       period,
       submit,
-      tag,
+      tags,
+      toggleTag,
     ]
   );
 
@@ -225,6 +237,13 @@ export default function AddBudgetLayout() {
               separateBackground
             />
           </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add category"
+              icon="plus"
+              onPress={() => router.push("/add-category" as never)}
+            />
+          </Stack.Toolbar>
         </Stack.Screen>
         <Stack.Screen
           name="period"
@@ -241,7 +260,27 @@ export default function AddBudgetLayout() {
         </Stack.Screen>
         <Stack.Screen
           name="tags"
-          options={{ headerBackVisible: false, title: "Tag" }}
+          options={{ headerBackVisible: false, title: "Tags" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add tag"
+              icon="plus"
+              onPress={() => router.push("/add-budget/tag-new" as never)}
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="tag-new"
+          options={{ headerBackVisible: false, title: "Add tag" }}
         >
           <Stack.Toolbar placement="left">
             <Stack.Toolbar.Button

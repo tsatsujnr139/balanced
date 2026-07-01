@@ -7,6 +7,10 @@ export function filterBudgets(budgets: Budget[], query: string): Budget[] {
   }
 
   return budgets.filter((budget) =>
-    budget.name.toLowerCase().includes(normalized)
+    [
+      budget.name,
+      budget.category ?? "",
+      ...budget.tags.map((tag) => tag.name),
+    ].some((value) => value.toLowerCase().includes(normalized))
   );
 }

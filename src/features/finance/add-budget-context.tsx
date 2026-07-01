@@ -19,7 +19,7 @@ interface AddBudgetContextValue {
   name: string;
   category: BudgetCategorySelection | null;
   period: BudgetPeriod;
-  tag: BudgetTagSelection | null;
+  tags: BudgetTagSelection[];
   notifyOnOverspend: boolean;
   notifyAtThreshold: boolean;
   isSubmitting: boolean;
@@ -27,10 +27,10 @@ interface AddBudgetContextValue {
   setName: (name: string) => void;
   setCategory: (category: BudgetCategorySelection) => void;
   setPeriod: (period: BudgetPeriod) => void;
-  setTag: (tag: BudgetTagSelection | null) => void;
   setNotifyOnOverspend: (value: boolean) => void;
   setNotifyAtThreshold: (value: boolean) => void;
   submit: () => void;
+  toggleTag: (tag: BudgetTagSelection) => void;
 }
 
 export const AddBudgetContext = createContext<AddBudgetContextValue | null>(

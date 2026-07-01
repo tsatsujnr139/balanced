@@ -55,6 +55,22 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
     return [];
   }
 
+  const uniqueTagIds = new Set<Id<"tags">>();
+  for (const budget of budgets) {
+    const tagIds = budget.tagIds ?? (budget.tagId ? [budget.tagId] : []);
+    for (const tagId of tagIds) {
+      uniqueTagIds.add(tagId);
+    }
+  }
+  const tagDocs = await Promise.all(
+    [...uniqueTagIds].map((tagId) => ctx.db.get("tags", tagId))
+  );
+  const tagById = new Map(
+    tagDocs
+      .filter((tag): tag is Doc<"tags"> => tag !== null)
+      .map((tag) => [tag._id, tag])
+  );
+
   const now = Date.now();
   const trackedCategories = new Set(
     budgets
@@ -79,6 +95,7 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
 
   return budgets.map((budget) => {
     const period = budget.period ?? "monthly";
+    const tagIds = budget.tagIds ?? (budget.tagId ? [budget.tagId] : []);
     let spent = budget.spent ?? 0;
     if (budget.category) {
       const periodStart = budgetPeriodStart(period, now);
@@ -104,6 +121,15 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
       spent,
       symbol: budget.symbol,
       tagId: budget.tagId ?? null,
+      tagIds,
+      tags: tagIds
+        .map((tagId) => tagById.get(tagId))
+        .filter((tag): tag is Doc<"tags"> => tag !== undefined)
+        .map((tag) => ({
+          color: tag.color ?? DEFAULT_TAG_COLOR,
+          id: tag._id,
+          name: tag.name,
+        })),
     };
   });
 }
@@ -969,13 +995,31 @@ export const deleteAccount = mutation({
 export const listCategories = query({
   args: {},
   handler: async (ctx) => {
+    const archived = await ctx.db.query("archivedCategories").collect();
+    const archivedNames = new Set(
+      archived.map((category) => category.normalizedName)
+    );
     const categories = await ctx.db.query("categories").take(500);
-    return categories.map((category) => ({
-      color: category.color,
-      id: category._id,
-      name: category.name,
-      symbol: category.symbol,
-    }));
+    return categories
+      .filter(
+        (category) =>
+          category.archived !== true &&
+          !archivedNames.has(category.normalizedName)
+      )
+      .map((category) => ({
+        color: category.color,
+        id: category._id,
+        name: category.name,
+        symbol: category.symbol,
+      }));
+  },
+});
+
+export const listArchivedCategoryNames = query({
+  args: {},
+  handler: async (ctx) => {
+    const categories = await ctx.db.query("archivedCategories").take(500);
+    return categories.map((category) => category.name);
   },
 });
 
@@ -991,6 +1035,15 @@ export const createCategory = mutation({
     if (!name || name.length > 80) {
       throw new Error("Category name must contain between 1 and 80 characters");
     }
+    const archived = await ctx.db
+      .query("archivedCategories")
+      .withIndex("by_normalizedName", (q) =>
+        q.eq("normalizedName", normalizedName)
+      )
+      .unique();
+    if (archived) {
+      await ctx.db.delete(archived._id);
+    }
 
     const existing = await ctx.db
       .query("categories")
@@ -999,6 +1052,19 @@ export const createCategory = mutation({
       )
       .unique();
     if (existing) {
+      if (existing.archived === true) {
+        await ctx.db.patch(existing._id, {
+          archived: false,
+          color: args.color,
+          symbol: args.symbol,
+        });
+        return {
+          color: args.color,
+          id: existing._id,
+          name: existing.name,
+          symbol: args.symbol,
+        };
+      }
       return {
         color: existing.color,
         id: existing._id,
@@ -1017,15 +1083,62 @@ export const createCategory = mutation({
   },
 });
 
+export const deleteCategory = mutation({
+  args: { id: v.id("categories") },
+  handler: async (ctx, args) => {
+    const category = await ctx.db.get(args.id);
+    if (!category) {
+      throw new Error("Category not found");
+    }
+    await ctx.db.patch(args.id, { archived: true });
+    return args.id;
+  },
+});
+
+export const deleteCategoryByName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const name = args.name.trim();
+    const normalizedName = normalizeLookupName(name);
+    if (!name) {
+      throw new Error("Category name is required");
+    }
+
+    const existingArchive = await ctx.db
+      .query("archivedCategories")
+      .withIndex("by_normalizedName", (q) =>
+        q.eq("normalizedName", normalizedName)
+      )
+      .unique();
+    if (!existingArchive) {
+      await ctx.db.insert("archivedCategories", { name, normalizedName });
+    }
+
+    const matchingCategories = await ctx.db
+      .query("categories")
+      .withIndex("by_normalizedName", (q) =>
+        q.eq("normalizedName", normalizedName)
+      )
+      .collect();
+    for (const category of matchingCategories) {
+      await ctx.db.patch(category._id, { archived: true });
+    }
+
+    return name;
+  },
+});
+
 export const listTags = query({
   args: {},
   handler: async (ctx) => {
     const tags = await ctx.db.query("tags").take(500);
-    return tags.map((tag) => ({
-      color: tag.color ?? "#8E8E93",
-      id: tag._id,
-      name: tag.name,
-    }));
+    return tags
+      .filter((tag) => tag.archived !== true)
+      .map((tag) => ({
+        color: tag.color ?? "#8E8E93",
+        id: tag._id,
+        name: tag.name,
+      }));
   },
 });
 
@@ -1045,6 +1158,17 @@ export const createTag = mutation({
       )
       .unique();
     if (existing) {
+      if (existing.archived === true) {
+        await ctx.db.patch(existing._id, {
+          archived: false,
+          color: args.color,
+        });
+        return {
+          color: args.color,
+          id: existing._id,
+          name: existing.name,
+        };
+      }
       return {
         color: existing.color ?? args.color,
         id: existing._id,
@@ -1061,6 +1185,53 @@ export const createTag = mutation({
   },
 });
 
+export const deleteTag = mutation({
+  args: { id: v.id("tags") },
+  handler: async (ctx, args) => {
+    const tag = await ctx.db.get(args.id);
+    if (!tag) {
+      throw new Error("Tag not found");
+    }
+
+    const budgets = await ctx.db.query("budgets").collect();
+    for (const budget of budgets) {
+      const currentTagIds =
+        budget.tagIds ?? (budget.tagId ? [budget.tagId] : []);
+      if (!currentTagIds.includes(args.id)) {
+        continue;
+      }
+      const tagIds = currentTagIds.filter((tagId) => tagId !== args.id);
+      await ctx.db.patch(budget._id, {
+        tagId: tagIds[0],
+        tagIds,
+      });
+    }
+
+    const templates = await ctx.db.query("transactionTemplates").collect();
+    for (const template of templates) {
+      if (!template.tagIds.includes(args.id)) {
+        continue;
+      }
+      await ctx.db.patch(template._id, {
+        tagIds: template.tagIds.filter((tagId) => tagId !== args.id),
+      });
+    }
+
+    const plannedPayments = await ctx.db.query("plannedPayments").collect();
+    for (const payment of plannedPayments) {
+      if (!payment.tagIds.includes(args.id)) {
+        continue;
+      }
+      await ctx.db.patch(payment._id, {
+        tagIds: payment.tagIds.filter((tagId) => tagId !== args.id),
+      });
+    }
+
+    await ctx.db.patch(args.id, { archived: true });
+    return args.id;
+  },
+});
+
 export const createBudget = mutation({
   args: {
     category: v.string(),
@@ -1073,6 +1244,7 @@ export const createBudget = mutation({
     period: budgetPeriod,
     symbol: v.string(),
     tagId: v.optional(v.id("tags")),
+    tagIds: v.optional(v.array(v.id("tags"))),
   },
   handler: async (ctx, args) => {
     const name = args.name.trim();
@@ -1082,8 +1254,9 @@ export const createBudget = mutation({
     if (!Number.isFinite(args.limit) || args.limit <= 0) {
       throw new Error("Budget amount must be positive");
     }
-    if (args.tagId) {
-      const tag = await ctx.db.get("tags", args.tagId);
+    const tagIds = args.tagIds ?? (args.tagId ? [args.tagId] : []);
+    for (const tagId of new Set(tagIds)) {
+      const tag = await ctx.db.get(tagId);
       if (!tag) {
         throw new Error("Tag not found");
       }
@@ -1106,7 +1279,8 @@ export const createBudget = mutation({
       order: nextOrder,
       period: args.period,
       symbol: args.symbol,
-      tagId: args.tagId,
+      tagId: tagIds[0],
+      tagIds: [...new Set(tagIds)],
     });
   },
 });
@@ -1124,6 +1298,7 @@ export const updateBudget = mutation({
     period: budgetPeriod,
     symbol: v.string(),
     tagId: v.optional(v.id("tags")),
+    tagIds: v.optional(v.array(v.id("tags"))),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db.get(args.id);
@@ -1138,8 +1313,9 @@ export const updateBudget = mutation({
     if (!Number.isFinite(args.limit) || args.limit <= 0) {
       throw new Error("Budget amount must be positive");
     }
-    if (args.tagId) {
-      const tag = await ctx.db.get("tags", args.tagId);
+    const tagIds = args.tagIds ?? (args.tagId ? [args.tagId] : []);
+    for (const tagId of new Set(tagIds)) {
+      const tag = await ctx.db.get(tagId);
       if (!tag) {
         throw new Error("Tag not found");
       }
@@ -1155,7 +1331,8 @@ export const updateBudget = mutation({
       notifyOnOverspend: args.notifyOnOverspend,
       period: args.period,
       symbol: args.symbol,
-      tagId: args.tagId,
+      tagId: tagIds[0],
+      tagIds: [...new Set(tagIds)],
     });
 
     return args.id;

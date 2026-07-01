@@ -8,13 +8,20 @@ import {
   FieldRow,
   FieldSectionLabel,
 } from "@/features/finance/components/form-fields";
-import {
-  CategoryLeading,
-  ColorLeading,
-} from "@/features/finance/components/label-form-leads";
+import { CategoryLeading } from "@/features/finance/components/label-form-leads";
 import { DEFAULT_CURRENCY, getCurrencySymbol } from "@/features/finance/format";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
+
+function tagsLabel(tags: { name: string }[]): string {
+  if (tags.length === 0) {
+    return "None";
+  }
+  if (tags.length === 1) {
+    return tags[0].name;
+  }
+  return `${tags.length} tags`;
+}
 
 function SwitchRow({
   label,
@@ -86,7 +93,7 @@ export default function AddBudgetScreen() {
     setName,
     setNotifyAtThreshold,
     setNotifyOnOverspend,
-    tag,
+    tags,
   } = useAddBudget();
   const currencySymbol = getCurrencySymbol(
     accounts[0]?.currency ?? DEFAULT_CURRENCY
@@ -194,11 +201,12 @@ export default function AddBudgetScreen() {
           value={BUDGET_PERIOD_LABEL[period]}
         />
         <FieldRow
-          label="Tag"
+          icon="tag"
+          iconColor="#5856D6"
+          label="Tags"
           last
-          leading={<ColorLeading color={tag?.color ?? colors.border} />}
           onPress={() => router.push("/add-budget/tags")}
-          value={tag?.name ?? "None"}
+          value={tagsLabel(tags)}
         />
       </FieldGroup>
 

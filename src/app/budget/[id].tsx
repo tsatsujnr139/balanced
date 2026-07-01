@@ -39,8 +39,8 @@ function matchesBudget(transaction: Transaction, budget: Budget): boolean {
     return false;
   }
   if (
-    budget.tagId &&
-    !transaction.tags.some((tag) => tag.id === budget.tagId)
+    budget.tagIds.length > 0 &&
+    !transaction.tags.some((tag) => budget.tagIds.includes(tag.id))
   ) {
     return false;
   }

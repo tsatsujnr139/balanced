@@ -327,8 +327,8 @@ export default function AddTemplateScreen() {
             />
           )}
           <FieldRow
-            icon="tag.fill"
-            iconColor="#AF52DE"
+            icon="tag"
+            iconColor="#5856D6"
             label="Tags"
             last
             onPress={() => router.push("/add-template/tags")}

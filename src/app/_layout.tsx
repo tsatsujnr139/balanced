@@ -71,6 +71,20 @@ export default function TabLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="tags"
+                  options={{
+                    animation: "fade",
+                    animationDuration: 150,
+                  }}
+                />
+                <Stack.Screen
+                  name="categories"
+                  options={{
+                    animation: "fade",
+                    animationDuration: 150,
+                  }}
+                />
+                <Stack.Screen
                   name="budget/[id]"
                   options={{
                     headerBackButtonDisplayMode: "minimal",
@@ -170,6 +184,46 @@ export default function TabLayout() {
                     sheetAllowedDetents: [1],
                     sheetGrabberVisible: false,
                     sheetInitialDetentIndex: 0,
+                  }}
+                />
+                <Stack.Screen
+                  name="add-tag"
+                  options={{
+                    contentStyle: { backgroundColor: "transparent" },
+                    headerBlurEffect:
+                      process.env.EXPO_OS === "ios"
+                        ? shouldDisableHeaderBlur()
+                          ? "none"
+                          : "systemMaterial"
+                        : undefined,
+                    headerShadowVisible: false,
+                    headerShown: true,
+                    headerTransparent: true,
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetGrabberVisible: false,
+                    sheetInitialDetentIndex: 0,
+                    title: "Add tag",
+                  }}
+                />
+                <Stack.Screen
+                  name="add-category"
+                  options={{
+                    contentStyle: { backgroundColor: "transparent" },
+                    headerBlurEffect:
+                      process.env.EXPO_OS === "ios"
+                        ? shouldDisableHeaderBlur()
+                          ? "none"
+                          : "systemMaterial"
+                        : undefined,
+                    headerShadowVisible: false,
+                    headerShown: true,
+                    headerTransparent: true,
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetGrabberVisible: false,
+                    sheetInitialDetentIndex: 0,
+                    title: "Add category",
                   }}
                 />
               </Stack>

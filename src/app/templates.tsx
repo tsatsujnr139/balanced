@@ -26,7 +26,8 @@ function filterTemplates(
       template.name.toLowerCase().includes(normalized) ||
       template.category.toLowerCase().includes(normalized) ||
       template.accountName.toLowerCase().includes(normalized) ||
-      template.merchant.toLowerCase().includes(normalized)
+      template.merchant.toLowerCase().includes(normalized) ||
+      template.tags.some((tag) => tag.name.toLowerCase().includes(normalized))
   );
 }
 

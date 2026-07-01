@@ -342,25 +342,74 @@ export default function AddPlannedPaymentLayout() {
             )}
           </Stack.Toolbar>
         </Stack.Screen>
-        {["account", "category", "tags"].map((screen) => (
-          <Stack.Screen
-            key={screen}
-            name={screen}
-            options={{
-              headerBackVisible: false,
-              title: screen[0].toUpperCase() + screen.slice(1),
-            }}
-          >
-            <Stack.Toolbar placement="left">
-              <Stack.Toolbar.Button
-                accessibilityLabel="Back"
-                icon="chevron.left"
-                onPress={() => router.back()}
-                separateBackground
-              />
-            </Stack.Toolbar>
-          </Stack.Screen>
-        ))}
+        <Stack.Screen
+          name="account"
+          options={{ headerBackVisible: false, title: "Account" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="category"
+          options={{ headerBackVisible: false, title: "Category" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add category"
+              icon="plus"
+              onPress={() => router.push("/add-category" as never)}
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="tags"
+          options={{ headerBackVisible: false, title: "Tags" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add tag"
+              icon="plus"
+              onPress={() =>
+                router.push("/add-planned-payment/tag-new" as never)
+              }
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
+        <Stack.Screen
+          name="tag-new"
+          options={{ headerBackVisible: false, title: "Add tag" }}
+        >
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back"
+              icon="chevron.left"
+              onPress={() => router.back()}
+              separateBackground
+            />
+          </Stack.Toolbar>
+        </Stack.Screen>
       </Stack>
     </AddPlannedPaymentContext.Provider>
   );

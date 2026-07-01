@@ -140,6 +140,8 @@ export default function StatsScreen() {
         spent: budget.spent,
         symbol: budget.symbol,
         tagId: null,
+        tagIds: [],
+        tags: [],
       })),
     [stats.budgets]
   );

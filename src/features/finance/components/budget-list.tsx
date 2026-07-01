@@ -6,7 +6,7 @@ import { ThemedView } from "@/components/themed-view";
 import { useThemeColors } from "@/hooks/use-theme";
 import { cn } from "@/lib/cn";
 
-import { budgetUsage, budgetUsagePercent, formatCurrency } from "../format";
+import { budgetUsage, formatCurrency } from "../format";
 import type { Budget } from "../types";
 
 interface RowProps {
@@ -22,7 +22,11 @@ export function BudgetProgressRow({
 }: RowProps) {
   const colors = useThemeColors();
   const usage = budgetUsage(budget.spent, budget.limit);
-  const percent = budgetUsagePercent(budget.spent, budget.limit);
+  const remaining = budget.limit - budget.spent;
+  const isOverspent = remaining < 0;
+  const remainingLabel = isOverspent
+    ? `${formatCurrency(Math.abs(remaining), budget.currency)} overspent`
+    : `${formatCurrency(remaining, budget.currency)} left`;
 
   const content = (
     <View className="flex-row items-center gap-3">
@@ -43,24 +47,23 @@ export function BudgetProgressRow({
           <ThemedText
             type="smallBold"
             numberOfLines={1}
-            className="flex-1 text-[16px]"
+            className="min-w-0 flex-1 text-[16px]"
           >
             {budget.name}
           </ThemedText>
-          <ThemedText
-            type="smallBold"
-            numberOfLines={1}
-            className="text-[15px]"
-          >
-            {formatCurrency(budget.spent, budget.currency)}
-          </ThemedText>
-          <ThemedText
-            type="small"
-            color="muted"
-            className="w-[52px] text-right"
-          >
-            {percent}%
-          </ThemedText>
+          <View className="shrink-0 flex-row items-baseline">
+            <ThemedText
+              type="smallBold"
+              numberOfLines={1}
+              className="text-[15px]"
+            >
+              {formatCurrency(budget.spent, budget.currency)}
+            </ThemedText>
+            <ThemedText type="small" numberOfLines={1} className="text-[15px]">
+              {" / "}
+              {formatCurrency(budget.limit, budget.currency)}
+            </ThemedText>
+          </View>
         </View>
         <View className="h-2 overflow-hidden rounded-full bg-border">
           <View
@@ -71,6 +74,14 @@ export function BudgetProgressRow({
             }}
           />
         </View>
+        <ThemedText
+          type="small"
+          color={isOverspent ? "negative" : "muted"}
+          numberOfLines={1}
+          className="text-right"
+        >
+          {remainingLabel}
+        </ThemedText>
       </View>
       {onPress ? (
         <SymbolView name="chevron.right" size={12} tintColor={colors.muted} />

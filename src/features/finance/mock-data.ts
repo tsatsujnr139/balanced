@@ -79,6 +79,8 @@ export const mockSnapshot: FinanceSnapshot = {
       spent: 42_300,
       symbol: "cart.fill",
       tagId: null,
+      tagIds: [],
+      tags: [],
     },
     {
       category: "Eating Out",
@@ -93,6 +95,8 @@ export const mockSnapshot: FinanceSnapshot = {
       spent: 31_800,
       symbol: "fork.knife",
       tagId: null,
+      tagIds: [],
+      tags: [],
     },
     {
       category: "Transportation",
@@ -107,6 +111,8 @@ export const mockSnapshot: FinanceSnapshot = {
       spent: 9_400,
       symbol: "car.fill",
       tagId: null,
+      tagIds: [],
+      tags: [],
     },
     {
       category: "Outing",
@@ -121,6 +127,8 @@ export const mockSnapshot: FinanceSnapshot = {
       spent: 22_100,
       symbol: "gamecontroller.fill",
       tagId: null,
+      tagIds: [],
+      tags: [],
     },
   ],
   plannedPaymentsOverdueCount: 0,

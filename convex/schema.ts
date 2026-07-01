@@ -83,14 +83,22 @@ export default defineSchema({
     symbol: v.string(),
     /** Optional tag association (no effect on spend calculation). */
     tagId: v.optional(v.id("tags")),
+    /** Optional tag associations (no effect on spend calculation). */
+    tagIds: v.optional(v.array(v.id("tags"))),
     userId: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
   categories: defineTable({
+    archived: v.optional(v.boolean()),
     color: v.string(),
     name: v.string(),
     normalizedName: v.string(),
     symbol: v.string(),
+  }).index("by_normalizedName", ["normalizedName"]),
+
+  archivedCategories: defineTable({
+    name: v.string(),
+    normalizedName: v.string(),
   }).index("by_normalizedName", ["normalizedName"]),
 
   /** Resolved occurrences (paid or skipped); pending ones are computed. */
@@ -138,6 +146,7 @@ export default defineSchema({
   }).index("by_key", ["key"]),
 
   tags: defineTable({
+    archived: v.optional(v.boolean()),
     color: v.optional(v.string()),
     name: v.string(),
     normalizedName: v.string(),
