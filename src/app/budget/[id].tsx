@@ -398,7 +398,7 @@ export default function BudgetDetailScreen() {
               style={({ pressed }) => ({
                 alignItems: "center",
                 backgroundColor: colors.card,
-                borderColor: colors.border,
+                borderColor: colors.primary,
                 borderCurve: "continuous",
                 borderRadius: 12,
                 borderWidth: 1,
