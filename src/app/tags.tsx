@@ -4,13 +4,12 @@ import { Stack } from "expo-router/stack";
 import { useMemo, useState } from "react";
 import { Alert, ScrollView } from "react-native";
 
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { LabelManagementList } from "@/features/finance/components/label-management-list";
 import type { ManagedLabelItem } from "@/features/finance/components/label-management-list";
 import { useCachedTags } from "@/features/finance/use-labels";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 
 export default function TagsScreen() {
   const colors = useThemeColors();

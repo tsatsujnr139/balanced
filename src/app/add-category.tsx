@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
 import {
   DEFAULT_LABEL_COLOR,
   pickRandomColor,
@@ -29,8 +30,6 @@ import {
 } from "@/features/finance/components/label-form-leads";
 import { CUSTOM_CATEGORY_SYMBOLS } from "@/features/finance/transaction-categories";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
 
 const DEFAULT_CATEGORY_SYMBOL = "square.grid.2x2.fill";
 

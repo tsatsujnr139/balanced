@@ -4,12 +4,11 @@ import { Stack } from "expo-router/stack";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 
+import { api } from "@/convex/_generated/api";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import { TransactionTemplateList } from "@/features/finance/components/transaction-template-list";
 import type { TransactionTemplate } from "@/features/finance/types";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
 
 function filterTemplates(
   templates: TransactionTemplate[],

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform } from "react-native";
 
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { AddTemplateContext } from "@/features/finance/add-template-context";
 import { TRANSFER_CATEGORY } from "@/features/finance/transaction-categories";
 import type { TransactionCategory } from "@/features/finance/transaction-categories";
@@ -14,9 +16,6 @@ import type {
 } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 function amountInputToMinorUnits(value: string): number {
   const parsed = Number.parseFloat(value.replaceAll(/[^0-9.]/g, ""));

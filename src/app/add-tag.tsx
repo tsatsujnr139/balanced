@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
 import {
   DEFAULT_LABEL_COLOR,
   pickRandomColor,
@@ -25,8 +26,6 @@ import {
   NameLeading,
 } from "@/features/finance/components/label-form-leads";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
 
 export default function AddTagScreen() {
   const colors = useThemeColors();

@@ -11,9 +11,9 @@ import {
   View,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
 import { useThemeColors } from "@/hooks/use-theme";
 
-import { api } from "../../../../convex/_generated/api";
 import {
   DEFAULT_LABEL_COLOR,
   normalizeColorParam,

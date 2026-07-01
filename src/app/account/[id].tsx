@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import { formatCurrency } from "@/features/finance/format";
 import {
@@ -18,9 +20,6 @@ import {
 } from "@/features/finance/use-balance-visibility";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 export default function AccountScreen() {
   const colors = useThemeColors();

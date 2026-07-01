@@ -5,11 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 
+import { api } from "@/convex/_generated/api";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import { filterTransactions } from "@/features/finance/filter-transactions";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
 
 export default function TransactionsScreen() {
   const colors = useThemeColors();

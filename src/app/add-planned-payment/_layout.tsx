@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, View } from "react-native";
 
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { AddPlannedPaymentContext } from "@/features/finance/add-planned-payment-context";
 import type {
   PlannedCategorySelection,
@@ -17,9 +19,6 @@ import type {
 } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 const DEFAULT_START_DATE = Date.now();
 

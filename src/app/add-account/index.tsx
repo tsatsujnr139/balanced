@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   ACCOUNT_TYPE_LABEL,
   ACCOUNT_TYPE_SYMBOL,
@@ -25,9 +27,6 @@ import type { AccountType } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 function closeAddAccount() {
   if (router.canDismiss()) {

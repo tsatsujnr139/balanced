@@ -2,7 +2,8 @@ import { useQuery } from "convex/react";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
+
 import { buildFinanceNotifications } from "./notifications";
 import { useFinance } from "./use-finance";
 

@@ -14,6 +14,8 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useAddTemplate } from "@/features/finance/add-template-context";
 import {
   FieldGroup,
@@ -23,9 +25,6 @@ import {
 import { getCurrencySymbol } from "@/features/finance/format";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 const TEMPLATE_TYPES = ["Expense", "Income", "Transfer"];
 

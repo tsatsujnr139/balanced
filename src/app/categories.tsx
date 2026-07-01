@@ -4,6 +4,7 @@ import { Stack } from "expo-router/stack";
 import { useMemo, useState } from "react";
 import { Alert, ScrollView } from "react-native";
 
+import { api } from "@/convex/_generated/api";
 import { LabelManagementList } from "@/features/finance/components/label-management-list";
 import type { ManagedLabelItem } from "@/features/finance/components/label-management-list";
 import { TRANSACTION_CATEGORIES } from "@/features/finance/transaction-categories";
@@ -12,8 +13,6 @@ import {
   useCachedCategories,
 } from "@/features/finance/use-labels";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
 
 export default function CategoriesScreen() {
   const colors = useThemeColors();

@@ -14,6 +14,8 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { FieldSectionLabel } from "@/features/finance/components/form-fields";
 import {
   formatCurrency,
@@ -28,9 +30,6 @@ import {
 import type { PlannedPaymentOccurrence } from "@/features/finance/types";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;

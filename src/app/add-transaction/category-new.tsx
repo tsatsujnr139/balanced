@@ -4,6 +4,7 @@ import { Stack } from "expo-router/stack";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
+import { api } from "@/convex/_generated/api";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import {
   DEFAULT_LABEL_COLOR,
@@ -21,8 +22,6 @@ import {
   NameLeading,
 } from "@/features/finance/components/label-form-leads";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
 
 const RETURN_PATH = "/add-transaction/category-new";
 const DEFAULT_CATEGORY_SYMBOL = "square.grid.2x2.fill";

@@ -5,11 +5,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 
+import { api } from "@/convex/_generated/api";
 import { TransactionTemplateList } from "@/features/finance/components/transaction-template-list";
 import type { TransactionTemplate } from "@/features/finance/types";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../convex/_generated/api";
 
 const SEARCH_FOCUS_DELAY_MS = 200;
 

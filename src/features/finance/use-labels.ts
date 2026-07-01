@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import Storage from "expo-sqlite/kv-store";
 import { useEffect, useMemo, useState } from "react";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 export interface FinanceTag {
   color: string;

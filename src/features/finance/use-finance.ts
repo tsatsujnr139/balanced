@@ -2,7 +2,8 @@ import { useQuery } from "convex/react";
 import Storage from "expo-sqlite/kv-store";
 import { useEffect, useMemo } from "react";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
+
 import { DEFAULT_CURRENCY } from "./format";
 import type { FinanceSnapshot } from "./types";
 

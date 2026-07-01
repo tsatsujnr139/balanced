@@ -23,6 +23,8 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import { TransactionDescriptionSuggestions } from "@/features/finance/components/transaction-description-suggestions";
 import { clearTransactionEditPrefill } from "@/features/finance/edit-transaction-prefill";
@@ -34,9 +36,6 @@ import {
 import { getTransactionDescriptionSuggestions } from "@/features/finance/transaction-description-suggestions";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
-
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
 
 const TRANSACTION_TYPES = ["Expense", "Income", "Transfer"];
 const TRANSACTION_CHARGE_CATEGORY = TRANSACTION_CATEGORIES.find(

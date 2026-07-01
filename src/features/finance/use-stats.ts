@@ -1,7 +1,8 @@
 import { useQuery } from "convex/react";
 import { useMemo } from "react";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
+
 import { DEFAULT_CURRENCY } from "./format";
 import type { PeriodType } from "./period";
 import { periodRange, shiftPeriod } from "./period";
