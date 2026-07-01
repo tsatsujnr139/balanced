@@ -7,6 +7,7 @@
     "dev": "expo start --dev-client",
     "start": "expo start --dev-client",
     "convex:dev": "convex dev",
+    "convex:deploy:prod": "convex deploy --env-file .env.production",
     "prebuild": "expo prebuild --clean",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
