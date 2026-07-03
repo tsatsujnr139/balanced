@@ -2,7 +2,7 @@ import { useMutation } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
@@ -11,16 +11,7 @@ import {
   normalizeColorParam,
   pickRandomColor,
 } from "@/features/finance/color-utils";
-import {
-  FieldGroup,
-  FieldRow,
-  FieldSectionLabel,
-} from "@/features/finance/components/form-fields";
-import {
-  ColorLeading,
-  CategoryLeading,
-  NameLeading,
-} from "@/features/finance/components/label-form-leads";
+import { CategoryFormRows } from "@/features/finance/components/category-form-rows";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const RETURN_PATH = "/add-transaction/category-new";
@@ -122,51 +113,29 @@ export default function NewCategoryScreen() {
         style={{ backgroundColor: colors.background, flex: 1 }}
       >
         <View>
-          <FieldSectionLabel>General</FieldSectionLabel>
-          <FieldGroup>
-            <FieldRow
-              label="Category name"
-              leading={<NameLeading name={name} />}
-              onPress={() => {
-                router.push({
-                  params: { returnPath: RETURN_PATH },
-                  pathname: "/add-transaction/label-name",
-                });
-              }}
-              valueNode={
-                trimmedName ? (
-                  <Text style={{ color: colors.muted, fontSize: 17 }}>
-                    {trimmedName}
-                  </Text>
-                ) : (
-                  <Text style={{ color: colors.negative, fontSize: 17 }}>
-                    Required
-                  </Text>
-                )
-              }
-            />
-            <FieldRow
-              label="Icon"
-              leading={<CategoryLeading color={color} symbol={symbol} />}
-              onPress={() => {
-                router.push({
-                  params: { returnPath: RETURN_PATH },
-                  pathname: "/add-transaction/category-icon",
-                });
-              }}
-            />
-            <FieldRow
-              label="Color"
-              last
-              leading={<ColorLeading color={color} />}
-              onPress={() => {
-                router.push({
-                  params: { returnPath: RETURN_PATH },
-                  pathname: "/add-transaction/color",
-                });
-              }}
-            />
-          </FieldGroup>
+          <CategoryFormRows
+            color={color}
+            name={name}
+            onColorPress={() => {
+              router.push({
+                params: { returnPath: RETURN_PATH },
+                pathname: "/add-transaction/color",
+              });
+            }}
+            onIconPress={() => {
+              router.push({
+                params: { returnPath: RETURN_PATH },
+                pathname: "/add-transaction/category-icon",
+              });
+            }}
+            onNamePress={() => {
+              router.push({
+                params: { returnPath: RETURN_PATH },
+                pathname: "/add-transaction/label-name",
+              });
+            }}
+            symbol={symbol}
+          />
         </View>
       </ScrollView>
     </>

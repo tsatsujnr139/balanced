@@ -1,15 +1,13 @@
 import { router } from "expo-router";
 import { ScrollView } from "react-native";
 
-import { useAddTransaction } from "@/features/finance/add-transaction-context";
+import { useAddCategory } from "@/features/finance/add-category-context";
 import { CategoryIconPickerGrid } from "@/features/finance/components/category-icon-picker-grid";
 import { useThemeColors } from "@/hooks/use-theme";
 
-export default function CategoryIconScreen() {
+export default function AddCategoryIconScreen() {
   const colors = useThemeColors();
-  const { labelDraft, setLabelDraft } = useAddTransaction();
-  const selectedColor = labelDraft.color;
-  const selectedSymbol = labelDraft.symbol;
+  const { draft, setDraft } = useAddCategory();
 
   return (
     <ScrollView
@@ -23,10 +21,10 @@ export default function CategoryIconScreen() {
       style={{ backgroundColor: colors.background, flex: 1 }}
     >
       <CategoryIconPickerGrid
-        color={selectedColor}
-        selectedSymbol={selectedSymbol}
+        color={draft.color}
+        selectedSymbol={draft.symbol}
         onSelect={(symbol) => {
-          setLabelDraft((current) => ({ ...current, symbol }));
+          setDraft((current) => ({ ...current, symbol }));
           router.back();
         }}
       />

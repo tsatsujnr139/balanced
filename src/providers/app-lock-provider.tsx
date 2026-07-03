@@ -23,7 +23,7 @@ import type {
   BiometricCapability,
 } from "@/features/security/app-lock";
 
-const RELOCK_AFTER_MS = 60_000;
+const RELOCK_AFTER_MS = 300_000;
 
 interface AppLockContextValue {
   isHydrating: boolean;

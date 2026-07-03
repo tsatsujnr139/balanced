@@ -210,20 +210,10 @@ export default function TabLayout() {
                   name="add-category"
                   options={{
                     contentStyle: { backgroundColor: "transparent" },
-                    headerBlurEffect:
-                      process.env.EXPO_OS === "ios"
-                        ? shouldDisableHeaderBlur()
-                          ? "none"
-                          : "systemMaterial"
-                        : undefined,
-                    headerShadowVisible: false,
-                    headerShown: true,
-                    headerTransparent: true,
                     presentation: "formSheet",
                     sheetAllowedDetents: [1],
                     sheetGrabberVisible: false,
                     sheetInitialDetentIndex: 0,
-                    title: "Add category",
                   }}
                 />
               </Stack>
