@@ -60,12 +60,19 @@ function closeAddTransaction() {
 export default function AddTransactionLayout() {
   const colors = useThemeColors();
   const disableHeaderBlur = shouldDisableHeaderBlur();
-  const { transactionId } = useLocalSearchParams<{
+  const { accountId: accountIdParam, transactionId } = useLocalSearchParams<{
+    accountId?: string | string[];
     transactionId?: string | string[];
   }>();
+  const initialAccountId = Array.isArray(accountIdParam)
+    ? accountIdParam[0]
+    : accountIdParam;
   const editingTransactionId = Array.isArray(transactionId)
     ? transactionId[0]
     : transactionId;
+  const initialNewTransactionAccountId = editingTransactionId
+    ? null
+    : (initialAccountId ?? null);
   const editPrefill = editingTransactionId
     ? getTransactionEditPrefill(editingTransactionId)
     : undefined;
@@ -86,7 +93,7 @@ export default function AddTransactionLayout() {
   const lastTransactionAccountId = useLastTransactionAccountId();
   const hasHydratedRef = useRef(Boolean(initialEditState));
   const [accountId, setAccountId] = useState<string | null>(
-    initialEditState?.accountId ?? null
+    initialEditState?.accountId ?? initialNewTransactionAccountId
   );
   const [amount, setAmount] = useState(initialEditState?.amount ?? "");
   const [attachments, setAttachments] = useState<TransactionAttachmentDraft[]>(

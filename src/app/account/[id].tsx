@@ -1,4 +1,5 @@
 import { usePaginatedQuery } from "convex/react";
+import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { SymbolView } from "expo-symbols";
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -21,8 +23,22 @@ import {
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
+const ADD_BUTTON_SIZE = 64;
+const ADD_BUTTON_RADIUS = ADD_BUTTON_SIZE / 2;
+const ADD_BUTTON_ICON_SIZE = 29;
+
+function canUseLiquidGlass() {
+  try {
+    return isGlassEffectAPIAvailable();
+  } catch {
+    return false;
+  }
+}
+
 export default function AccountScreen() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const hasLiquidGlass = canUseLiquidGlass();
   const { id } = useLocalSearchParams<{ id: string }>();
   const accountId = Array.isArray(id) ? id[0] : id;
   const { accounts, isLoading: isLoadingAccounts } = useFinance();
@@ -43,150 +59,223 @@ export default function AccountScreen() {
 
   return (
     <>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{
-          gap: 24,
-          paddingBottom: 40,
-          paddingHorizontal: 20,
-        }}
-        style={{ backgroundColor: colors.background, flex: 1 }}
-      >
-        {isLoadingAccounts || !account ? (
-          <View
-            style={{
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 180,
-            }}
-          >
-            {isLoadingAccounts ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={{ color: colors.muted, fontSize: 17 }}>
-                Account not found
-              </Text>
-            )}
-          </View>
-        ) : (
-          <>
+      <View style={{ backgroundColor: colors.background, flex: 1 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{
+            gap: 24,
+            paddingBottom: insets.bottom + 96,
+            paddingHorizontal: 20,
+          }}
+          style={{ flex: 1 }}
+        >
+          {isLoadingAccounts || !account ? (
             <View
               style={{
-                backgroundColor: colors.card,
-                borderCurve: "continuous",
-                borderRadius: 24,
-                padding: 20,
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 180,
               }}
             >
-              <View style={{ gap: 4 }}>
-                <View
-                  style={{
-                    alignItems: "center",
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Text style={{ color: colors.muted, fontSize: 14 }}>
-                    Account balance
-                  </Text>
-                  <Pressable
-                    accessibilityRole="switch"
-                    accessibilityState={{ checked: isBalanceVisible }}
-                    accessibilityLabel={
-                      isBalanceVisible ? "Hide balances" : "Show balances"
-                    }
-                    hitSlop={8}
-                    onPress={toggleBalanceVisibility}
-                    style={({ pressed }) => ({
+              {isLoadingAccounts ? (
+                <ActivityIndicator />
+              ) : (
+                <Text style={{ color: colors.muted, fontSize: 17 }}>
+                  Account not found
+                </Text>
+              )}
+            </View>
+          ) : (
+            <>
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderCurve: "continuous",
+                  borderRadius: 24,
+                  padding: 20,
+                }}
+              >
+                <View style={{ gap: 4 }}>
+                  <View
+                    style={{
                       alignItems: "center",
-                      backgroundColor: colors.background,
-                      borderRadius: 17,
-                      height: 34,
-                      justifyContent: "center",
-                      opacity: pressed ? 0.65 : 1,
-                      width: 34,
-                    })}
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
                   >
-                    <SymbolView
-                      name={(isBalanceVisible ? "eye" : "eye.slash") as never}
-                      size={18}
-                      tintColor={colors.muted}
-                    />
-                  </Pressable>
+                    <Text style={{ color: colors.muted, fontSize: 14 }}>
+                      Account balance
+                    </Text>
+                    <Pressable
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: isBalanceVisible }}
+                      accessibilityLabel={
+                        isBalanceVisible ? "Hide balances" : "Show balances"
+                      }
+                      hitSlop={8}
+                      onPress={toggleBalanceVisibility}
+                      style={({ pressed }) => ({
+                        alignItems: "center",
+                        backgroundColor: colors.background,
+                        borderRadius: 17,
+                        height: 34,
+                        justifyContent: "center",
+                        opacity: pressed ? 0.65 : 1,
+                        width: 34,
+                      })}
+                    >
+                      <SymbolView
+                        name={(isBalanceVisible ? "eye" : "eye.slash") as never}
+                        size={18}
+                        tintColor={colors.muted}
+                      />
+                    </Pressable>
+                  </View>
+                  <Text
+                    style={{
+                      color:
+                        account.balance < 0
+                          ? colors.negative
+                          : colors.foreground,
+                      fontSize: 36,
+                      fontVariant: ["tabular-nums"],
+                      fontWeight: "700",
+                    }}
+                  >
+                    {isBalanceVisible
+                      ? accountBalance
+                      : maskCurrencyValue(accountBalance)}
+                  </Text>
                 </View>
+              </View>
+
+              <View style={{ gap: 10 }}>
                 <Text
                   style={{
-                    color:
-                      account.balance < 0 ? colors.negative : colors.foreground,
-                    fontSize: 36,
-                    fontVariant: ["tabular-nums"],
+                    color: colors.foreground,
+                    fontSize: 22,
                     fontWeight: "700",
                   }}
                 >
-                  {isBalanceVisible
-                    ? accountBalance
-                    : maskCurrencyValue(accountBalance)}
+                  Transactions
                 </Text>
+                {status === "LoadingFirstPage" ? (
+                  <View
+                    style={{
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: 96,
+                    }}
+                  >
+                    <ActivityIndicator />
+                  </View>
+                ) : (
+                  <TransactionList transactions={transactions} />
+                )}
+                {status === "CanLoadMore" || status === "LoadingMore" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={status === "LoadingMore"}
+                    onPress={() => {
+                      loadMore(10);
+                    }}
+                    style={({ pressed }) => ({
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: 44,
+                      opacity: pressed || status === "LoadingMore" ? 0.6 : 1,
+                    })}
+                  >
+                    {status === "LoadingMore" ? (
+                      <ActivityIndicator />
+                    ) : (
+                      <Text
+                        style={{
+                          color: colors.primary,
+                          fontSize: 17,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Show more
+                      </Text>
+                    )}
+                  </Pressable>
+                ) : null}
               </View>
-            </View>
+            </>
+          )}
+        </ScrollView>
 
-            <View style={{ gap: 10 }}>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 22,
-                  fontWeight: "700",
-                }}
-              >
-                Transactions
-              </Text>
-              {status === "LoadingFirstPage" ? (
+        {accountId && account ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add transaction"
+            onPress={() => {
+              router.push({
+                params: { accountId },
+                pathname: "/add-transaction",
+              });
+            }}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: hasLiquidGlass ? "transparent" : colors.card,
+              borderRadius: ADD_BUTTON_RADIUS,
+              bottom: Math.max(insets.bottom - 6, 6),
+              elevation: 8,
+              height: ADD_BUTTON_SIZE,
+              justifyContent: "center",
+              overflow: "hidden",
+              position: "absolute",
+              right: 20,
+              shadowColor: colors.foreground,
+              shadowOffset: { height: 8, width: 0 },
+              shadowOpacity: 0.18,
+              shadowRadius: 18,
+              transform: [{ scale: pressed ? 0.96 : 1 }],
+              width: ADD_BUTTON_SIZE,
+            })}
+          >
+            {hasLiquidGlass ? (
+              <>
+                <GlassView
+                  glassEffectStyle="regular"
+                  isInteractive
+                  style={{
+                    borderRadius: ADD_BUTTON_RADIUS,
+                    height: ADD_BUTTON_SIZE,
+                    width: ADD_BUTTON_SIZE,
+                  }}
+                />
                 <View
+                  pointerEvents="none"
                   style={{
                     alignItems: "center",
+                    bottom: 0,
                     justifyContent: "center",
-                    minHeight: 96,
+                    left: 0,
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
                   }}
                 >
-                  <ActivityIndicator />
+                  <SymbolView
+                    name="plus"
+                    size={ADD_BUTTON_ICON_SIZE}
+                    tintColor={colors.foreground}
+                  />
                 </View>
-              ) : (
-                <TransactionList transactions={transactions} />
-              )}
-              {status === "CanLoadMore" || status === "LoadingMore" ? (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={status === "LoadingMore"}
-                  onPress={() => {
-                    loadMore(10);
-                  }}
-                  style={({ pressed }) => ({
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: 44,
-                    opacity: pressed || status === "LoadingMore" ? 0.6 : 1,
-                  })}
-                >
-                  {status === "LoadingMore" ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text
-                      style={{
-                        color: colors.primary,
-                        fontSize: 17,
-                        fontWeight: "600",
-                      }}
-                    >
-                      Show more
-                    </Text>
-                  )}
-                </Pressable>
-              ) : null}
-            </View>
-          </>
-        )}
-      </ScrollView>
+              </>
+            ) : (
+              <SymbolView
+                name="plus"
+                size={ADD_BUTTON_ICON_SIZE}
+                tintColor={colors.foreground}
+              />
+            )}
+          </Pressable>
+        ) : null}
+      </View>
 
       <Stack.Screen.Title>{account?.name ?? "Account"}</Stack.Screen.Title>
       <Stack.Toolbar placement="right">
