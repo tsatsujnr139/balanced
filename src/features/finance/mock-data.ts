@@ -132,7 +132,7 @@ export const mockSnapshot: FinanceSnapshot = {
     },
   ],
   monthlyTotals: [{ currency: "GHS", totalIn: 450_000, totalOut: 108_432 }],
-  plannedPaymentsOverdueCount: 0,
+  plannedPaymentsDueCount: 0,
   transactions: [
     {
       accountId: "acc_credit",

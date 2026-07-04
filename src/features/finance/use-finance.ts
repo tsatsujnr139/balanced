@@ -26,12 +26,12 @@ export type FinanceData = FinanceSnapshot & {
 };
 
 const FINANCE_CACHE_KEY = "finance.snapshot.v1";
-const FINANCE_CACHE_VERSION = 6;
+const FINANCE_CACHE_VERSION = 7;
 const EMPTY_SNAPSHOT: FinanceSnapshot = {
   accounts: [],
   budgets: [],
   monthlyTotals: [],
-  plannedPaymentsOverdueCount: 0,
+  plannedPaymentsDueCount: 0,
   transactions: [],
 };
 

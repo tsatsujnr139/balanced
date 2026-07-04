@@ -3,11 +3,14 @@ import { Tabs, TabList, TabTrigger, TabSlot } from "expo-router/ui";
 import { Pressable, View } from "react-native";
 
 import { MaxContentWidth } from "@/constants/theme";
+import { useFinance } from "@/features/finance/use-finance";
 
 import { ThemedText } from "./themed-text";
 import { ThemedView } from "./themed-view";
 
 export default function AppTabs() {
+  const { plannedPaymentsDueCount } = useFinance();
+
   return (
     <Tabs>
       <TabSlot style={{ height: "100%" }} />
@@ -17,7 +20,7 @@ export default function AppTabs() {
             <TabButton>Dashboard</TabButton>
           </TabTrigger>
           <TabTrigger name="planning" href="/planning" asChild>
-            <TabButton>Planning</TabButton>
+            <TabButton badge={plannedPaymentsDueCount}>Planning</TabButton>
           </TabTrigger>
           <TabTrigger name="stats" href="/stats" asChild>
             <TabButton>Stats</TabButton>
@@ -32,16 +35,23 @@ export default function AppTabs() {
 }
 
 export function TabButton({
+  badge,
   children,
   isFocused,
   ...props
-}: TabTriggerSlotProps) {
+}: TabTriggerSlotProps & { badge?: number }) {
   return (
     <Pressable {...props} className="active:opacity-70">
       <ThemedView
         variant={isFocused ? "selected" : "card"}
-        className="rounded-xl px-4 py-1"
+        className="relative rounded-xl px-4 py-1"
       >
+        {badge && badge > 0 ? (
+          <View
+            className="absolute right-1 top-1 size-2 rounded-full"
+            style={{ backgroundColor: "#FF3B30" }}
+          />
+        ) : null}
         <ThemedText type="small" color={isFocused ? "foreground" : "muted"}>
           {children}
         </ThemedText>

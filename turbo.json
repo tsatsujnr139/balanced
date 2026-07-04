@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
+    "convex:dev": {
+      "cache": false,
+      "interactive": true,
+      "persistent": true
+    },
+    "ios": {
+      "cache": false,
+      "interactive": true,
+      "persistent": true
+    }
+  }
+}

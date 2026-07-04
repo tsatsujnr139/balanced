@@ -474,7 +474,7 @@ export const getSnapshot = query({
       1
     ).getTime();
 
-    const [accounts, transactions, budgets, plannedPaymentsOverdueCount] =
+    const [accounts, transactions, budgets, plannedPaymentsDueCount] =
       await Promise.all([
         ctx.db.query("accounts").collect(),
         ctx.db
@@ -483,7 +483,7 @@ export const getSnapshot = query({
           .order("desc")
           .take(25),
         loadBudgetsWithSpend(ctx),
-        countOverduePlannedPayments(ctx),
+        countDuePlannedPayments(ctx),
       ]);
 
     const currencies = [...new Set(accounts.map((a) => a.currency))];
@@ -520,7 +520,7 @@ export const getSnapshot = query({
         })),
       budgets,
       monthlyTotals,
-      plannedPaymentsOverdueCount,
+      plannedPaymentsDueCount,
       transactions: await enrichTransactions(
         ctx,
         visibleTransactions,
@@ -2333,12 +2333,13 @@ async function loadPlannedPaymentTags(ctx: QueryCtx, tagIds: Id<"tags">[]) {
     }));
 }
 
-async function countOverduePlannedPayments(ctx: QueryCtx): Promise<number> {
+async function countDuePlannedPayments(ctx: QueryCtx): Promise<number> {
   const payments = await ctx.db.query("plannedPayments").collect();
   if (payments.length === 0) {
     return 0;
   }
   const now = Date.now();
+  const todayStart = startOfDay(now);
   let total = 0;
   for (const payment of payments) {
     const entries = await ctx.db
@@ -2347,7 +2348,22 @@ async function countOverduePlannedPayments(ctx: QueryCtx): Promise<number> {
         q.eq("plannedPaymentId", payment._id)
       )
       .collect();
-    total += summarizePlannedPayment(payment, entries, now).overdueCount;
+    const { nextDueDate, overdueCount } = summarizePlannedPayment(
+      payment,
+      entries,
+      now
+    );
+    if (payment.notifyOnOverdue) {
+      total += overdueCount;
+    }
+    if (
+      payment.notifyOnDue &&
+      overdueCount === 0 &&
+      nextDueDate !== null &&
+      startOfDay(nextDueDate) === todayStart
+    ) {
+      total += 1;
+    }
   }
   return total;
 }

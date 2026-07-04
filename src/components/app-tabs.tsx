@@ -6,12 +6,12 @@ import { useThemeColors } from "@/hooks/use-theme";
 
 export default function AppTabs() {
   const colors = useThemeColors();
-  const { plannedPaymentsOverdueCount } = useFinance();
+  const { plannedPaymentsDueCount } = useFinance();
   const plannedBadge =
-    plannedPaymentsOverdueCount > 0
-      ? plannedPaymentsOverdueCount > 99
+    plannedPaymentsDueCount > 0
+      ? plannedPaymentsDueCount > 99
         ? "99+"
-        : String(plannedPaymentsOverdueCount)
+        : String(plannedPaymentsDueCount)
       : undefined;
 
   return (

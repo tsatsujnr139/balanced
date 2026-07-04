@@ -199,6 +199,6 @@ export interface FinanceSnapshot {
   budgets: Budget[];
   /** Per-currency income and spending totals for the current month. */
   monthlyTotals: MonthlyTotal[];
-  /** Total pending overdue planned-payment occurrences across all payments. */
-  plannedPaymentsOverdueCount: number;
+  /** Total due or overdue planned-payment notifications across all payments. */
+  plannedPaymentsDueCount: number;
 }

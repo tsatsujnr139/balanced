@@ -12,6 +12,7 @@
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "ios:dev": "turbo run ios convex:dev",
     "lint": "ultracite check",
     "format": "oxfmt --write .",
     "check": "ultracite check",
@@ -62,6 +63,7 @@
     "@types/react": "~19.2.2",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",
+    "turbo": "^2.10.3",
     "typescript": "~6.0.3",
     "ultracite": "7.8.3"
   },

@@ -89,7 +89,7 @@ function PlanningGridCard({
 export default function PlanningScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { plannedPaymentsOverdueCount } = useFinance();
+  const { plannedPaymentsDueCount } = useFinance();
   const contentWidth = Math.min(
     width - HORIZONTAL_PADDING * 2,
     MaxContentWidth
@@ -98,7 +98,7 @@ export default function PlanningScreen() {
 
   const cards: PlanningCard[] = [
     {
-      badge: plannedPaymentsOverdueCount,
+      badge: plannedPaymentsDueCount,
       color: "#FF9F0A",
       href: "/planned-payments",
       id: "planned-payments",
