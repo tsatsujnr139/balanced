@@ -28,7 +28,6 @@ import {
   PLANNED_TODAY_COLOR,
 } from "@/features/finance/planned-payment-constants";
 import type { PlannedPaymentOccurrence } from "@/features/finance/types";
-import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -51,13 +50,13 @@ function dueStatusColor(
 function PendingOccurrence({
   occurrence,
   isBusy,
+  onCancel,
   onMarkPaid,
-  onEdit,
 }: {
   occurrence: PlannedPaymentOccurrence;
   isBusy: boolean;
+  onCancel: () => void;
   onMarkPaid: () => void;
-  onEdit: () => void;
 }) {
   const colors = useThemeColors();
   const accent = dueStatusColor(occurrence.daysUntilDue, colors);
@@ -110,10 +109,10 @@ function PendingOccurrence({
         <Pressable
           accessibilityRole="button"
           disabled={isBusy}
-          onPress={onEdit}
+          onPress={onCancel}
           style={({ pressed }) => ({
             alignItems: "center",
-            borderColor: colors.primary,
+            borderColor: PLANNED_OVERDUE_COLOR,
             borderCurve: "continuous",
             borderRadius: 12,
             borderWidth: 1,
@@ -124,9 +123,13 @@ function PendingOccurrence({
           })}
         >
           <Text
-            style={{ color: colors.primary, fontSize: 15, fontWeight: "600" }}
+            style={{
+              color: PLANNED_OVERDUE_COLOR,
+              fontSize: 15,
+              fontWeight: "600",
+            }}
           >
-            Edit
+            Cancel
           </Text>
         </Pressable>
       </View>
@@ -155,14 +158,14 @@ function ResolvedOccurrence({
       </ThemedText>
       <View className="flex-row items-center gap-2">
         <SymbolView
-          name={isPaid ? "checkmark.circle.fill" : "trash.fill"}
+          name={isPaid ? "checkmark.circle.fill" : "xmark.circle.fill"}
           size={16}
           tintColor={isPaid ? colors.muted : PLANNED_OVERDUE_COLOR}
         />
         <Text style={{ color: colors.muted, flex: 1, fontSize: 15 }}>
           {isPaid
             ? `Paid ${occurrence.paidDate ? formatTransactionDate(occurrence.paidDate) : ""}`.trim()
-            : "Deleted"}
+            : "Cancelled"}
         </Text>
         {isPaid ? (
           <ThemedText type="small" color="muted" className="text-[15px]">
@@ -182,8 +185,9 @@ export default function PlannedPaymentDetailScreen() {
     api.finance.getPlannedPayment,
     id ? { id: id as Id<"plannedPayments"> } : "skip"
   );
-  const markPaid = useMutation(api.finance.markPlannedPaymentPaid);
-  const { firstName } = useLocalProfile();
+  const cancelOccurrence = useMutation(
+    api.finance.skipPlannedPaymentOccurrence
+  );
   const [busyDueDate, setBusyDueDate] = useState<string | null>(null);
 
   const openEditor = () => {
@@ -193,25 +197,54 @@ export default function PlannedPaymentDetailScreen() {
     router.push({ params: { id }, pathname: "/add-planned-payment" });
   };
 
-  const handleMarkPaid = async (occurrence: PlannedPaymentOccurrence) => {
+  const openPaymentSummary = (occurrence: PlannedPaymentOccurrence) => {
     if (!id || busyDueDate) {
       return;
     }
-    setBusyDueDate(occurrence.dueDate);
-    try {
-      await markPaid({
-        createdByName: firstName,
-        dueDate: new Date(occurrence.dueDate).getTime(),
-        id: id as Id<"plannedPayments">,
-      });
-    } catch (error) {
-      Alert.alert(
-        "Could not mark as paid",
-        error instanceof Error ? error.message : "Please try again."
-      );
-    } finally {
-      setBusyDueDate(null);
+
+    router.push({
+      params: {
+        dueDate: String(new Date(occurrence.dueDate).getTime()),
+        id,
+      },
+      pathname: "/planned-payment-summary",
+    });
+  };
+
+  const handleCancelOccurrence = (occurrence: PlannedPaymentOccurrence) => {
+    if (!id || busyDueDate) {
+      return;
     }
+
+    Alert.alert(
+      "Cancel this payment?",
+      `This action cancels the scheduled payment for ${formatPlannedDate(occurrence.dueDate)}.`,
+      [
+        { style: "cancel", text: "Keep payment" },
+        {
+          onPress: () => {
+            void (async () => {
+              setBusyDueDate(occurrence.dueDate);
+              try {
+                await cancelOccurrence({
+                  dueDate: new Date(occurrence.dueDate).getTime(),
+                  id: id as Id<"plannedPayments">,
+                });
+              } catch (error) {
+                Alert.alert(
+                  "Could not cancel payment",
+                  error instanceof Error ? error.message : "Please try again."
+                );
+              } finally {
+                setBusyDueDate(null);
+              }
+            })();
+          },
+          style: "destructive",
+          text: "Cancel payment",
+        },
+      ]
+    );
   };
 
   if (planned === undefined) {
@@ -257,9 +290,10 @@ export default function PlannedPaymentDetailScreen() {
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           accessibilityLabel="Edit planned payment"
-          icon="pencil"
           onPress={openEditor}
-        />
+        >
+          Edit
+        </Stack.Toolbar.Button>
       </Stack.Toolbar>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -307,9 +341,11 @@ export default function PlannedPaymentDetailScreen() {
                   <PendingOccurrence
                     isBusy={busyDueDate === occurrence.dueDate}
                     occurrence={occurrence}
-                    onEdit={openEditor}
+                    onCancel={() => {
+                      handleCancelOccurrence(occurrence);
+                    }}
                     onMarkPaid={() => {
-                      void handleMarkPaid(occurrence);
+                      openPaymentSummary(occurrence);
                     }}
                   />
                 ) : (

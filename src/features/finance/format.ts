@@ -176,7 +176,7 @@ export function plannedPaymentDueLabel(daysUntilDue: number | null): string {
 /** Due label for a planned-payment occurrence row in the detail view. */
 export function plannedOccurrenceDueLabel(daysUntilDue: number): string {
   if (daysUntilDue === 0) {
-    return "Due date today";
+    return "Due today";
   }
   if (daysUntilDue < 0) {
     const days = Math.abs(daysUntilDue);

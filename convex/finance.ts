@@ -2638,9 +2638,12 @@ export const deletePlannedPayment = mutation({
 
 export const markPlannedPaymentPaid = mutation({
   args: {
+    accountId: v.optional(v.id("accounts")),
+    amount: v.optional(v.number()),
     createdByName: v.optional(v.string()),
     dueDate: v.number(),
     id: v.id("plannedPayments"),
+    paymentDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const payment = await ctx.db.get("plannedPayments", args.id);
@@ -2659,29 +2662,34 @@ export const markPlannedPaymentPaid = mutation({
       throw new Error("This occurrence has already been resolved");
     }
 
-    const account = await ctx.db.get("accounts", payment.accountId);
+    const accountId = args.accountId ?? payment.accountId;
+    const account = await ctx.db.get(accountId);
     if (!account) {
       throw new Error("Account not found");
     }
+    const amount = args.amount ?? payment.amount;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Transaction amounts must be positive");
+    }
 
-    const signedAmount =
-      payment.type === "expense" ? -payment.amount : payment.amount;
+    const signedAmount = payment.type === "expense" ? -amount : amount;
     const merchant = payment.description.trim() || payment.name;
     const createdByName = normalizeFirstName(args.createdByName ?? "");
+    const transactionDate = args.paymentDate ?? args.dueDate;
     const transactionId = await ctx.db.insert("transactions", {
-      accountId: payment.accountId,
+      accountId,
       amount: signedAmount,
       category: payment.category,
       color: payment.categoryColor,
       createdByName,
-      currency: payment.currency,
-      date: args.dueDate,
+      currency: account.currency,
+      date: transactionDate,
       merchant,
       symbol: payment.categorySymbol,
       transactionKind: payment.type,
     });
     await replaceTransactionTags(ctx, transactionId, payment.tagIds);
-    await ctx.db.patch(payment.accountId, {
+    await ctx.db.patch(accountId, {
       balance: account.balance + signedAmount,
     });
 

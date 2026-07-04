@@ -177,6 +177,16 @@ export default function TabLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="planned-payment-summary"
+                  options={{
+                    contentStyle: { backgroundColor: "transparent" },
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetGrabberVisible: false,
+                    sheetInitialDetentIndex: 0,
+                  }}
+                />
+                <Stack.Screen
                   name="add-planned-payment"
                   options={{
                     contentStyle: { backgroundColor: "transparent" },

@@ -1,12 +1,12 @@
 import { router } from "expo-router";
 
-import { useAddPlannedPayment } from "@/features/finance/add-planned-payment-context";
 import { AccountPickerScreen } from "@/features/finance/components/account-picker-screen";
+import { usePlannedPaymentSummary } from "@/features/finance/planned-payment-summary-context";
 import { useFinance } from "@/features/finance/use-finance";
 
-export default function PlannedPaymentAccountScreen() {
+export default function PlannedPaymentSummaryAccountScreen() {
   const { accounts } = useFinance();
-  const { accountId, setAccountId } = useAddPlannedPayment();
+  const { accountId, setAccountId } = usePlannedPaymentSummary();
 
   return (
     <AccountPickerScreen
