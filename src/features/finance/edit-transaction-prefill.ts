@@ -1,4 +1,5 @@
 import type { TransactionTag } from "./add-transaction-context";
+import { OUT_OF_WALLET_ACCOUNT_ID } from "./out-of-wallet";
 import { TRANSACTION_CATEGORIES } from "./transaction-categories";
 import type { TransactionCategory } from "./transaction-categories";
 import type { Transaction } from "./types";
@@ -53,7 +54,10 @@ export function buildEditFormState(
 
   return {
     accountId: isTransfer
-      ? (transaction.fromAccountId ?? transaction.accountId)
+      ? (transaction.fromAccountId ??
+        (transaction.transactionKind === "transfer_in"
+          ? OUT_OF_WALLET_ACCOUNT_ID
+          : transaction.accountId))
       : transaction.accountId,
     amount: minorUnitsToAmountInput(transaction.amount),
     category: transaction.category,
@@ -70,7 +74,12 @@ export function buildEditFormState(
     date: new Date(transaction.date).getTime(),
     narration: isDefaultMerchant ? "" : transaction.merchant,
     tags: transaction.tags,
-    toAccountId: isTransfer ? (transaction.toAccountId ?? null) : null,
+    toAccountId: isTransfer
+      ? (transaction.toAccountId ??
+        (transaction.transactionKind === "transfer_out"
+          ? OUT_OF_WALLET_ACCOUNT_ID
+          : null))
+      : null,
     transactionCharge: transaction.transactionChargeAmount
       ? minorUnitsToAmountInput(transaction.transactionChargeAmount)
       : "",

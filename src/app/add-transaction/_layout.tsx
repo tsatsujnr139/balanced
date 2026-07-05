@@ -22,6 +22,10 @@ import {
   getTransactionEditPrefill,
 } from "@/features/finance/edit-transaction-prefill";
 import {
+  OUT_OF_WALLET_ACCOUNT_NAME,
+  isOutOfWalletAccountId,
+} from "@/features/finance/out-of-wallet";
+import {
   TRANSACTION_CATEGORIES,
   TRANSFER_CATEGORY,
 } from "@/features/finance/transaction-categories";
@@ -339,8 +343,16 @@ export default function AddTransactionLayout() {
     const chargeInMinorUnits = amountInputToMinorUnits(transactionCharge);
     const trimmedNarration = narration.trim();
     const isTransfer = transactionTypeIndex === 2;
-    const account = accounts.find((item) => item.id === effectiveAccountId);
-    const toAccount = accounts.find((item) => item.id === toAccountId);
+    const isFromOutOfWallet =
+      isTransfer && isOutOfWalletAccountId(effectiveAccountId);
+    const isToOutOfWallet = isTransfer && isOutOfWalletAccountId(toAccountId);
+    const account = isFromOutOfWallet
+      ? null
+      : accounts.find((item) => item.id === effectiveAccountId);
+    const toAccount = isToOutOfWallet
+      ? null
+      : accounts.find((item) => item.id === toAccountId);
+    const trackedTransferAccount = isFromOutOfWallet ? toAccount : account;
     const selectedCategory = isTransfer
       ? TRANSFER_CATEGORY
       : [...TRANSACTION_CATEGORIES, ...customCategories].find(
@@ -353,11 +365,25 @@ export default function AddTransactionLayout() {
     }
 
     if (isTransfer) {
-      if (!account || !toAccount) {
+      if (isFromOutOfWallet && isToOutOfWallet) {
+        Alert.alert(
+          "Invalid transfer",
+          "Choose at least one account tracked in the app."
+        );
+        return;
+      }
+      if (
+        !trackedTransferAccount ||
+        (!isFromOutOfWallet && !isToOutOfWallet && !toAccount)
+      ) {
         Alert.alert("Missing accounts", "Choose both from and to accounts.");
         return;
       }
-      if (account.id === toAccount.id) {
+      if (
+        !isFromOutOfWallet &&
+        !isToOutOfWallet &&
+        account?.id === toAccount?.id
+      ) {
         Alert.alert(
           "Invalid transfer",
           "From and to accounts must be different."
@@ -377,7 +403,11 @@ export default function AddTransactionLayout() {
       const merchant =
         trimmedNarration ||
         (isTransfer
-          ? `Transfer to ${toAccount!.name}`
+          ? isFromOutOfWallet
+            ? `Transfer from ${OUT_OF_WALLET_ACCOUNT_NAME}`
+            : `Transfer to ${
+                isToOutOfWallet ? OUT_OF_WALLET_ACCOUNT_NAME : toAccount!.name
+              }`
           : selectedCategory!.name);
       const transactionType = isTransfer
         ? "transfer"
@@ -387,7 +417,7 @@ export default function AddTransactionLayout() {
 
       if (isEditing && editingTransactionId) {
         await updateTransaction({
-          accountId: account!.id as Id<"accounts">,
+          accountId: trackedTransferAccount!.id as Id<"accounts">,
           amount: amountInMinorUnits,
           category: selectedCategory!.name,
           color: selectedCategory!.color,
@@ -397,9 +427,15 @@ export default function AddTransactionLayout() {
           merchant,
           symbol: selectedCategory!.symbol,
           tagIds: tags.map((tag) => tag.id as Id<"tags">),
-          toAccountId: isTransfer
-            ? (toAccount!.id as Id<"accounts">)
-            : undefined,
+          externalTransferSide: isFromOutOfWallet
+            ? "from"
+            : isToOutOfWallet
+              ? "to"
+              : undefined,
+          toAccountId:
+            isTransfer && !(isFromOutOfWallet || isToOutOfWallet)
+              ? (toAccount!.id as Id<"accounts">)
+              : undefined,
           transactionCharge:
             (transactionType === "expense" || transactionType === "transfer") &&
             chargeInMinorUnits > 0
@@ -407,7 +443,7 @@ export default function AddTransactionLayout() {
               : undefined,
           type: transactionType,
         });
-        setLastTransactionAccountId(account!.id);
+        setLastTransactionAccountId(trackedTransferAccount!.id);
         closeAddTransaction();
         return;
       }
@@ -443,7 +479,7 @@ export default function AddTransactionLayout() {
       );
 
       await createTransaction({
-        accountId: account!.id as Id<"accounts">,
+        accountId: trackedTransferAccount!.id as Id<"accounts">,
         amount: amountInMinorUnits,
         attachments: uploadedAttachments,
         category: selectedCategory!.name,
@@ -453,7 +489,15 @@ export default function AddTransactionLayout() {
         merchant,
         symbol: selectedCategory!.symbol,
         tagIds: tags.map((tag) => tag.id as Id<"tags">),
-        toAccountId: isTransfer ? (toAccount!.id as Id<"accounts">) : undefined,
+        externalTransferSide: isFromOutOfWallet
+          ? "from"
+          : isToOutOfWallet
+            ? "to"
+            : undefined,
+        toAccountId:
+          isTransfer && !(isFromOutOfWallet || isToOutOfWallet)
+            ? (toAccount!.id as Id<"accounts">)
+            : undefined,
         transactionCharge:
           (transactionType === "expense" || transactionType === "transfer") &&
           chargeInMinorUnits > 0
@@ -461,7 +505,7 @@ export default function AddTransactionLayout() {
             : undefined,
         type: transactionType,
       });
-      setLastTransactionAccountId(account!.id);
+      setLastTransactionAccountId(trackedTransferAccount!.id);
       closeAddTransaction();
     } catch {
       Alert.alert("Could not save transaction", "Please try again.");

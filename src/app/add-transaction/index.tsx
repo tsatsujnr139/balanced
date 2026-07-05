@@ -30,6 +30,10 @@ import { TransactionDescriptionSuggestions } from "@/features/finance/components
 import { clearTransactionEditPrefill } from "@/features/finance/edit-transaction-prefill";
 import { DEFAULT_CURRENCY, getCurrencySymbol } from "@/features/finance/format";
 import {
+  OUT_OF_WALLET_ACCOUNT,
+  isOutOfWalletAccountId,
+} from "@/features/finance/out-of-wallet";
+import {
   TRANSACTION_CATEGORIES,
   TRANSFER_CATEGORY,
 } from "@/features/finance/transaction-categories";
@@ -406,17 +410,25 @@ export default function AddTransactionScreen() {
     tags,
   } = useAddTransaction();
   const isTransfer = transactionTypeIndex === 2;
+  const isFromOutOfWallet = isTransfer && isOutOfWalletAccountId(accountId);
+  const isToOutOfWallet = isTransfer && isOutOfWalletAccountId(toAccountId);
   const selectedCategory = isTransfer
     ? TRANSFER_CATEGORY
     : [...TRANSACTION_CATEGORIES, ...customCategories].find(
         (item) => item.name === category
       );
-  const fromAccount = accounts.find((account) => account.id === accountId);
-  const toAccount = accounts.find((account) => account.id === toAccountId);
+  const fromAccount = isFromOutOfWallet
+    ? OUT_OF_WALLET_ACCOUNT
+    : accounts.find((account) => account.id === accountId);
+  const toAccount = isToOutOfWallet
+    ? OUT_OF_WALLET_ACCOUNT
+    : accounts.find((account) => account.id === toAccountId);
   const selectedAccount = isTransfer ? fromAccount : fromAccount;
+  const trackedTransferAccount = isFromOutOfWallet ? toAccount : fromAccount;
   const amountColor = amountAccentColor(transactionTypeIndex, colors);
   const currencySymbol = getCurrencySymbol(
-    (isTransfer ? fromAccount : selectedAccount)?.currency ?? DEFAULT_CURRENCY
+    (isTransfer ? trackedTransferAccount : selectedAccount)?.currency ??
+      DEFAULT_CURRENCY
   );
   const deleteLabel =
     narration.trim() ||

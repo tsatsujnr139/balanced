@@ -152,6 +152,7 @@ const TRANSACTION_CHARGES_TAG_NAME = "Transaction charges";
 const TRANSACTION_CHARGES_TAG_COLOR = "#8E8E93";
 const ACCOUNT_TRANSFER_TAG_NAME = "Account transfer";
 const ACCOUNT_TRANSFER_TAG_COLOR = "#6366F1";
+const OUT_OF_WALLET_ACCOUNT_NAME = "Out of wallet";
 const BALANCE_ADJUSTMENT_CATEGORY = {
   color: "#8E8E93",
   name: "Balance adjustment",
@@ -285,9 +286,13 @@ async function enrichTransactions(
     let fromAccountName: string | undefined;
 
     const { toAccountId: transferToAccountId } = transaction;
-    if (kind === "transfer_out" && transferToAccountId) {
-      toAccountId = transferToAccountId;
-      toAccountName = accountNameById.get(toAccountId);
+    if (kind === "transfer_out") {
+      if (transferToAccountId) {
+        toAccountId = transferToAccountId;
+        toAccountName = accountNameById.get(toAccountId);
+      } else {
+        toAccountName = OUT_OF_WALLET_ACCOUNT_NAME;
+      }
       fromAccountId = transaction.accountId;
       fromAccountName = accountNameById.get(transaction.accountId);
     } else if (
@@ -297,6 +302,10 @@ async function enrichTransactions(
     ) {
       fromAccountId = pair.accountId;
       fromAccountName = accountNameById.get(pair.accountId);
+      toAccountId = transaction.accountId;
+      toAccountName = accountNameById.get(transaction.accountId);
+    } else if (kind === "transfer_in") {
+      fromAccountName = OUT_OF_WALLET_ACCOUNT_NAME;
       toAccountId = transaction.accountId;
       toAccountName = accountNameById.get(transaction.accountId);
     }
@@ -1454,6 +1463,9 @@ export const createTransaction = mutation({
     color: v.string(),
     createdByName: v.optional(v.string()),
     date: v.number(),
+    externalTransferSide: v.optional(
+      v.union(v.literal("from"), v.literal("to"))
+    ),
     merchant: v.string(),
     symbol: v.string(),
     tagIds: v.array(v.id("tags")),
@@ -1479,6 +1491,124 @@ export const createTransaction = mutation({
     const createdByName = normalizeFirstName(args.createdByName ?? "");
 
     if (args.type === "transfer") {
+      if (args.externalTransferSide === "from") {
+        const account = await ctx.db.get("accounts", args.accountId);
+        if (!account) {
+          throw new Error("Account not found");
+        }
+
+        const merchant =
+          args.merchant.trim() || `Transfer from ${OUT_OF_WALLET_ACCOUNT_NAME}`;
+        const transactionCharge = args.transactionCharge ?? 0;
+        const transferInId = await ctx.db.insert("transactions", {
+          accountId: args.accountId,
+          amount: args.amount,
+          category: TRANSFER_CATEGORY.name,
+          color: TRANSFER_CATEGORY.color,
+          createdByName,
+          currency: account.currency,
+          date: args.date,
+          merchant,
+          symbol: TRANSFER_CATEGORY.symbol,
+          transactionKind: "transfer_in",
+        });
+
+        const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
+        await replaceTransactionTags(ctx, transferInId, [
+          ...args.tagIds,
+          accountTransferTagId,
+        ]);
+        for (const attachment of args.attachments) {
+          await ctx.db.insert("transactionAttachments", {
+            ...attachment,
+            transactionId: transferInId,
+          });
+        }
+
+        let transactionChargeId = null;
+        if (transactionCharge > 0) {
+          transactionChargeId = await ctx.db.insert("transactions", {
+            accountId: args.accountId,
+            amount: -transactionCharge,
+            category: "Transaction charges",
+            color: TRANSACTION_CHARGES_TAG_COLOR,
+            createdByName,
+            currency: account.currency,
+            date: args.date,
+            merchant: `${merchant} TC`,
+            parentTransactionId: transferInId,
+            symbol: "creditcard.fill",
+            transactionKind: "charge",
+          });
+          await replaceChargeTransactionTags(ctx, transactionChargeId);
+        }
+
+        await ctx.db.patch(args.accountId, {
+          balance: account.balance + args.amount - transactionCharge,
+        });
+
+        return { mainTransactionId: transferInId, transactionChargeId };
+      }
+
+      if (args.externalTransferSide === "to") {
+        const account = await ctx.db.get("accounts", args.accountId);
+        if (!account) {
+          throw new Error("Account not found");
+        }
+
+        const merchant =
+          args.merchant.trim() || `Transfer to ${OUT_OF_WALLET_ACCOUNT_NAME}`;
+        const transactionCharge = args.transactionCharge ?? 0;
+        const transferOutId = await ctx.db.insert("transactions", {
+          accountId: args.accountId,
+          amount: -args.amount,
+          category: TRANSFER_CATEGORY.name,
+          color: TRANSFER_CATEGORY.color,
+          createdByName,
+          currency: account.currency,
+          date: args.date,
+          merchant,
+          symbol: TRANSFER_CATEGORY.symbol,
+          transactionKind: "transfer_out",
+        });
+
+        const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
+        await replaceTransactionTags(ctx, transferOutId, [
+          ...args.tagIds,
+          accountTransferTagId,
+        ]);
+        for (const attachment of args.attachments) {
+          await ctx.db.insert("transactionAttachments", {
+            ...attachment,
+            transactionId: transferOutId,
+          });
+        }
+
+        let transactionChargeId = null;
+        if (transactionCharge > 0) {
+          transactionChargeId = await ctx.db.insert("transactions", {
+            accountId: args.accountId,
+            amount: -transactionCharge,
+            category: "Transaction charges",
+            color: TRANSACTION_CHARGES_TAG_COLOR,
+            createdByName,
+            currency: account.currency,
+            date: args.date,
+            merchant: `${merchant} TC`,
+            parentTransactionId: transferOutId,
+            symbol: "creditcard.fill",
+            transactionKind: "charge",
+          });
+          await replaceChargeTransactionTags(ctx, transactionChargeId);
+        }
+
+        await ctx.db.patch(args.accountId, {
+          balance: account.balance - args.amount - transactionCharge,
+        });
+
+        return { mainTransactionId: transferOutId, transactionChargeId };
+      }
+
       if (!args.toAccountId) {
         throw new Error("Transfer requires a destination account");
       }
@@ -1634,6 +1764,9 @@ export const updateTransaction = mutation({
     color: v.string(),
     createdByName: v.optional(v.string()),
     date: v.number(),
+    externalTransferSide: v.optional(
+      v.union(v.literal("from"), v.literal("to"))
+    ),
     id: v.id("transactions"),
     merchant: v.string(),
     symbol: v.string(),
@@ -1665,6 +1798,141 @@ export const updateTransaction = mutation({
     const existingKind = resolveTransactionKind(existing);
 
     if (existingKind === "transfer_out" || args.type === "transfer") {
+      if (args.externalTransferSide) {
+        const trackedAccount = await ctx.db.get("accounts", args.accountId);
+        if (!trackedAccount) {
+          throw new Error("Account not found");
+        }
+
+        const existingPair = existing.pairTransactionId
+          ? await ctx.db.get("transactions", existing.pairTransactionId)
+          : null;
+        const oldInLeg =
+          existingPair && resolveTransactionKind(existingPair) === "transfer_in"
+            ? existingPair
+            : null;
+        const oldToAccountId = existing.toAccountId ?? oldInLeg?.accountId;
+        const oldAmount = Math.abs(existing.amount);
+        const oldCharge = await getChargeForParentTransaction(
+          ctx,
+          existing._id
+        );
+        const oldChargeAmount = oldCharge ? Math.abs(oldCharge.amount) : 0;
+
+        if (existingKind === "transfer_out") {
+          const oldFromAccount = await ctx.db.get(
+            "accounts",
+            existing.accountId
+          );
+          const oldToAccount = oldToAccountId
+            ? await ctx.db.get("accounts", oldToAccountId)
+            : null;
+          if (oldFromAccount) {
+            await ctx.db.patch(existing.accountId, {
+              balance: oldFromAccount.balance + oldAmount + oldChargeAmount,
+            });
+          }
+          if (oldToAccount && oldToAccountId) {
+            await ctx.db.patch(oldToAccountId, {
+              balance: oldToAccount.balance - oldAmount,
+            });
+          }
+        } else if (existingKind === "transfer_in") {
+          const oldAccount = await ctx.db.get("accounts", existing.accountId);
+          if (oldAccount) {
+            await ctx.db.patch(existing.accountId, {
+              balance: oldAccount.balance - oldAmount + oldChargeAmount,
+            });
+          }
+        } else {
+          const oldAccount = await ctx.db.get("accounts", existing.accountId);
+          if (oldAccount) {
+            await ctx.db.patch(existing.accountId, {
+              balance: oldAccount.balance - existing.amount + oldChargeAmount,
+            });
+          }
+        }
+
+        await deleteTransactionDocument(ctx, oldInLeg);
+
+        const nextCharge = args.transactionCharge ?? 0;
+        const isExternalSource = args.externalTransferSide === "from";
+        const merchant =
+          args.merchant.trim() ||
+          (isExternalSource
+            ? `Transfer from ${OUT_OF_WALLET_ACCOUNT_NAME}`
+            : `Transfer to ${OUT_OF_WALLET_ACCOUNT_NAME}`);
+        const createdByName =
+          existing.createdByName ??
+          normalizeFirstName(args.createdByName ?? "");
+
+        await ctx.db.patch(existing._id, {
+          accountId: args.accountId,
+          amount: isExternalSource ? args.amount : -args.amount,
+          category: TRANSFER_CATEGORY.name,
+          color: TRANSFER_CATEGORY.color,
+          currency: trackedAccount.currency,
+          date: args.date,
+          merchant,
+          pairTransactionId: undefined,
+          symbol: TRANSFER_CATEGORY.symbol,
+          toAccountId: undefined,
+          transactionKind: isExternalSource ? "transfer_in" : "transfer_out",
+        });
+
+        const updatedTrackedAccount = await ctx.db.get(
+          "accounts",
+          args.accountId
+        );
+        if (updatedTrackedAccount) {
+          await ctx.db.patch(args.accountId, {
+            balance:
+              updatedTrackedAccount.balance +
+              (isExternalSource ? args.amount : -args.amount) -
+              nextCharge,
+          });
+        }
+
+        const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
+        await replaceTransactionTags(ctx, existing._id, [
+          ...args.tagIds,
+          accountTransferTagId,
+        ]);
+
+        if (oldCharge) {
+          if (nextCharge > 0) {
+            await ctx.db.patch(oldCharge._id, {
+              accountId: args.accountId,
+              amount: -nextCharge,
+              currency: trackedAccount.currency,
+              date: args.date,
+              merchant: `${merchant} TC`,
+              parentTransactionId: existing._id,
+            });
+            await replaceChargeTransactionTags(ctx, oldCharge._id);
+          } else {
+            await deleteTransactionDocument(ctx, oldCharge);
+          }
+        } else if (nextCharge > 0) {
+          const chargeId = await ctx.db.insert("transactions", {
+            accountId: args.accountId,
+            amount: -nextCharge,
+            category: "Transaction charges",
+            color: TRANSACTION_CHARGES_TAG_COLOR,
+            createdByName,
+            currency: trackedAccount.currency,
+            date: args.date,
+            merchant: `${merchant} TC`,
+            parentTransactionId: existing._id,
+            symbol: "creditcard.fill",
+            transactionKind: "charge",
+          });
+          await replaceChargeTransactionTags(ctx, chargeId);
+        }
+
+        return existing._id;
+      }
+
       if (!args.toAccountId) {
         throw new Error("Transfer requires a destination account");
       }
@@ -1681,10 +1949,13 @@ export const updateTransaction = mutation({
         throw new Error("Transfer accounts must use the same currency");
       }
 
-      const oldFromAccountId = existing.accountId;
-      const oldInLeg = existing.pairTransactionId
+      const oldPair = existing.pairTransactionId
         ? await ctx.db.get("transactions", existing.pairTransactionId)
         : null;
+      const oldInLeg =
+        oldPair && resolveTransactionKind(oldPair) === "transfer_in"
+          ? oldPair
+          : null;
       const oldToAccountId = existing.toAccountId ?? oldInLeg?.accountId;
       const oldAmount = Math.abs(existing.amount);
       const oldCharge = await getChargeForParentTransaction(ctx, existing._id);
@@ -1693,17 +1964,33 @@ export const updateTransaction = mutation({
       const createdByName =
         existing.createdByName ?? normalizeFirstName(args.createdByName ?? "");
 
-      if (oldToAccountId) {
-        const oldFromAccount = await ctx.db.get("accounts", oldFromAccountId);
-        const oldToAccount = await ctx.db.get("accounts", oldToAccountId);
+      if (existingKind === "transfer_out") {
+        const oldFromAccount = await ctx.db.get("accounts", existing.accountId);
+        const oldToAccount = oldToAccountId
+          ? await ctx.db.get("accounts", oldToAccountId)
+          : null;
         if (oldFromAccount) {
-          await ctx.db.patch(oldFromAccountId, {
+          await ctx.db.patch(existing.accountId, {
             balance: oldFromAccount.balance + oldAmount + oldChargeAmount,
           });
         }
-        if (oldToAccount) {
+        if (oldToAccount && oldToAccountId) {
           await ctx.db.patch(oldToAccountId, {
             balance: oldToAccount.balance - oldAmount,
+          });
+        }
+      } else if (existingKind === "transfer_in") {
+        const oldAccount = await ctx.db.get("accounts", existing.accountId);
+        if (oldAccount) {
+          await ctx.db.patch(existing.accountId, {
+            balance: oldAccount.balance - oldAmount + oldChargeAmount,
+          });
+        }
+      } else {
+        const oldAccount = await ctx.db.get("accounts", existing.accountId);
+        if (oldAccount) {
+          await ctx.db.patch(existing.accountId, {
+            balance: oldAccount.balance - existing.amount + oldChargeAmount,
           });
         }
       }
@@ -1722,7 +2009,7 @@ export const updateTransaction = mutation({
         transactionKind: "transfer_out",
       });
 
-      let transferInId = existing.pairTransactionId;
+      let transferInId = oldInLeg?._id;
       if (transferInId) {
         await ctx.db.patch(transferInId, {
           accountId: args.toAccountId,
@@ -1749,8 +2036,8 @@ export const updateTransaction = mutation({
           symbol: TRANSFER_CATEGORY.symbol,
           transactionKind: "transfer_in",
         });
-        await ctx.db.patch(existing._id, { pairTransactionId: transferInId });
       }
+      await ctx.db.patch(existing._id, { pairTransactionId: transferInId });
 
       const updatedFromAccount = await ctx.db.get("accounts", args.accountId);
       const updatedToAccount = await ctx.db.get("accounts", args.toAccountId);
@@ -1975,10 +2262,12 @@ export const deleteTransaction = mutation({
     }
 
     const account = await ctx.db.get("accounts", existing.accountId);
-    const charge =
+    const pairedCharge =
       existing.pairTransactionId !== undefined
         ? await ctx.db.get("transactions", existing.pairTransactionId)
         : null;
+    const childCharge = await getChargeForParentTransaction(ctx, existing._id);
+    const charge = childCharge ?? pairedCharge;
     const chargeAmount =
       charge && resolveTransactionKind(charge) === "charge"
         ? Math.abs(charge.amount)
