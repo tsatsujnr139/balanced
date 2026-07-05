@@ -1,9 +1,9 @@
 import * as SecureStore from "expo-secure-store";
-import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import { AppState, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { useThemeColors } from "@/hooks/use-theme";
 import { useRemoteUpdate } from "@/lib/updates";
 

@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { Platform } from "react-native";
 
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -18,6 +19,7 @@ export default function AppTabs() {
     <NativeTabs
       disableTransparentOnScrollEdge
       labelStyle={{ selected: { color: colors.primary } }}
+      labelVisibilityMode="labeled"
       minimizeBehavior="onScrollDown"
       tintColor={colors.primary}
     >
@@ -63,6 +65,7 @@ export default function AppTabs() {
         name="add-action"
         role="search"
         disabled
+        hidden={Platform.OS === "android"}
         listeners={{
           tabPress: () => {
             router.push("/add-transaction");

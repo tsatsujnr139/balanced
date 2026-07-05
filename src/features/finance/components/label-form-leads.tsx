@@ -1,6 +1,6 @@
-import { SymbolView } from "expo-symbols";
 import { Text, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { useThemeColors } from "@/hooks/use-theme";
 
 export function NameLeading({ name }: { name: string }) {

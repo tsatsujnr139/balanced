@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { router } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
@@ -48,9 +48,11 @@ export default function AddTransactionTemplatesScreen() {
         }}
         placeholder="Search templates"
       />
-      <Stack.Toolbar placement="bottom">
-        <Stack.Toolbar.SearchBarSlot />
-      </Stack.Toolbar>
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="bottom">
+          <Stack.Toolbar.SearchBarSlot />
+        </Stack.Toolbar>
+      ) : null}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"

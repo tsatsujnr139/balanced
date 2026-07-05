@@ -1,7 +1,7 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import {
   ACCOUNT_CURRENCIES,
   ACCOUNT_CURRENCY_LABEL,

@@ -2675,7 +2675,7 @@ export const markPlannedPaymentPaid = mutation({
     const signedAmount = payment.type === "expense" ? -amount : amount;
     const merchant = payment.description.trim() || payment.name;
     const createdByName = normalizeFirstName(args.createdByName ?? "");
-    const transactionDate = args.paymentDate ?? args.dueDate;
+    const transactionDate = args.paymentDate ?? Date.now();
     const transactionId = await ctx.db.insert("transactions", {
       accountId,
       amount: signedAmount,

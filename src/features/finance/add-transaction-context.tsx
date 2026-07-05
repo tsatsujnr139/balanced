@@ -30,6 +30,7 @@ interface AddTransactionContextValue {
   category: string | null;
   date: number;
   labelDraft: TransactionLabelDraft;
+  tagColorDraft: string;
   tags: TransactionTag[];
   toAccountId: string | null;
   transactionCharge: string;
@@ -49,6 +50,7 @@ interface AddTransactionContextValue {
       | TransactionLabelDraft
       | ((current: TransactionLabelDraft) => TransactionLabelDraft)
   ) => void;
+  setTagColorDraft: (color: string) => void;
   setToAccountId: (accountId: string) => void;
   setTransactionCharge: (transactionCharge: string) => void;
   setNarration: (narration: string) => void;

@@ -7,7 +7,6 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -20,6 +19,7 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {

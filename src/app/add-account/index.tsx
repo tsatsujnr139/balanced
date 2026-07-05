@@ -1,6 +1,5 @@
 import { useMutation } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {

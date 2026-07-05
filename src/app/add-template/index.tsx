@@ -1,7 +1,6 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useMutation } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAddTemplate } from "@/features/finance/add-template-context";

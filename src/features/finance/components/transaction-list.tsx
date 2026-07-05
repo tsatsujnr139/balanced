@@ -1,7 +1,7 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { Pressable, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { cn } from "@/lib/cn";

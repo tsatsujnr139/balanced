@@ -2,7 +2,6 @@ import { usePaginatedQuery } from "convex/react";
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { SymbolView } from "expo-symbols";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { TransactionList } from "@/features/finance/components/transaction-list";

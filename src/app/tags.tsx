@@ -2,8 +2,9 @@ import { useMutation } from "convex/react";
 import { router } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useMemo, useState } from "react";
-import { Alert, ScrollView } from "react-native";
+import { Alert, Platform, ScrollView } from "react-native";
 
+import { ScreenFab } from "@/components/screen-fab";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { LabelManagementList } from "@/features/finance/components/label-management-list";
@@ -74,15 +75,24 @@ export default function TagsScreen() {
 
       <Stack.Screen.BackButton displayMode="minimal" />
       <Stack.Screen.Title large>Tags</Stack.Screen.Title>
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Add tag"
+            icon="plus"
+            onPress={() => {
+              router.push("/add-tag" as never);
+            }}
+          />
+        </Stack.Toolbar>
+      ) : (
+        <ScreenFab
           accessibilityLabel="Add tag"
-          icon="plus"
           onPress={() => {
             router.push("/add-tag" as never);
           }}
         />
-      </Stack.Toolbar>
+      )}
       <Stack.SearchBar
         autoCapitalize="none"
         onCancelButtonPress={() => setSearch("")}
@@ -91,9 +101,11 @@ export default function TagsScreen() {
         }}
         placeholder="Search tags"
       />
-      <Stack.Toolbar placement="bottom">
-        <Stack.Toolbar.SearchBarSlot />
-      </Stack.Toolbar>
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="bottom">
+          <Stack.Toolbar.SearchBarSlot />
+        </Stack.Toolbar>
+      ) : null}
     </>
   );
 }

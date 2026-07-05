@@ -1,9 +1,10 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, View, useWindowDimensions } from "react-native";
+import { Platform, ScrollView, View, useWindowDimensions } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 
+import { ScreenFab } from "@/components/screen-fab";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import {
@@ -197,15 +198,24 @@ export default function BudgetsScreen() {
 
       <Stack.Screen.BackButton displayMode="minimal" />
       <Stack.Screen.Title large>Budgets</Stack.Screen.Title>
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Add budget"
+            icon="plus"
+            onPress={() => {
+              router.push("/add-budget");
+            }}
+          />
+        </Stack.Toolbar>
+      ) : (
+        <ScreenFab
           accessibilityLabel="Add budget"
-          icon="plus"
           onPress={() => {
             router.push("/add-budget");
           }}
         />
-      </Stack.Toolbar>
+      )}
       <Stack.SearchBar
         autoCapitalize="none"
         onCancelButtonPress={() => {

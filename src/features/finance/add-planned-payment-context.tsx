@@ -24,6 +24,7 @@ interface AddPlannedPaymentContextValue {
   date: number;
   frequency: PlannedPaymentFrequency;
   interval: number;
+  tagColorDraft: string;
   tags: PlannedTagSelection[];
   notifyOnDue: boolean;
   notifyOnOverdue: boolean;
@@ -38,6 +39,7 @@ interface AddPlannedPaymentContextValue {
   setDate: (date: number) => void;
   setFrequency: (frequency: PlannedPaymentFrequency) => void;
   setInterval: (interval: number) => void;
+  setTagColorDraft: (color: string) => void;
   toggleTag: (tag: PlannedTagSelection) => void;
   setNotifyOnDue: (value: boolean) => void;
   setNotifyOnOverdue: (value: boolean) => void;

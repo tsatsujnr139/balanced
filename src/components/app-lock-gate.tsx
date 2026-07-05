@@ -1,8 +1,8 @@
-import { SymbolView } from "expo-symbols";
 import { useEffect } from "react";
 import type { PropsWithChildren } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColors } from "@/hooks/use-theme";
 import { useAppLock } from "@/providers/app-lock-provider";

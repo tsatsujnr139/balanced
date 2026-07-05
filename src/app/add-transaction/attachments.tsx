@@ -1,8 +1,8 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { SymbolView } from "expo-symbols";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import type { TransactionAttachmentDraft } from "@/features/finance/add-transaction-context";
 import { useThemeColors } from "@/hooks/use-theme";

@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { api } from "@/convex/_generated/api";

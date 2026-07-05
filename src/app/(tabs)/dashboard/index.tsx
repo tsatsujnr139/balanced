@@ -1,9 +1,9 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import type { DimensionValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BottomTabInset, MaxContentWidth } from "@/constants/theme";

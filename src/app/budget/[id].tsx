@@ -2,7 +2,6 @@ import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useMutation } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { api } from "@/convex/_generated/api";

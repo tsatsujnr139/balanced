@@ -1,7 +1,7 @@
-import { SymbolView } from "expo-symbols";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedView } from "@/components/themed-view";
 import { useThemeColors } from "@/hooks/use-theme";
 

@@ -3,13 +3,16 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert } from "react-native";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { MaterialIcons } from "@/constants/material-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PlannedPaymentSummaryContext } from "@/features/finance/planned-payment-summary-context";
 import { useFinance } from "@/features/finance/use-finance";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
+import { androidHeaderOptions } from "@/lib/android-header-options";
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -52,9 +55,11 @@ export default function PlannedPaymentSummaryLayout() {
   const [accountId, setAccountIdState] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentDate, setPaymentDate] = useState(
-    Number.isFinite(dueDate) ? dueDate : Date.now()
-  );
+  const [paymentDate, setPaymentDate] = useState(() => Date.now());
+
+  useEffect(() => {
+    setPaymentDate(Date.now());
+  }, [dueDate, id]);
 
   useEffect(() => {
     if (!planned) {
@@ -67,7 +72,9 @@ export default function PlannedPaymentSummaryLayout() {
 
   const submit = useCallback(async () => {
     const amountInMinorUnits = amountInputToMinorUnits(amount);
-    const selectedAccount = accounts.find((account) => account.id === accountId);
+    const selectedAccount = accounts.find(
+      (account) => account.id === accountId
+    );
 
     if (!(id && planned && Number.isFinite(dueDate)) || isSubmitting) {
       return;
@@ -126,6 +133,45 @@ export default function PlannedPaymentSummaryLayout() {
     [accountId, amount, isSubmitting, paymentDate, submit]
   );
 
+  const renderBackButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Back"
+        icon={MaterialIcons.chevronLeft}
+        onPress={() => router.back()}
+      />
+    ),
+    []
+  );
+
+  const renderCloseButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Close"
+        icon={MaterialIcons.close}
+        onPress={closeSummary}
+      />
+    ),
+    []
+  );
+
+  const renderConfirmButton = useCallback(
+    () =>
+      isSubmitting || planned === undefined ? (
+        <ActivityIndicator />
+      ) : (
+        <HeaderIconButton
+          accessibilityLabel="Confirm payment"
+          icon={MaterialIcons.check}
+          onPress={() => {
+            void submit();
+          }}
+          tintColor={colors.primary}
+        />
+      ),
+    [isSubmitting, planned, submit, colors.primary]
+  );
+
   return (
     <PlannedPaymentSummaryContext.Provider value={contextValue}>
       <Stack
@@ -137,51 +183,72 @@ export default function PlannedPaymentSummaryLayout() {
                 : "systemMaterial"
               : undefined,
           headerShadowVisible: false,
-          headerTransparent: true,
+          headerStyle:
+            process.env.EXPO_OS === "android"
+              ? { backgroundColor: colors.background }
+              : undefined,
+          headerTransparent: process.env.EXPO_OS === "ios",
         }}
       >
         <Stack.Screen
           name="index"
-          options={{ headerBackVisible: false, title: "Payment summary" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({
+              headerLeft: renderCloseButton,
+              headerRight: renderConfirmButton,
+            }),
+            title: "Payment summary",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Close"
-              icon="xmark"
-              onPress={closeSummary}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            {isSubmitting || planned === undefined ? (
-              <Stack.Toolbar.View>
-                <ActivityIndicator />
-              </Stack.Toolbar.View>
-            ) : (
+          {process.env.EXPO_OS === "ios" ? (
+            <Stack.Toolbar placement="left">
               <Stack.Toolbar.Button
-                accessibilityLabel="Confirm payment"
-                icon="checkmark"
-                onPress={() => {
-                  void submit();
-                }}
-                tintColor={colors.primary}
-                variant="prominent"
+                accessibilityLabel="Close"
+                icon="xmark"
+                onPress={closeSummary}
+                separateBackground
               />
-            )}
-          </Stack.Toolbar>
+            </Stack.Toolbar>
+          ) : null}
+          {process.env.EXPO_OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              {isSubmitting || planned === undefined ? (
+                <Stack.Toolbar.View>
+                  <ActivityIndicator />
+                </Stack.Toolbar.View>
+              ) : (
+                <Stack.Toolbar.Button
+                  accessibilityLabel="Confirm payment"
+                  icon="checkmark"
+                  onPress={() => {
+                    void submit();
+                  }}
+                  tintColor={colors.primary}
+                  variant="prominent"
+                />
+              )}
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="account"
-          options={{ headerBackVisible: false, title: "Account" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Account",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {process.env.EXPO_OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
       </Stack>
     </PlannedPaymentSummaryContext.Provider>

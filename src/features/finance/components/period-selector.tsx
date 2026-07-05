@@ -1,7 +1,7 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
-import { SymbolView } from "expo-symbols";
 import { Pressable, View, useColorScheme } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColors } from "@/hooks/use-theme";
 

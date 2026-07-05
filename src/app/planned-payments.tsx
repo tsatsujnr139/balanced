@@ -2,9 +2,10 @@ import { useQuery } from "convex/react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 
+import { ScreenFab } from "@/components/screen-fab";
 import { api } from "@/convex/_generated/api";
 import { PlannedPaymentList } from "@/features/finance/components/planned-payment-list";
 import type { PlannedPayment } from "@/features/finance/types";
@@ -39,6 +40,13 @@ export default function PlannedPaymentsScreen() {
     [plannedPayments, query]
   );
   const shouldFocusSearch = focusSearch === "1";
+
+  const openAddPlannedPayment = () => {
+    router.push({
+      params: { draftId: `new-${Date.now()}` },
+      pathname: "/add-planned-payment",
+    });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -84,18 +92,20 @@ export default function PlannedPaymentsScreen() {
 
       <Stack.Screen.BackButton displayMode="minimal" />
       <Stack.Screen.Title large>Planned Payments</Stack.Screen.Title>
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Add planned payment"
+            icon="plus"
+            onPress={openAddPlannedPayment}
+          />
+        </Stack.Toolbar>
+      ) : (
+        <ScreenFab
           accessibilityLabel="Add planned payment"
-          icon="plus"
-          onPress={() => {
-            router.push({
-              params: { draftId: `new-${Date.now()}` },
-              pathname: "/add-planned-payment",
-            });
-          }}
+          onPress={openAddPlannedPayment}
         />
-      </Stack.Toolbar>
+      )}
       <Stack.SearchBar
         autoCapitalize="none"
         onCancelButtonPress={() => {
@@ -108,9 +118,11 @@ export default function PlannedPaymentsScreen() {
         placeholder="Search planned payments"
         ref={searchBarRef}
       />
-      <Stack.Toolbar placement="bottom">
-        <Stack.Toolbar.SearchBarSlot />
-      </Stack.Toolbar>
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="bottom">
+          <Stack.Toolbar.SearchBarSlot />
+        </Stack.Toolbar>
+      ) : null}
     </>
   );
 }

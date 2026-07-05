@@ -1,6 +1,6 @@
-import { SymbolView } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { useThemeColors } from "@/hooks/use-theme";
 
 interface Props {

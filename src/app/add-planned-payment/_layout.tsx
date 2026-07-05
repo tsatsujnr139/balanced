@@ -4,7 +4,9 @@ import { Stack } from "expo-router/stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, View } from "react-native";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { MaterialIcons } from "@/constants/material-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AddPlannedPaymentContext } from "@/features/finance/add-planned-payment-context";
@@ -12,6 +14,7 @@ import type {
   PlannedCategorySelection,
   PlannedTagSelection,
 } from "@/features/finance/add-planned-payment-context";
+import { DEFAULT_LABEL_COLOR } from "@/features/finance/color-utils";
 import { DEFAULT_PLANNED_FREQUENCY } from "@/features/finance/planned-payment-constants";
 import type {
   PlannedPaymentFrequency,
@@ -19,6 +22,7 @@ import type {
 } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
+import { androidHeaderOptions } from "@/lib/android-header-options";
 
 const DEFAULT_START_DATE = Date.now();
 
@@ -73,6 +77,7 @@ export default function AddPlannedPaymentLayout() {
   );
   const [interval, setInterval] = useState(1);
   const [tags, setTags] = useState<PlannedTagSelection[]>([]);
+  const [tagColorDraft, setTagColorDraft] = useState(DEFAULT_LABEL_COLOR);
   const [notifyOnDue, setNotifyOnDue] = useState(false);
   const [notifyOnOverdue, setNotifyOnOverdue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -246,10 +251,12 @@ export default function AddPlannedPaymentLayout() {
       setName,
       setNotifyOnDue,
       setNotifyOnOverdue,
+      setTagColorDraft,
       setType,
       submit: () => {
         void submit();
       },
+      tagColorDraft,
       tags,
       toggleTag: (tag: PlannedTagSelection) => {
         setTags((current) =>
@@ -273,10 +280,72 @@ export default function AddPlannedPaymentLayout() {
       name,
       notifyOnDue,
       notifyOnOverdue,
+      tagColorDraft,
       tags,
       submit,
       type,
     ]
+  );
+
+  const renderBackButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Back"
+        icon={MaterialIcons.chevronLeft}
+        onPress={() => router.back()}
+      />
+    ),
+    []
+  );
+
+  const renderCloseButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Close"
+        icon={MaterialIcons.close}
+        onPress={closePlannedPaymentForm}
+      />
+    ),
+    []
+  );
+
+  const renderSaveButton = useCallback(
+    () =>
+      isSubmitting ? (
+        <ActivityIndicator />
+      ) : (
+        <HeaderIconButton
+          accessibilityLabel="Save planned payment"
+          icon={MaterialIcons.check}
+          onPress={() => {
+            void submit();
+          }}
+          tintColor={colors.primary}
+        />
+      ),
+    [isSubmitting, submit, colors.primary]
+  );
+
+  const renderAddCategoryButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Add category"
+        icon={MaterialIcons.add}
+        onPress={() => router.push("/add-category" as never)}
+      />
+    ),
+    []
+  );
+
+  const renderAddTagButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Add tag"
+        icon={MaterialIcons.add}
+        onPress={() => router.push("/add-planned-payment/tag-new" as never)}
+      />
+    ),
+    []
   );
 
   if (editingId && plannedPayment === undefined) {
@@ -305,109 +374,174 @@ export default function AddPlannedPaymentLayout() {
                 : "systemMaterial"
               : undefined,
           headerShadowVisible: false,
-          headerTransparent: true,
+          headerStyle:
+            Platform.OS === "android"
+              ? { backgroundColor: colors.background }
+              : undefined,
+          headerTransparent: Platform.OS === "ios",
         }}
       >
         <Stack.Screen
           name="index"
           options={{
             headerLargeTitle: false,
+            ...androidHeaderOptions({
+              headerLeft: renderCloseButton,
+              headerRight: renderSaveButton,
+            }),
             title: editingId ? "Edit planned payment" : "New planned payment",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Close"
-              icon="xmark"
-              onPress={closePlannedPaymentForm}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            {isSubmitting ? (
-              <Stack.Toolbar.View>
-                <ActivityIndicator />
-              </Stack.Toolbar.View>
-            ) : (
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
               <Stack.Toolbar.Button
-                accessibilityLabel="Save planned payment"
-                icon="checkmark"
-                onPress={() => {
-                  void submit();
-                }}
-                tintColor={colors.primary}
-                variant="prominent"
+                accessibilityLabel="Close"
+                icon="xmark"
+                onPress={closePlannedPaymentForm}
+                separateBackground
               />
-            )}
-          </Stack.Toolbar>
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              {isSubmitting ? (
+                <Stack.Toolbar.View>
+                  <ActivityIndicator />
+                </Stack.Toolbar.View>
+              ) : (
+                <Stack.Toolbar.Button
+                  accessibilityLabel="Save planned payment"
+                  icon="checkmark"
+                  onPress={() => {
+                    void submit();
+                  }}
+                  tintColor={colors.primary}
+                  variant="prominent"
+                />
+              )}
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="account"
-          options={{ headerBackVisible: false, title: "Account" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Account",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="category"
-          options={{ headerBackVisible: false, title: "Category" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({
+              headerLeft: renderBackButton,
+              headerRight: renderAddCategoryButton,
+            }),
+            title: "Category",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Add category"
-              icon="plus"
-              onPress={() => router.push("/add-category" as never)}
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Add category"
+                icon="plus"
+                onPress={() => router.push("/add-category" as never)}
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="tags"
-          options={{ headerBackVisible: false, title: "Tags" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({
+              headerLeft: renderBackButton,
+              headerRight: renderAddTagButton,
+            }),
+            title: "Tags",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Add tag"
-              icon="plus"
-              onPress={() =>
-                router.push("/add-planned-payment/tag-new" as never)
-              }
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Add tag"
+                icon="plus"
+                onPress={() =>
+                  router.push("/add-planned-payment/tag-new" as never)
+                }
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="tag-new"
-          options={{ headerBackVisible: false, title: "Add tag" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Add tag",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+        </Stack.Screen>
+        <Stack.Screen
+          name="tag-color"
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Color",
+          }}
+        >
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
       </Stack>
     </AddPlannedPaymentContext.Provider>

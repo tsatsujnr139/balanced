@@ -7,7 +7,6 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   Platform,
@@ -20,6 +19,7 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { useAddPlannedPayment } from "@/features/finance/add-planned-payment-context";
 import {
   FieldGroup,

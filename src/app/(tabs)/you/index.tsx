@@ -1,4 +1,3 @@
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -9,6 +8,7 @@ import {
   View,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import {
   normalizeFirstName,
@@ -86,8 +86,8 @@ export default function YouScreen() {
   const disabledReason = getDisabledReason(capability, isEnabled);
   const isSwitchDisabled = isHydrating || isUpdating || Boolean(disabledReason);
   const detail = capability?.canAuthenticate
-    ? `Use ${capability.label} or your device passcode to unlock Balanced.`
-    : (disabledReason ?? "Use device authentication to unlock Balanced.");
+    ? `Use ${capability.label} or your device passcode to unlock the app.`
+    : (disabledReason ?? "Use device authentication to unlock the app.");
   const savedFirstName = savedLocalFirstName;
   const firstName = draftFirstName ?? savedFirstName;
   const normalizedFirstName = normalizeFirstName(firstName);

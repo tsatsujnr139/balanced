@@ -1,6 +1,6 @@
-import { SymbolView } from "expo-symbols";
 import { FlatList, Pressable, Text, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import type { Account } from "@/features/finance/types";
 import { useThemeColors } from "@/hooks/use-theme";
 

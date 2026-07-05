@@ -1,15 +1,16 @@
 import { router } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { SymbolView } from "expo-symbols";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   Text,
   View,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedView } from "@/components/themed-view";
 import { useCachedTags } from "@/features/finance/use-labels";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -55,9 +56,11 @@ export function TagPickerScreen({
         onChangeText={(event) => setSearch(event.nativeEvent.text)}
         placeholder="Search tags"
       />
-      <Stack.Toolbar placement="bottom">
-        <Stack.Toolbar.SearchBarSlot />
-      </Stack.Toolbar>
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="bottom">
+          <Stack.Toolbar.SearchBarSlot />
+        </Stack.Toolbar>
+      ) : null}
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{

@@ -34,7 +34,6 @@ export function CategoryFormRows({
 
   return (
     <>
-      <FieldSectionLabel>General</FieldSectionLabel>
       <FieldGroup>
         <FieldRow
           label="Category name"

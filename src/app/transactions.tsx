@@ -2,9 +2,10 @@ import { useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 
+import { ScreenFab } from "@/components/screen-fab";
 import { api } from "@/convex/_generated/api";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import { filterTransactions } from "@/features/finance/filter-transactions";
@@ -54,15 +55,24 @@ export default function TransactionsScreen() {
 
       <Stack.Screen.BackButton displayMode="minimal" />
       <Stack.Screen.Title large>Transactions</Stack.Screen.Title>
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Add transaction"
+            icon="plus"
+            onPress={() => {
+              router.push("/add-transaction");
+            }}
+          />
+        </Stack.Toolbar>
+      ) : (
+        <ScreenFab
           accessibilityLabel="Add transaction"
-          icon="plus"
           onPress={() => {
             router.push("/add-transaction");
           }}
         />
-      </Stack.Toolbar>
+      )}
       <Stack.SearchBar
         autoCapitalize="none"
         onCancelButtonPress={() => {

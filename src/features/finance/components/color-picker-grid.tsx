@@ -1,6 +1,6 @@
-import { SymbolView } from "expo-symbols";
 import { Pressable, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ACCOUNT_COLOR_GROUPS } from "@/features/finance/account-constants";
 import { useThemeColors } from "@/hooks/use-theme";
 

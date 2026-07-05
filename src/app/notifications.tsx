@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, View } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import type { AppNotification } from "@/features/finance/notifications";

@@ -5,7 +5,9 @@ import { fetch } from "expo/fetch";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform } from "react-native";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { MaterialIcons } from "@/constants/material-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AddTransactionContext } from "@/features/finance/add-transaction-context";
@@ -32,6 +34,7 @@ import {
 } from "@/features/finance/use-last-transaction-account";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
+import { androidHeaderOptions } from "@/lib/android-header-options";
 
 function amountInputToMinorUnits(value: string): number {
   const parsed = Number.parseFloat(value.replaceAll(/[^0-9.]/g, ""));
@@ -109,6 +112,7 @@ export default function AddTransactionLayout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [labelDraft, setLabelDraft] =
     useState<TransactionLabelDraft>(DEFAULT_LABEL_DRAFT);
+  const [tagColorDraft, setTagColorDraft] = useState(DEFAULT_LABEL_DRAFT.color);
   const [narration, setNarration] = useState(initialEditState?.narration ?? "");
   const [transactionCharge, setTransactionCharge] = useState(
     initialEditState?.transactionCharge ?? ""
@@ -294,9 +298,11 @@ export default function AddTransactionLayout() {
       setDate,
       setLabelDraft,
       setNarration,
+      setTagColorDraft,
       setToAccountId,
       setTransactionCharge,
       setTransactionTypeIndex,
+      tagColorDraft,
       tags,
       toAccountId,
       toggleTag,
@@ -316,6 +322,7 @@ export default function AddTransactionLayout() {
       labelDraft,
       narration,
       removeAttachment,
+      tagColorDraft,
       tags,
       toAccountId,
       toggleTag,
@@ -484,6 +491,78 @@ export default function AddTransactionLayout() {
     updateTransaction,
   ]);
 
+  const renderBackButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Back"
+        icon={MaterialIcons.chevronLeft}
+        onPress={() => router.back()}
+      />
+    ),
+    []
+  );
+
+  const renderCloseButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Close"
+        icon={MaterialIcons.close}
+        onPress={closeAddTransaction}
+      />
+    ),
+    []
+  );
+
+  const renderSaveButton = useCallback(
+    () =>
+      isSubmitting || isLoadingExisting ? (
+        <ActivityIndicator />
+      ) : (
+        <HeaderIconButton
+          accessibilityLabel="Save transaction"
+          icon={MaterialIcons.check}
+          onPress={() => {
+            void submit();
+          }}
+          tintColor={colors.primary}
+        />
+      ),
+    [isSubmitting, isLoadingExisting, submit, colors.primary]
+  );
+
+  const renderAddCategoryButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Add category"
+        icon={MaterialIcons.add}
+        onPress={() => router.push("/add-transaction/category-new")}
+      />
+    ),
+    []
+  );
+
+  const renderAddTagButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Add tag"
+        icon={MaterialIcons.add}
+        onPress={() => router.push("/add-transaction/tag-new")}
+      />
+    ),
+    []
+  );
+
+  const renderAddTemplateButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Add template"
+        icon={MaterialIcons.add}
+        onPress={() => router.push("/add-template")}
+      />
+    ),
+    []
+  );
+
   return (
     <AddTransactionContext.Provider value={transactionContext}>
       <Stack
@@ -495,200 +574,303 @@ export default function AddTransactionLayout() {
                 : "systemMaterial"
               : undefined,
           headerShadowVisible: false,
-          headerTransparent: true,
+          headerStyle:
+            Platform.OS === "android"
+              ? { backgroundColor: colors.background }
+              : undefined,
+          headerTransparent: Platform.OS === "ios",
         }}
       >
         <Stack.Screen
           name="index"
           options={{
             headerLargeTitle: false,
+            ...androidHeaderOptions({
+              headerLeft: renderCloseButton,
+              headerRight: renderSaveButton,
+            }),
             title: isEditing ? "Edit transaction" : "Add transaction",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Close"
-              icon="xmark"
-              onPress={() => {
-                closeAddTransaction();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            {isSubmitting || isLoadingExisting ? (
-              <Stack.Toolbar.View>
-                <ActivityIndicator />
-              </Stack.Toolbar.View>
-            ) : (
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
               <Stack.Toolbar.Button
-                accessibilityLabel="Save transaction"
-                icon="checkmark"
+                accessibilityLabel="Close"
+                icon="xmark"
                 onPress={() => {
-                  void submit();
+                  closeAddTransaction();
                 }}
-                tintColor={colors.primary}
-                variant="prominent"
+                separateBackground
               />
-            )}
-          </Stack.Toolbar>
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              {isSubmitting || isLoadingExisting ? (
+                <Stack.Toolbar.View>
+                  <ActivityIndicator />
+                </Stack.Toolbar.View>
+              ) : (
+                <Stack.Toolbar.Button
+                  accessibilityLabel="Save transaction"
+                  icon="checkmark"
+                  onPress={() => {
+                    void submit();
+                  }}
+                  tintColor={colors.primary}
+                  variant="prominent"
+                />
+              )}
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="category"
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
+            ...androidHeaderOptions({
+              headerLeft: renderBackButton,
+              headerRight: renderAddCategoryButton,
+            }),
             title: "Category",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => {
-                router.back();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Add category"
-              icon="plus"
-              onPress={() => router.push("/add-transaction/category-new")}
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => {
+                  router.back();
+                }}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Add category"
+                icon="plus"
+                onPress={() => router.push("/add-transaction/category-new")}
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="account"
-          options={{ headerBackVisible: false, title: "Account" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Account",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="category-new"
-          options={{ headerBackVisible: false, title: "New category" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "New category",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="category-icon"
-          options={{ headerBackVisible: false, title: "Icon" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Icon",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="label-name"
-          options={{ headerBackVisible: false, title: "Name" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Name",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="color"
-          options={{ headerBackVisible: false, title: "Color" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Color",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="tags"
-          options={{ headerBackVisible: false, title: "Tags" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({
+              headerLeft: renderBackButton,
+              headerRight: renderAddTagButton,
+            }),
+            title: "Tags",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Add tag"
-              icon="plus"
-              onPress={() => router.push("/add-transaction/tag-new")}
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Add tag"
+                icon="plus"
+                onPress={() => router.push("/add-transaction/tag-new")}
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="tag-new"
-          options={{ headerBackVisible: false, title: "Add tag" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Add tag",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+        </Stack.Screen>
+        <Stack.Screen
+          name="tag-color"
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Color",
+          }}
+        >
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="attachments"
-          options={{ headerBackVisible: false, title: "Attachments" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Attachments",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="templates"
-          options={{ headerBackVisible: false, title: "Templates" }}
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({
+              headerLeft: renderBackButton,
+              headerRight: renderAddTemplateButton,
+            }),
+            title: "Templates",
+          }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => router.back()}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Add template"
-              icon="plus"
-              onPress={() => router.push("/add-template")}
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Add template"
+                icon="plus"
+                onPress={() => router.push("/add-template")}
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
       </Stack>
     </AddTransactionContext.Provider>

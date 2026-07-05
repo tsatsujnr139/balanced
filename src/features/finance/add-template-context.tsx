@@ -11,6 +11,7 @@ interface AddTemplateContextValue {
   isSubmitting: boolean;
   merchant: string;
   name: string;
+  tagColorDraft: string;
   tags: TransactionTag[];
   toAccountId: string | null;
   transactionCharge: string;
@@ -20,6 +21,7 @@ interface AddTemplateContextValue {
   setCategory: (category: TransactionCategory | null) => void;
   setMerchant: (merchant: string) => void;
   setName: (name: string) => void;
+  setTagColorDraft: (color: string) => void;
   setToAccountId: (id: string | null) => void;
   setTransactionCharge: (charge: string) => void;
   setType: (type: TransactionTemplateType) => void;

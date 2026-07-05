@@ -3,13 +3,16 @@ import { Stack } from "expo-router/stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Platform } from "react-native";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
+import { MaterialIcons } from "@/constants/material-icons";
 import { DEFAULT_ACCOUNT_COLOR } from "@/features/finance/account-constants";
 import { AddAccountSubmitContext } from "@/features/finance/add-account-submit-context";
 import { DEFAULT_CURRENCY } from "@/features/finance/format";
 import type { AccountType } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
+import { androidHeaderOptions } from "@/lib/android-header-options";
 
 const DEFAULT_ACCOUNT_NAME = "My Account";
 const DEFAULT_BALANCE_INPUT = "0.00";
@@ -133,6 +136,45 @@ export default function AddAccountLayout() {
     ]
   );
 
+  const renderBackButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Back"
+        icon={MaterialIcons.chevronLeft}
+        onPress={() => {
+          router.back();
+        }}
+      />
+    ),
+    []
+  );
+
+  const renderCloseButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Close"
+        icon={MaterialIcons.close}
+        onPress={closeAddAccount}
+      />
+    ),
+    []
+  );
+
+  const renderSaveButton = useCallback(
+    () =>
+      isSubmitting ? (
+        <ActivityIndicator />
+      ) : (
+        <HeaderIconButton
+          accessibilityLabel={isEditing ? "Save account" : "Add account"}
+          icon={MaterialIcons.check}
+          onPress={submit}
+          tintColor={colors.primary}
+        />
+      ),
+    [isSubmitting, isEditing, submit, colors.primary]
+  );
+
   return (
     <AddAccountSubmitContext.Provider value={submitContext}>
       <Stack
@@ -144,134 +186,163 @@ export default function AddAccountLayout() {
                 : "systemMaterial"
               : undefined,
           headerShadowVisible: false,
-          headerTransparent: true,
+          headerStyle:
+            Platform.OS === "android"
+              ? { backgroundColor: colors.background }
+              : undefined,
+          headerTransparent: Platform.OS === "ios",
         }}
       >
         <Stack.Screen
           name="index"
           options={{
             headerLargeTitle: false,
+            ...androidHeaderOptions({
+              headerLeft: renderCloseButton,
+              headerRight: renderSaveButton,
+            }),
             title,
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Close"
-              icon="xmark"
-              onPress={closeAddAccount}
-              separateBackground
-            />
-          </Stack.Toolbar>
-          <Stack.Toolbar placement="right">
-            {isSubmitting ? (
-              <Stack.Toolbar.View>
-                <ActivityIndicator />
-              </Stack.Toolbar.View>
-            ) : (
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
               <Stack.Toolbar.Button
-                accessibilityLabel={isEditing ? "Save account" : "Add account"}
-                icon="checkmark"
-                onPress={submit}
-                tintColor={colors.primary}
-                variant="prominent"
+                accessibilityLabel="Close"
+                icon="xmark"
+                onPress={closeAddAccount}
+                separateBackground
               />
-            )}
-          </Stack.Toolbar>
+            </Stack.Toolbar>
+          ) : null}
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="right">
+              {isSubmitting ? (
+                <Stack.Toolbar.View>
+                  <ActivityIndicator />
+                </Stack.Toolbar.View>
+              ) : (
+                <Stack.Toolbar.Button
+                  accessibilityLabel={
+                    isEditing ? "Save account" : "Add account"
+                  }
+                  icon="checkmark"
+                  onPress={submit}
+                  tintColor={colors.primary}
+                  variant="prominent"
+                />
+              )}
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="name"
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
             title: "Account name",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => {
-                router.back();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => {
+                  router.back();
+                }}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="balance"
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
             title: isEditing ? "Current balance" : "Amount",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => {
-                router.back();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => {
+                  router.back();
+                }}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="currency"
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
             title: "Currency",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => {
-                router.back();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => {
+                  router.back();
+                }}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="type"
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
             title: "Type",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => {
-                router.back();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => {
+                  router.back();
+                }}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
         <Stack.Screen
           name="color"
           options={{
             headerBackVisible: false,
             headerLargeTitle: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
             title: "Color",
           }}
         >
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back"
-              icon="chevron.left"
-              onPress={() => {
-                router.back();
-              }}
-              separateBackground
-            />
-          </Stack.Toolbar>
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => {
+                  router.back();
+                }}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
         </Stack.Screen>
       </Stack>
     </AddAccountSubmitContext.Provider>

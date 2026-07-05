@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import {
   ActivityIndicator,
   Pressable,
@@ -10,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import { Icon as SymbolView } from "@/components/icon";
 import { useAddBudget } from "@/features/finance/add-budget-context";
 import { BUDGET_PERIOD_LABEL } from "@/features/finance/budget-constants";
 import {

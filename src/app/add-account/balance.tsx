@@ -1,13 +1,23 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useCallback, useState } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
+import { MaterialIcons } from "@/constants/material-icons";
 import { useAddAccountSubmit } from "@/features/finance/add-account-submit-context";
 import type { AccountBalanceUpdateMode } from "@/features/finance/add-account-submit-context";
 import { FieldGroup } from "@/features/finance/components/form-fields";
 import { getCurrencySymbol } from "@/features/finance/format";
 import { useThemeColors } from "@/hooks/use-theme";
+import { androidHeaderOptions } from "@/lib/android-header-options";
 
 const BALANCE_UPDATE_OPTIONS: {
   description: string;
@@ -45,6 +55,24 @@ export default function AccountBalanceScreen() {
   );
   const [mode, setMode] = useState<AccountBalanceUpdateMode>(balanceUpdateMode);
 
+  const confirmBalance = useCallback(() => {
+    setBalanceInput(balance.trim() || "0.00");
+    setBalanceUpdateMode(mode);
+    router.back();
+  }, [balance, mode, setBalanceInput, setBalanceUpdateMode]);
+
+  const renderDoneButton = useCallback(
+    () => (
+      <HeaderIconButton
+        accessibilityLabel="Done"
+        icon={MaterialIcons.check}
+        onPress={confirmBalance}
+        tintColor={colors.primary}
+      />
+    ),
+    [confirmBalance, colors.primary]
+  );
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -57,20 +85,22 @@ export default function AccountBalanceScreen() {
       keyboardDismissMode="interactive"
       style={{ backgroundColor: colors.background, flex: 1 }}
     >
-      <Stack.Screen>
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            accessibilityLabel="Done"
-            icon="checkmark"
-            onPress={() => {
-              setBalanceInput(balance.trim() || "0.00");
-              setBalanceUpdateMode(mode);
-              router.back();
-            }}
-            tintColor={colors.primary}
-            variant="prominent"
-          />
-        </Stack.Toolbar>
+      <Stack.Screen
+        options={{
+          ...androidHeaderOptions({ headerRight: renderDoneButton }),
+        }}
+      >
+        {Platform.OS === "ios" ? (
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Done"
+              icon="checkmark"
+              onPress={confirmBalance}
+              tintColor={colors.primary}
+              variant="prominent"
+            />
+          </Stack.Toolbar>
+        ) : null}
       </Stack.Screen>
       <View>
         <FieldGroup>
