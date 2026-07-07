@@ -5,9 +5,11 @@ interface PlannedPaymentSummaryContextValue {
   amount: string;
   isSubmitting: boolean;
   paymentDate: number;
+  transactionCharge: string;
   setAccountId: (accountId: string) => void;
   setAmount: (amount: string) => void;
   setPaymentDate: (date: number) => void;
+  setTransactionCharge: (transactionCharge: string) => void;
   submit: () => void;
 }
 

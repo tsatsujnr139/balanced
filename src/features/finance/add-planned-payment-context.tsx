@@ -17,6 +17,7 @@ export interface PlannedTagSelection {
 interface AddPlannedPaymentContextValue {
   type: PlannedPaymentType;
   amount: string;
+  transactionCharge: string;
   name: string;
   description: string;
   accountId: string | null;
@@ -30,8 +31,12 @@ interface AddPlannedPaymentContextValue {
   notifyOnOverdue: boolean;
   isSubmitting: boolean;
   isEditing: boolean;
+  isDeleting: boolean;
+  canDelete: boolean;
+  confirmDelete: () => void;
   setType: (type: PlannedPaymentType) => void;
   setAmount: (amount: string) => void;
+  setTransactionCharge: (transactionCharge: string) => void;
   setName: (name: string) => void;
   setDescription: (description: string) => void;
   setAccountId: (accountId: string) => void;

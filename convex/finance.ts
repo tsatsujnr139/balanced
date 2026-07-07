@@ -2798,6 +2798,7 @@ export const getPlannedPayment = query({
       startDate: new Date(payment.startDate).toISOString(),
       symbol: payment.categorySymbol,
       tags,
+      transactionCharge: payment.transactionCharge ?? null,
       type: payment.type,
     };
   },
@@ -2817,6 +2818,7 @@ const plannedPaymentArgs = {
   notifyOnOverdue: v.boolean(),
   startDate: v.number(),
   tagIds: v.array(v.id("tags")),
+  transactionCharge: v.optional(v.number()),
   type: plannedPaymentType,
 };
 
@@ -2827,6 +2829,7 @@ async function validatePlannedPaymentArgs(
     amount: number;
     accountId: Id<"accounts">;
     interval: number;
+    transactionCharge?: number;
   }
 ) {
   const name = args.name.trim();
@@ -2835,6 +2838,12 @@ async function validatePlannedPaymentArgs(
   }
   if (!Number.isFinite(args.amount) || args.amount <= 0) {
     throw new Error("Planned payment amount must be positive");
+  }
+  if (
+    args.transactionCharge !== undefined &&
+    (!Number.isFinite(args.transactionCharge) || args.transactionCharge <= 0)
+  ) {
+    throw new Error("Transaction charge must be positive");
   }
   if (!Number.isFinite(args.interval) || args.interval < 1) {
     throw new Error("Repeat interval must be at least 1");
@@ -2872,6 +2881,8 @@ export const createPlannedPayment = mutation({
       order: nextOrder,
       startDate: args.startDate,
       tagIds: [...new Set(args.tagIds)],
+      transactionCharge:
+        args.type === "expense" ? args.transactionCharge : undefined,
       type: args.type,
     });
   },
@@ -2901,6 +2912,8 @@ export const updatePlannedPayment = mutation({
       notifyOnOverdue: args.notifyOnOverdue,
       startDate: args.startDate,
       tagIds: [...new Set(args.tagIds)],
+      transactionCharge:
+        args.type === "expense" ? args.transactionCharge : undefined,
       type: args.type,
     });
 
@@ -2933,6 +2946,7 @@ export const markPlannedPaymentPaid = mutation({
     dueDate: v.number(),
     id: v.id("plannedPayments"),
     paymentDate: v.optional(v.number()),
+    transactionCharge: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const payment = await ctx.db.get("plannedPayments", args.id);
@@ -2960,6 +2974,17 @@ export const markPlannedPaymentPaid = mutation({
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error("Transaction amounts must be positive");
     }
+    if (
+      args.transactionCharge !== undefined &&
+      (!Number.isFinite(args.transactionCharge) || args.transactionCharge < 0)
+    ) {
+      throw new Error("Transaction charge must not be negative");
+    }
+    // An explicit 0 clears the payment's default charge for this occurrence.
+    const transactionCharge =
+      payment.type === "expense"
+        ? (args.transactionCharge ?? payment.transactionCharge ?? 0)
+        : 0;
 
     const signedAmount = payment.type === "expense" ? -amount : amount;
     const merchant = payment.description.trim() || payment.name;
@@ -2978,8 +3003,29 @@ export const markPlannedPaymentPaid = mutation({
       transactionKind: payment.type,
     });
     await replaceTransactionTags(ctx, transactionId, payment.tagIds);
+
+    if (transactionCharge > 0) {
+      const transactionChargeId = await ctx.db.insert("transactions", {
+        accountId,
+        amount: -transactionCharge,
+        category: "Transaction charges",
+        color: TRANSACTION_CHARGES_TAG_COLOR,
+        createdByName,
+        currency: account.currency,
+        date: transactionDate,
+        merchant: `${merchant} TC`,
+        parentTransactionId: transactionId,
+        symbol: "creditcard.fill",
+        transactionKind: "charge",
+      });
+      await ctx.db.patch(transactionId, {
+        pairTransactionId: transactionChargeId,
+      });
+      await replaceChargeTransactionTags(ctx, transactionChargeId);
+    }
+
     await ctx.db.patch(accountId, {
-      balance: account.balance + signedAmount,
+      balance: account.balance + signedAmount - transactionCharge,
     });
 
     await ctx.db.insert("plannedPaymentEntries", {

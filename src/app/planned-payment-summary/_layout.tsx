@@ -54,6 +54,7 @@ export default function PlannedPaymentSummaryLayout() {
   const { firstName } = useLocalProfile();
   const [accountId, setAccountIdState] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
+  const [transactionCharge, setTransactionCharge] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentDate, setPaymentDate] = useState(() => Date.now());
 
@@ -68,6 +69,13 @@ export default function PlannedPaymentSummaryLayout() {
 
     setAccountIdState((current) => current ?? planned.accountId);
     setAmount((current) => current || minorUnitsToAmountInput(planned.amount));
+    setTransactionCharge(
+      (current) =>
+        current ||
+        (planned.transactionCharge
+          ? minorUnitsToAmountInput(planned.transactionCharge)
+          : "")
+    );
   }, [planned]);
 
   const submit = useCallback(async () => {
@@ -96,6 +104,12 @@ export default function PlannedPaymentSummaryLayout() {
         dueDate,
         id: id as Id<"plannedPayments">,
         paymentDate,
+        // Always sent for expenses so clearing the field removes the
+        // payment's default charge for this occurrence.
+        transactionCharge:
+          planned.type === "expense"
+            ? amountInputToMinorUnits(transactionCharge)
+            : undefined,
       });
       closeSummary();
     } catch (error) {
@@ -117,6 +131,7 @@ export default function PlannedPaymentSummaryLayout() {
     markPaid,
     paymentDate,
     planned,
+    transactionCharge,
   ]);
 
   const contextValue = useMemo(
@@ -128,9 +143,11 @@ export default function PlannedPaymentSummaryLayout() {
       setAccountId: setAccountIdState,
       setAmount,
       setPaymentDate,
+      setTransactionCharge,
       submit,
+      transactionCharge,
     }),
-    [accountId, amount, isSubmitting, paymentDate, submit]
+    [accountId, amount, isSubmitting, paymentDate, submit, transactionCharge]
   );
 
   const renderBackButton = useCallback(

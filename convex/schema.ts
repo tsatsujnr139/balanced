@@ -144,6 +144,8 @@ export default defineSchema({
     /** First due date (epoch millis). */
     startDate: v.number(),
     tagIds: v.array(v.id("tags")),
+    /** Default charge in minor units (cents) applied when an occurrence is paid. */
+    transactionCharge: v.optional(v.number()),
     type: plannedPaymentType,
     userId: v.optional(v.string()),
   }).index("by_user", ["userId"]),

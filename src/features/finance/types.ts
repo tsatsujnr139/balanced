@@ -184,6 +184,8 @@ export interface PlannedPaymentDetail {
   notifyOnOverdue: boolean;
   overdueCount: number;
   tags: TransactionTag[];
+  /** Default charge in minor units (cents) applied when an occurrence is paid. */
+  transactionCharge: number | null;
   occurrences: PlannedPaymentOccurrence[];
 }
 

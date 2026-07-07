@@ -9,6 +9,7 @@ import {
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -31,10 +32,15 @@ import {
   PLANNED_PAYMENT_FREQUENCIES,
   PLANNED_PAYMENT_FREQUENCY_LABEL,
 } from "@/features/finance/planned-payment-constants";
+import { TRANSACTION_CATEGORIES } from "@/features/finance/transaction-categories";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const PLANNED_PAYMENT_TYPES = ["Expense", "Income"];
+
+const TRANSACTION_CHARGE_CATEGORY = TRANSACTION_CATEGORIES.find(
+  (item) => item.name === "Transaction charges"
+);
 
 function formatDateOnly(date: number): string {
   return new Intl.DateTimeFormat("en-GH", { dateStyle: "medium" }).format(
@@ -238,11 +244,14 @@ export default function AddPlannedPaymentScreen() {
   const {
     accountId,
     amount,
+    canDelete,
     category,
+    confirmDelete,
     date,
     description,
     frequency,
     interval,
+    isDeleting,
     name,
     notifyOnDue,
     notifyOnOverdue,
@@ -254,8 +263,10 @@ export default function AddPlannedPaymentScreen() {
     setName,
     setNotifyOnDue,
     setNotifyOnOverdue,
+    setTransactionCharge,
     setType,
     tags,
+    transactionCharge,
     type,
   } = useAddPlannedPayment();
   const account = accounts.find((item) => item.id === accountId);
@@ -318,6 +329,66 @@ export default function AddPlannedPaymentScreen() {
             value={amount}
           />
         </View>
+        {type === "expense" ? (
+          <View
+            style={{
+              alignItems: "center",
+              borderTopColor: colors.border,
+              borderTopWidth: 1,
+              flexDirection: "row",
+              gap: 12,
+              minHeight: 62,
+              paddingHorizontal: 18,
+            }}
+          >
+            <View
+              style={{
+                alignItems: "center",
+                backgroundColor:
+                  TRANSACTION_CHARGE_CATEGORY?.color ?? "#8E8E93",
+                borderRadius: 9,
+                height: 30,
+                justifyContent: "center",
+                width: 30,
+              }}
+            >
+              <SymbolView
+                name={
+                  (TRANSACTION_CHARGE_CATEGORY?.symbol ??
+                    "creditcard.fill") as never
+                }
+                size={16}
+                tintColor="#fff"
+              />
+            </View>
+            <Text
+              selectable
+              style={{
+                color: colors.foreground,
+                fontSize: 14,
+                fontStyle: "italic",
+                fontWeight: "500",
+              }}
+            >
+              Transaction charge
+            </Text>
+            <TextInput
+              keyboardType="decimal-pad"
+              onChangeText={setTransactionCharge}
+              placeholder="0.00"
+              placeholderTextColor={colors.muted}
+              style={{
+                color: colors.foreground,
+                flex: 1,
+                fontSize: 18,
+                fontStyle: "italic",
+                minHeight: 62,
+                textAlign: "right",
+              }}
+              value={transactionCharge}
+            />
+          </View>
+        ) : null}
         <View
           style={{
             borderTopColor: colors.border,
@@ -494,6 +565,43 @@ export default function AddPlannedPaymentScreen() {
           />
         </FieldGroup>
       </View>
+
+      {canDelete ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete planned payment"
+          disabled={isDeleting}
+          onPress={confirmDelete}
+          style={({ pressed }) => ({
+            alignItems: "center",
+            backgroundColor: "transparent",
+            borderCurve: "continuous",
+            borderRadius: 18,
+            justifyContent: "center",
+            minHeight: 56,
+            opacity: pressed || isDeleting ? 0.6 : 1,
+          })}
+        >
+          {isDeleting ? (
+            <ActivityIndicator color={colors.negative} />
+          ) : (
+            <View
+              style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
+            >
+              <SymbolView name="trash" size={18} tintColor={colors.negative} />
+              <Text
+                style={{
+                  color: colors.negative,
+                  fontSize: 17,
+                  fontWeight: "600",
+                }}
+              >
+                Delete
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      ) : null}
     </ScrollView>
   );
 }

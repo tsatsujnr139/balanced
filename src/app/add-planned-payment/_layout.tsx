@@ -61,8 +61,10 @@ export default function AddPlannedPaymentLayout() {
   );
   const createPlannedPayment = useMutation(api.finance.createPlannedPayment);
   const updatePlannedPayment = useMutation(api.finance.updatePlannedPayment);
+  const deletePlannedPayment = useMutation(api.finance.deletePlannedPayment);
   const [type, setType] = useState<PlannedPaymentType>("expense");
   const [amount, setAmount] = useState("");
+  const [transactionCharge, setTransactionCharge] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [accountId, setAccountId] = useState<string | null>(
@@ -81,6 +83,7 @@ export default function AddPlannedPaymentLayout() {
   const [notifyOnDue, setNotifyOnDue] = useState(false);
   const [notifyOnOverdue, setNotifyOnOverdue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const hydratedPaymentIdRef = useRef<string | null>(null);
   const draftIdRef = useRef<string | null>(null);
 
@@ -93,6 +96,7 @@ export default function AddPlannedPaymentLayout() {
     hydratedPaymentIdRef.current = null;
     setType("expense");
     setAmount("");
+    setTransactionCharge("");
     setName("");
     setDescription("");
     setAccountId(accounts[0]?.id ?? null);
@@ -118,6 +122,11 @@ export default function AddPlannedPaymentLayout() {
     hydratedPaymentIdRef.current = plannedPayment.id;
     setType(plannedPayment.type);
     setAmount(formatAmountInput(plannedPayment.amount));
+    setTransactionCharge(
+      plannedPayment.transactionCharge
+        ? formatAmountInput(plannedPayment.transactionCharge)
+        : ""
+    );
     setName(plannedPayment.name);
     setDescription(plannedPayment.description);
     setAccountId(plannedPayment.accountId);
@@ -175,9 +184,14 @@ export default function AddPlannedPaymentLayout() {
 
     setIsSubmitting(true);
     try {
+      const chargeMinorUnits = amountInputToMinorUnits(transactionCharge);
       const payload = {
         accountId: accountId as Id<"accounts">,
         amount: amountMinorUnits,
+        transactionCharge:
+          type === "expense" && chargeMinorUnits > 0
+            ? chargeMinorUnits
+            : undefined,
         category: category.name,
         categoryColor: category.color,
         categorySymbol: category.symbol,
@@ -223,19 +237,58 @@ export default function AddPlannedPaymentLayout() {
     notifyOnDue,
     notifyOnOverdue,
     tags,
+    transactionCharge,
     type,
     updatePlannedPayment,
   ]);
+
+  const confirmDelete = useCallback(() => {
+    if (!editingId || isDeleting) {
+      return;
+    }
+
+    const deleteLabel = plannedPayment?.name ?? "This planned payment";
+    Alert.alert(
+      "Delete planned payment?",
+      `"${deleteLabel}" will be permanently deleted. Past transactions stay intact.`,
+      [
+        { style: "cancel", text: "Cancel" },
+        {
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deletePlannedPayment({
+                id: editingId as Id<"plannedPayments">,
+              });
+              closePlannedPaymentForm();
+            } catch (error) {
+              Alert.alert(
+                "Could not delete planned payment",
+                error instanceof Error ? error.message : "Please try again."
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+          style: "destructive",
+          text: "Delete",
+        },
+      ]
+    );
+  }, [deletePlannedPayment, editingId, isDeleting, plannedPayment?.name]);
 
   const value = useMemo(
     () => ({
       accountId,
       amount,
+      canDelete: editingId !== null,
       category,
+      confirmDelete,
       date,
       description,
       frequency,
       interval,
+      isDeleting,
       isEditing: editingId !== null,
       isSubmitting,
       name,
@@ -252,12 +305,14 @@ export default function AddPlannedPaymentLayout() {
       setNotifyOnDue,
       setNotifyOnOverdue,
       setTagColorDraft,
+      setTransactionCharge,
       setType,
       submit: () => {
         void submit();
       },
       tagColorDraft,
       tags,
+      transactionCharge,
       toggleTag: (tag: PlannedTagSelection) => {
         setTags((current) =>
           current.some((item) => item.id === tag.id)
@@ -271,17 +326,20 @@ export default function AddPlannedPaymentLayout() {
       accountId,
       amount,
       category,
+      confirmDelete,
       date,
       description,
       editingId,
       frequency,
       interval,
+      isDeleting,
       isSubmitting,
       name,
       notifyOnDue,
       notifyOnOverdue,
       tagColorDraft,
       tags,
+      transactionCharge,
       submit,
       type,
     ]

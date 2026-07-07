@@ -29,8 +29,13 @@ import {
 } from "@/features/finance/components/form-fields";
 import { getCurrencySymbol } from "@/features/finance/format";
 import { usePlannedPaymentSummary } from "@/features/finance/planned-payment-summary-context";
+import { TRANSACTION_CATEGORIES } from "@/features/finance/transaction-categories";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
+
+const TRANSACTION_CHARGE_CATEGORY = TRANSACTION_CATEGORIES.find(
+  (item) => item.name === "Transaction charges"
+);
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -162,7 +167,13 @@ export default function PlannedPaymentSummaryScreen() {
     id ? { id: id as Id<"plannedPayments"> } : "skip"
   );
   const { accounts } = useFinance();
-  const { accountId, amount, setAmount } = usePlannedPaymentSummary();
+  const {
+    accountId,
+    amount,
+    setAmount,
+    setTransactionCharge,
+    transactionCharge,
+  } = usePlannedPaymentSummary();
   const selectedAccount = accounts.find((account) => account.id === accountId);
   const currency = selectedAccount?.currency ?? planned?.currency ?? "GHS";
   const currencySymbol = getCurrencySymbol(currency);
@@ -246,6 +257,66 @@ export default function PlannedPaymentSummaryScreen() {
             value={amount}
           />
         </View>
+        {planned.type === "expense" ? (
+          <View
+            style={{
+              alignItems: "center",
+              borderBottomColor: colors.border,
+              borderBottomWidth: 1,
+              flexDirection: "row",
+              gap: 12,
+              minHeight: 62,
+              paddingHorizontal: 12,
+            }}
+          >
+            <View
+              style={{
+                alignItems: "center",
+                backgroundColor:
+                  TRANSACTION_CHARGE_CATEGORY?.color ?? "#8E8E93",
+                borderRadius: 9,
+                height: 30,
+                justifyContent: "center",
+                width: 30,
+              }}
+            >
+              <SymbolView
+                name={
+                  (TRANSACTION_CHARGE_CATEGORY?.symbol ??
+                    "creditcard.fill") as never
+                }
+                size={16}
+                tintColor="#fff"
+              />
+            </View>
+            <Text
+              selectable
+              style={{
+                color: colors.foreground,
+                fontSize: 14,
+                fontStyle: "italic",
+                fontWeight: "500",
+              }}
+            >
+              Transaction charge
+            </Text>
+            <TextInput
+              keyboardType="decimal-pad"
+              onChangeText={setTransactionCharge}
+              placeholder="0.00"
+              placeholderTextColor={colors.muted}
+              style={{
+                color: colors.foreground,
+                flex: 1,
+                fontSize: 18,
+                fontStyle: "italic",
+                minHeight: 62,
+                textAlign: "right",
+              }}
+              value={transactionCharge}
+            />
+          </View>
+        ) : null}
       </View>
 
       <View style={{ paddingHorizontal: 20 }}>
