@@ -260,7 +260,7 @@ export default function AddPlannedPaymentLayout() {
               await deletePlannedPayment({
                 id: editingId as Id<"plannedPayments">,
               });
-              closePlannedPaymentForm();
+              router.dismissTo("/planned-payments");
             } catch (error) {
               Alert.alert(
                 "Could not delete planned payment",
