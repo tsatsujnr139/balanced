@@ -603,25 +603,41 @@ function mostCommonCurrency(accounts: Doc<"accounts">[]): string | null {
   return best;
 }
 
-/** True for real outflows: excludes transfers and balance adjustments. */
+/**
+ * True for real outflows: excludes transfers between the user's own accounts
+ * and balance adjustments. A `transfer_out` with no `pairTransactionId` has no
+ * matching inflow leg (e.g. a transfer to "Out of wallet"), so it's money
+ * actually leaving the tracked accounts and counts as spend.
+ */
 function isSpendTransaction(transaction: Doc<"transactions">): boolean {
   if (transaction.amount >= 0) {
     return false;
   }
   const kind = resolveTransactionKind(transaction);
-  if (kind === "transfer_in" || kind === "transfer_out") {
+  if (kind === "transfer_in") {
+    return false;
+  }
+  if (kind === "transfer_out" && transaction.pairTransactionId) {
     return false;
   }
   return transaction.category !== BALANCE_ADJUSTMENT_CATEGORY.name;
 }
 
-/** True for real inflows: excludes transfers and balance adjustments. */
+/**
+ * True for real inflows: excludes transfers between the user's own accounts
+ * and balance adjustments. A `transfer_in` with no `pairTransactionId` has no
+ * matching outflow leg (e.g. a transfer from "Out of wallet"), so it's new
+ * money entering the tracked accounts and counts as income.
+ */
 function isIncomeTransaction(transaction: Doc<"transactions">): boolean {
   if (transaction.amount <= 0) {
     return false;
   }
   const kind = resolveTransactionKind(transaction);
-  if (kind === "transfer_in" || kind === "transfer_out") {
+  if (kind === "transfer_out") {
+    return false;
+  }
+  if (kind === "transfer_in" && transaction.pairTransactionId) {
     return false;
   }
   return transaction.category !== BALANCE_ADJUSTMENT_CATEGORY.name;
