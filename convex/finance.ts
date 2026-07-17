@@ -12,8 +12,38 @@ import {
 } from "./schema";
 
 const DAY_MS = 86_400_000;
+const WEEK_MS = DAY_MS * 7;
 const DEFAULT_CURRENCY = "GHS";
-type BudgetPeriod = "weekly" | "monthly" | "yearly" | "one_time";
+type BudgetPeriod = "weekly" | "monthly" | "quarterly" | "yearly" | "one_time";
+
+function positiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
+}
+
+function normalizeBudgetPeriodInterval(value: number | undefined): number {
+  return value && Number.isSafeInteger(value) && value > 0 ? value : 1;
+}
+
+function validateBudgetPeriodInterval(
+  period: BudgetPeriod,
+  value: number
+): number {
+  if (period === "one_time") {
+    return 1;
+  }
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error("Budget period length must be a positive whole number");
+  }
+  return value;
+}
+
+/** Net budget usage: outflows increase usage and inflows reduce it. */
+function sumBudgetSpent(transactions: Doc<"transactions">[]): number {
+  return transactions.reduce(
+    (total, transaction) => total - transaction.amount,
+    0
+  );
+}
 
 function normalizeFirstName(value: string): string {
   const firstName = value.trim().replaceAll(/\s+/g, " ");
@@ -23,26 +53,57 @@ function normalizeFirstName(value: string): string {
   return firstName;
 }
 
-/** Epoch millis for the start of a budget's current period window. */
-function budgetPeriodStart(period: BudgetPeriod, now: number): number {
+/** Epoch millis for the calendar-aligned budget window containing `now`. */
+function budgetPeriodStart(
+  period: BudgetPeriod,
+  interval: number,
+  now: number
+): number {
   const date = new Date(now);
   switch (period) {
     case "weekly": {
       const daysSinceMonday = (date.getDay() + 6) % 7;
-      return new Date(
+      const weekStart = new Date(
         date.getFullYear(),
         date.getMonth(),
         date.getDate() - daysSinceMonday
-      ).getTime();
+      );
+      const epochMonday = new Date(1970, 0, 5).getTime();
+      const weekIndex = Math.round(
+        (weekStart.getTime() - epochMonday) / WEEK_MS
+      );
+      weekStart.setDate(
+        weekStart.getDate() - positiveModulo(weekIndex, interval) * 7
+      );
+      return weekStart.getTime();
     }
     case "yearly": {
-      return new Date(date.getFullYear(), 0, 1).getTime();
+      const startYear =
+        date.getFullYear() - positiveModulo(date.getFullYear(), interval);
+      return new Date(startYear, 0, 1).getTime();
+    }
+    case "quarterly": {
+      const monthIndex = date.getFullYear() * 12 + date.getMonth();
+      const intervalMonths = interval * 3;
+      const startMonthIndex =
+        monthIndex - positiveModulo(monthIndex, intervalMonths);
+      return new Date(
+        Math.floor(startMonthIndex / 12),
+        positiveModulo(startMonthIndex, 12),
+        1
+      ).getTime();
     }
     case "one_time": {
       return 0;
     }
     default: {
-      return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+      const monthIndex = date.getFullYear() * 12 + date.getMonth();
+      const startMonthIndex = monthIndex - positiveModulo(monthIndex, interval);
+      return new Date(
+        Math.floor(startMonthIndex / 12),
+        positiveModulo(startMonthIndex, 12),
+        1
+      ).getTime();
     }
   }
 }
@@ -83,34 +144,38 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
   );
   const earliestStart = Math.min(
     ...activeBudgets.map((budget) =>
-      budgetPeriodStart(budget.period ?? "monthly", now)
+      budgetPeriodStart(
+        budget.period ?? "monthly",
+        normalizeBudgetPeriodInterval(budget.periodInterval),
+        now
+      )
     )
   );
 
-  const expenses =
+  const categoryTransactions =
     trackedCategories.size === 0
       ? []
       : (await ctx.db.query("transactions").collect()).filter(
           (transaction) =>
-            transaction.amount < 0 &&
             transaction.date >= earliestStart &&
             trackedCategories.has(transaction.category)
         );
 
   return activeBudgets.map((budget) => {
     const period = budget.period ?? "monthly";
+    const periodInterval = normalizeBudgetPeriodInterval(budget.periodInterval);
     const tagIds = budget.tagIds ?? (budget.tagId ? [budget.tagId] : []);
     let spent = budget.spent ?? 0;
     if (budget.category) {
-      const periodStart = budgetPeriodStart(period, now);
-      spent = expenses
-        .filter(
+      const periodStart = budgetPeriodStart(period, periodInterval, now);
+      spent = sumBudgetSpent(
+        categoryTransactions.filter(
           (transaction) =>
             transaction.category === budget.category &&
             transaction.currency === budget.currency &&
             transaction.date >= periodStart
         )
-        .reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+      );
     }
 
     return {
@@ -124,6 +189,7 @@ async function loadBudgetsWithSpend(ctx: QueryCtx) {
       notifyAtThreshold: budget.notifyAtThreshold ?? false,
       notifyOnOverspend: budget.notifyOnOverspend ?? false,
       period,
+      periodInterval,
       spent,
       status: budget.status ?? "active",
       symbol: budget.symbol,
@@ -539,6 +605,64 @@ export const getSnapshot = query({
   },
 });
 
+/** All transactions that contribute to a budget within an explicit period. */
+export const listBudgetTransactions = query({
+  args: {
+    end: v.number(),
+    id: v.id("budgets"),
+    start: v.number(),
+  },
+  handler: async (ctx, args) => {
+    if (
+      !Number.isFinite(args.start) ||
+      !Number.isFinite(args.end) ||
+      args.start >= args.end
+    ) {
+      throw new Error("Invalid budget period");
+    }
+
+    const budget = await ctx.db.get(args.id);
+    if (!budget) {
+      return [];
+    }
+
+    const { category } = budget;
+    if (!category) {
+      return [];
+    }
+
+    const transactions: Doc<"transactions">[] = [];
+    const matchingTransactions = ctx.db
+      .query("transactions")
+      .withIndex("by_currency_and_category_and_date", (q) =>
+        q
+          .eq("currency", budget.currency)
+          .eq("category", category)
+          .gte("date", args.start)
+          .lt("date", args.end)
+      )
+      .order("desc");
+
+    for await (const transaction of matchingTransactions) {
+      transactions.push(transaction);
+    }
+
+    const accountIds = new Set(
+      transactions.map((transaction) => transaction.accountId)
+    );
+    const accounts = await Promise.all(
+      [...accountIds].map((accountId) => ctx.db.get(accountId))
+    );
+    const accountNameById = new Map(
+      accounts
+        .filter((account): account is Doc<"accounts"> => account !== null)
+        .map((account) => [account._id, account.name])
+    );
+
+    return await enrichTransactions(ctx, transactions, accountNameById);
+  },
+});
+
 type StatsPeriod = "weekly" | "monthly" | "yearly";
 
 interface SpendingGroup {
@@ -801,19 +925,18 @@ function buildTrend(
   return buckets;
 }
 
-/** Per-budget spend within the window, for budgets matching the currency. */
+/** Per-budget net usage within the window, for budgets matching the currency. */
 async function loadBudgetPerformance(
   ctx: QueryCtx,
   currency: string,
-  spend: Doc<"transactions">[]
+  transactions: Doc<"transactions">[]
 ): Promise<BudgetPerformance[]> {
   const budgets = await ctx.db.query("budgets").collect();
   const spentByCategory = new Map<string, number>();
-  for (const transaction of spend) {
+  for (const transaction of transactions) {
     spentByCategory.set(
       transaction.category,
-      (spentByCategory.get(transaction.category) ?? 0) +
-        Math.abs(transaction.amount)
+      (spentByCategory.get(transaction.category) ?? 0) - transaction.amount
     );
   }
   return budgets
@@ -881,7 +1004,7 @@ export const getSpendingStats = query({
 
     const [tags, budgets] = await Promise.all([
       groupByTag(ctx, spend),
-      loadBudgetPerformance(ctx, targetCurrency, spend),
+      loadBudgetPerformance(ctx, targetCurrency, current),
     ]);
 
     return {
@@ -1300,6 +1423,7 @@ export const createBudget = mutation({
     notifyAtThreshold: v.boolean(),
     notifyOnOverspend: v.boolean(),
     period: budgetPeriod,
+    periodInterval: v.number(),
     symbol: v.string(),
     tagId: v.optional(v.id("tags")),
     tagIds: v.optional(v.array(v.id("tags"))),
@@ -1312,6 +1436,10 @@ export const createBudget = mutation({
     if (!Number.isFinite(args.limit) || args.limit <= 0) {
       throw new Error("Budget amount must be positive");
     }
+    const periodInterval = validateBudgetPeriodInterval(
+      args.period,
+      args.periodInterval
+    );
     const tagIds = args.tagIds ?? (args.tagId ? [args.tagId] : []);
     for (const tagId of new Set(tagIds)) {
       const tag = await ctx.db.get(tagId);
@@ -1336,6 +1464,7 @@ export const createBudget = mutation({
       notifyOnOverspend: args.notifyOnOverspend,
       order: nextOrder,
       period: args.period,
+      periodInterval,
       status: "active",
       symbol: args.symbol,
       tagId: tagIds[0],
@@ -1355,6 +1484,7 @@ export const updateBudget = mutation({
     notifyAtThreshold: v.boolean(),
     notifyOnOverspend: v.boolean(),
     period: budgetPeriod,
+    periodInterval: v.number(),
     symbol: v.string(),
     tagId: v.optional(v.id("tags")),
     tagIds: v.optional(v.array(v.id("tags"))),
@@ -1372,6 +1502,10 @@ export const updateBudget = mutation({
     if (!Number.isFinite(args.limit) || args.limit <= 0) {
       throw new Error("Budget amount must be positive");
     }
+    const periodInterval = validateBudgetPeriodInterval(
+      args.period,
+      args.periodInterval
+    );
     const tagIds = args.tagIds ?? (args.tagId ? [args.tagId] : []);
     for (const tagId of new Set(tagIds)) {
       const tag = await ctx.db.get(tagId);
@@ -1389,6 +1523,7 @@ export const updateBudget = mutation({
       notifyAtThreshold: args.notifyAtThreshold,
       notifyOnOverspend: args.notifyOnOverspend,
       period: args.period,
+      periodInterval,
       symbol: args.symbol,
       tagId: tagIds[0],
       tagIds: [...new Set(tagIds)],

@@ -11,7 +11,10 @@ import {
 
 import { Icon as SymbolView } from "@/components/icon";
 import { useAddBudget } from "@/features/finance/add-budget-context";
-import { BUDGET_PERIOD_LABEL } from "@/features/finance/budget-constants";
+import {
+  BUDGET_PERIOD_LABEL,
+  BUDGET_PERIOD_UNIT_LABEL,
+} from "@/features/finance/budget-constants";
 import {
   FieldGroup,
   FieldRow,
@@ -20,6 +23,8 @@ import {
 import { CategoryLeading } from "@/features/finance/components/label-form-leads";
 import { getCurrencySymbol } from "@/features/finance/format";
 import { useThemeColors } from "@/hooks/use-theme";
+
+const NON_DIGIT_PATTERN = /\D/g;
 
 function CurrencySymbolLeading({ currency }: { currency: string }) {
   const symbol = getCurrencySymbol(currency);
@@ -128,13 +133,17 @@ export default function AddBudgetScreen() {
     notifyAtThreshold,
     notifyOnOverspend,
     period,
+    periodInterval,
     setAmount,
     setName,
     setNotifyAtThreshold,
     setNotifyOnOverspend,
+    setPeriodInterval,
     tags,
   } = useAddBudget();
   const currencySymbol = getCurrencySymbol(currency);
+  const periodUnit =
+    period === "one_time" ? null : BUDGET_PERIOD_UNIT_LABEL[period];
 
   return (
     <ScrollView
@@ -237,6 +246,33 @@ export default function AddBudgetScreen() {
           onPress={() => router.push("/add-budget/period")}
           value={BUDGET_PERIOD_LABEL[period]}
         />
+        {periodUnit ? (
+          <FieldRow
+            icon="number"
+            iconColor="#0A84FF"
+            label={`Number of ${periodUnit.plural}`}
+            showsChevron={false}
+            valueNode={
+              <TextInput
+                accessibilityLabel={`Number of ${periodUnit.plural}`}
+                keyboardType="number-pad"
+                onChangeText={(value) => {
+                  setPeriodInterval(value.replaceAll(NON_DIGIT_PATTERN, ""));
+                }}
+                placeholder="1"
+                placeholderTextColor={colors.muted}
+                selectTextOnFocus
+                style={{
+                  color: colors.foreground,
+                  fontSize: 17,
+                  minWidth: 56,
+                  textAlign: "right",
+                }}
+                value={periodInterval}
+              />
+            }
+          />
+        ) : null}
         <FieldRow
           label="Currency"
           leading={<CurrencySymbolLeading currency={currency} />}

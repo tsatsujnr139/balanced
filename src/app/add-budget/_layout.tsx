@@ -14,7 +14,10 @@ import type {
   BudgetCategorySelection,
   BudgetTagSelection,
 } from "@/features/finance/add-budget-context";
-import { DEFAULT_BUDGET_PERIOD } from "@/features/finance/budget-constants";
+import {
+  DEFAULT_BUDGET_PERIOD,
+  DEFAULT_BUDGET_PERIOD_INTERVAL,
+} from "@/features/finance/budget-constants";
 import { DEFAULT_LABEL_COLOR } from "@/features/finance/color-utils";
 import { DEFAULT_CURRENCY } from "@/features/finance/format";
 import type { BudgetPeriod } from "@/features/finance/types";
@@ -73,6 +76,9 @@ export default function AddBudgetLayout() {
   const [period, setPeriod] = useState<BudgetPeriod>(
     editingBudget?.period ?? DEFAULT_BUDGET_PERIOD
   );
+  const [periodInterval, setPeriodInterval] = useState(
+    String(editingBudget?.periodInterval ?? DEFAULT_BUDGET_PERIOD_INTERVAL)
+  );
   const [tags, setTags] = useState<BudgetTagSelection[]>(
     editingBudget?.tags ?? []
   );
@@ -101,6 +107,17 @@ export default function AddBudgetLayout() {
       Alert.alert("Missing category", "Choose a category for this budget.");
       return;
     }
+    const parsedPeriodInterval = Number.parseInt(periodInterval, 10);
+    if (
+      period !== "one_time" &&
+      (!Number.isSafeInteger(parsedPeriodInterval) || parsedPeriodInterval < 1)
+    ) {
+      Alert.alert(
+        "Invalid period length",
+        "Enter a whole number greater than zero."
+      );
+      return;
+    }
 
     const trimmedName = name.trim() || category.name;
     const tagIds = tags.map((tag) => tag.id as Id<"tags">);
@@ -116,6 +133,10 @@ export default function AddBudgetLayout() {
         notifyAtThreshold,
         notifyOnOverspend,
         period,
+        periodInterval:
+          period === "one_time"
+            ? DEFAULT_BUDGET_PERIOD_INTERVAL
+            : parsedPeriodInterval,
         symbol: category.symbol,
         tagIds,
       };
@@ -143,6 +164,7 @@ export default function AddBudgetLayout() {
     notifyAtThreshold,
     notifyOnOverspend,
     period,
+    periodInterval,
     tags,
     updateBudget,
   ]);
@@ -198,8 +220,8 @@ export default function AddBudgetLayout() {
     Alert.alert(
       isPaused ? "Resume budget?" : "Pause budget?",
       isPaused
-        ? `"${budgetLabel}" will be active again and included in your monthly budget calculations.`
-        : `"${budgetLabel}" will be excluded from your monthly budget calculations.`,
+        ? `"${budgetLabel}" will be active again and included in your budget calculations.`
+        : `"${budgetLabel}" will be excluded from your budget calculations.`,
       [
         { style: "cancel", text: "Cancel" },
         {
@@ -243,7 +265,7 @@ export default function AddBudgetLayout() {
     const budgetLabel = editingBudget?.name ?? "This budget";
     Alert.alert(
       "End budget?",
-      `"${budgetLabel}" will be permanently ended and excluded from your monthly budget calculations. You can delete it later if needed.`,
+      `"${budgetLabel}" will be permanently ended and excluded from your budget calculations. You can delete it later if needed.`,
       [
         { style: "cancel", text: "Cancel" },
         {
@@ -284,6 +306,7 @@ export default function AddBudgetLayout() {
       notifyAtThreshold,
       notifyOnOverspend,
       period,
+      periodInterval,
       setAmount,
       setCategory,
       setCurrency,
@@ -291,6 +314,7 @@ export default function AddBudgetLayout() {
       setNotifyAtThreshold,
       setNotifyOnOverspend,
       setPeriod,
+      setPeriodInterval,
       setTagColorDraft,
       submit: () => {
         void submit();
@@ -314,6 +338,7 @@ export default function AddBudgetLayout() {
       notifyAtThreshold,
       notifyOnOverspend,
       period,
+      periodInterval,
       submit,
       tagColorDraft,
       tags,

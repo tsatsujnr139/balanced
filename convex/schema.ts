@@ -22,6 +22,7 @@ export const transactionKind = v.union(
 export const budgetPeriod = v.union(
   v.literal("weekly"),
   v.literal("monthly"),
+  v.literal("quarterly"),
   v.literal("yearly"),
   v.literal("one_time")
 );
@@ -81,12 +82,14 @@ export default defineSchema({
     order: v.number(),
     /** How often the budget resets. Defaults to monthly when absent. */
     period: v.optional(budgetPeriod),
+    /** Number of period units in one budget window. Defaults to 1. */
+    periodInterval: v.optional(v.number()),
     /**
      * Fallback spent amount in minor units (cents). When `category` is set the
      * spend is computed live from matching transactions instead.
      */
     spent: v.optional(v.number()),
-    /** Budget status. Defaults to active when absent. Paused/ended budgets are excluded from monthly calculations. */
+    /** Budget status. Defaults to active when absent. Paused/ended budgets are excluded from period calculations. */
     status: v.optional(budgetStatus),
     symbol: v.string(),
     /** Optional tag association (no effect on spend calculation). */
@@ -227,5 +230,10 @@ export default defineSchema({
     .index("by_accountId_and_date", ["accountId", "date"])
     .index("by_user_and_date", ["userId", "date"])
     .index("by_currency_and_date", ["currency", "date"])
+    .index("by_currency_and_category_and_date", [
+      "currency",
+      "category",
+      "date",
+    ])
     .index("by_parentTransactionId", ["parentTransactionId"]),
 });

@@ -13,6 +13,7 @@ interface FieldRowProps {
   icon?: string;
   iconColor?: string;
   onPress?: () => void;
+  showsChevron?: boolean;
 }
 
 export function FieldSectionLabel({ children }: { children: string }) {
@@ -61,6 +62,7 @@ export function FieldRow({
   icon,
   iconColor,
   onPress,
+  showsChevron = true,
 }: FieldRowProps) {
   const colors = useThemeColors();
   const trailing =
@@ -136,7 +138,9 @@ export function FieldRow({
             {trailing}
           </View>
         ) : null}
-        <SymbolView name="chevron.right" size={12} tintColor={colors.muted} />
+        {showsChevron ? (
+          <SymbolView name="chevron.right" size={12} tintColor={colors.muted} />
+        ) : null}
       </View>
     </View>
   );

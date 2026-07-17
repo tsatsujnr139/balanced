@@ -12,7 +12,7 @@ const SEGMENT_TYPES: PeriodType[] = ["weekly", "monthly", "yearly"];
 
 interface Props {
   periodType: PeriodType;
-  onChangeType: (type: PeriodType) => void;
+  onChangeType?: (type: PeriodType) => void;
   label: string;
   onPrev: () => void;
   onNext: () => void;
@@ -32,18 +32,20 @@ export function PeriodSelector({
 
   return (
     <View className="gap-3">
-      <SegmentedControl
-        appearance={colorScheme === "dark" ? "dark" : "light"}
-        onChange={(event) => {
-          const next = SEGMENT_TYPES[event.nativeEvent.selectedSegmentIndex];
-          if (next) {
-            onChangeType(next);
-          }
-        }}
-        selectedIndex={SEGMENT_TYPES.indexOf(periodType)}
-        style={{ width: "100%" }}
-        values={SEGMENT_VALUES}
-      />
+      {onChangeType ? (
+        <SegmentedControl
+          appearance={colorScheme === "dark" ? "dark" : "light"}
+          onChange={(event) => {
+            const next = SEGMENT_TYPES[event.nativeEvent.selectedSegmentIndex];
+            if (next) {
+              onChangeType(next);
+            }
+          }}
+          selectedIndex={SEGMENT_TYPES.indexOf(periodType)}
+          style={{ width: "100%" }}
+          values={SEGMENT_VALUES}
+        />
+      ) : null}
 
       <View className="flex-row items-center justify-between">
         <Pressable

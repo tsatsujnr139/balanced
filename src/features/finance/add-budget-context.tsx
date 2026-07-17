@@ -20,6 +20,7 @@ interface AddBudgetContextValue {
   currency: string;
   category: BudgetCategorySelection | null;
   period: BudgetPeriod;
+  periodInterval: string;
   tagColorDraft: string;
   tags: BudgetTagSelection[];
   notifyOnOverspend: boolean;
@@ -33,6 +34,7 @@ interface AddBudgetContextValue {
   setCurrency: (currency: string) => void;
   setCategory: (category: BudgetCategorySelection) => void;
   setPeriod: (period: BudgetPeriod) => void;
+  setPeriodInterval: (interval: string) => void;
   setTagColorDraft: (color: string) => void;
   setNotifyOnOverspend: (value: boolean) => void;
   setNotifyAtThreshold: (value: boolean) => void;

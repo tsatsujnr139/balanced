@@ -1,5 +1,5 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useCallback, useMemo, useState } from "react";
@@ -18,62 +18,77 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { formatBudgetPeriodLabel } from "@/features/finance/budget-constants";
+import { PeriodSelector } from "@/features/finance/components/period-selector";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import {
   budgetUsage,
   budgetUsagePercent,
   formatCurrency,
 } from "@/features/finance/format";
-import type { Budget, Transaction } from "@/features/finance/types";
+import {
+  formatPeriodLabel,
+  isCurrentPeriod,
+  periodRange,
+  shiftPeriod,
+} from "@/features/finance/period";
+import type { PeriodRange, PeriodType } from "@/features/finance/period";
+import type { Budget } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const TAB_VALUES = ["Overview", "Transactions"];
+const DAY_MS = 86_400_000;
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function isCurrentMonth(date: string): boolean {
-  const transactionDate = new Date(date);
-  const now = new Date();
-  return (
-    transactionDate.getFullYear() === now.getFullYear() &&
-    transactionDate.getMonth() === now.getMonth()
-  );
+function periodSettingsForBudget(budget: Budget | undefined): {
+  interval: number;
+  type: PeriodType;
+} {
+  const interval = budget?.periodInterval ?? 1;
+  if (budget?.period === "weekly" || budget?.period === "yearly") {
+    return { interval, type: budget.period };
+  }
+  if (budget?.period === "quarterly") {
+    return { interval: interval * 3, type: "monthly" };
+  }
+  return { interval, type: "monthly" };
 }
 
-function matchesBudget(transaction: Transaction, budget: Budget): boolean {
-  if (transaction.amount >= 0) {
-    return false;
-  }
-  if (budget.category && transaction.category !== budget.category) {
-    return false;
-  }
-  if (
-    budget.tagIds.length > 0 &&
-    !transaction.tags.some((tag) => budget.tagIds.includes(tag.id))
-  ) {
-    return false;
-  }
-  return true;
-}
-
-function dailyRecommended(remaining: number): number {
-  const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const remainingDays = Math.max(lastDay - now.getDate() + 1, 1);
-  return Math.max(Math.round(remaining / remainingDays), 0);
-}
-
-function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
+function BudgetOverview({
+  budget,
+  periodLabel,
+  range,
+  spent,
+}: {
+  budget: Budget;
+  periodLabel: string;
+  range: PeriodRange | null;
+  spent: number;
+}) {
   const colors = useThemeColors();
   const percent = budgetUsagePercent(spent, budget.limit);
   const usage = budgetUsage(spent, budget.limit);
   const remaining = budget.limit - spent;
   const overspent = Math.max(spent - budget.limit, 0);
   const riskAmount = Math.max(remaining, 0);
-  const dailyAverage = Math.round(spent / Math.max(new Date().getDate(), 1));
+  const totalDays = range
+    ? Math.max(Math.round((range.end - range.start) / DAY_MS), 1)
+    : null;
+  const elapsedDays = range
+    ? Math.max(
+        Math.min(
+          Math.floor((Date.now() - range.start) / DAY_MS) + 1,
+          totalDays ?? 1
+        ),
+        1
+      )
+    : null;
+  const dailyAverage = elapsedDays ? Math.round(spent / elapsedDays) : null;
+  const dailyBudget = totalDays ? Math.round(budget.limit / totalDays) : null;
 
   return (
     <View className="gap-4">
@@ -81,7 +96,7 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
         <View className="flex-row items-center justify-between">
           <View className="gap-1">
             <ThemedText type="smallBold" color="muted" className="uppercase">
-              This month
+              {formatBudgetPeriodLabel(budget.period, budget.periodInterval)}
             </ThemedText>
             <ThemedText type="title" className="text-[34px] leading-[42px]">
               {formatCurrency(budget.limit, budget.currency)}
@@ -102,7 +117,7 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
             className="h-3 rounded-full"
             style={{
               backgroundColor: overspent > 0 ? colors.negative : budget.color,
-              width: `${Math.max(usage, budget.spent > 0 ? 2 : 0)}%`,
+              width: `${Math.max(usage, spent > 0 ? 2 : 0)}%`,
             }}
           />
         </View>
@@ -161,26 +176,28 @@ function MonthOverview({ budget, spent }: { budget: Budget; spent: number }) {
               {budget.category ?? budget.name}
             </ThemedText>
             <ThemedText type="small" color="muted">
-              Current month category spend
+              {periodLabel} net category usage
             </ThemedText>
           </View>
         </View>
-        <View className="mt-5 flex-row justify-between gap-3">
-          <View>
-            <ThemedText type="subtitle" color="muted">
-              {formatCurrency(dailyAverage, budget.currency)}
-            </ThemedText>
-            <ThemedText type="smallBold" color="muted">
-              Daily Average
-            </ThemedText>
+        {dailyAverage !== null && dailyBudget !== null ? (
+          <View className="mt-5 flex-row justify-between gap-3">
+            <View>
+              <ThemedText type="subtitle" color="muted">
+                {formatCurrency(dailyAverage, budget.currency)}
+              </ThemedText>
+              <ThemedText type="smallBold" color="muted">
+                Daily Average
+              </ThemedText>
+            </View>
+            <View className="items-end">
+              <ThemedText type="subtitle">
+                {formatCurrency(dailyBudget, budget.currency)}
+              </ThemedText>
+              <ThemedText type="smallBold">Daily Budget</ThemedText>
+            </View>
           </View>
-          <View className="items-end">
-            <ThemedText type="subtitle">
-              {formatCurrency(dailyRecommended(remaining), budget.currency)}
-            </ThemedText>
-            <ThemedText type="smallBold">Daily Recommended</ThemedText>
-          </View>
-        </View>
+        ) : null}
       </ThemedView>
     </View>
   );
@@ -191,32 +208,56 @@ export default function BudgetDetailScreen() {
   const id = firstParam(params.id);
   const colors = useThemeColors();
   const colorScheme = useColorScheme();
-  const { budgets, transactions } = useFinance();
+  const { budgets } = useFinance();
   const [tabIndex, setTabIndex] = useState(0);
+  const [anchor, setAnchor] = useState(() => new Date());
   const [isPausing, setIsPausing] = useState(false);
   const pauseBudget = useMutation(api.finance.pauseBudget);
   const resumeBudget = useMutation(api.finance.resumeBudget);
   const endBudget = useMutation(api.finance.endBudget);
   const budget = budgets.find((item) => item.id === id);
-  const budgetTransactions = useMemo(() => {
-    if (!budget) {
-      return [];
-    }
-    return transactions
-      .filter(
-        (transaction) =>
-          isCurrentMonth(transaction.date) && matchesBudget(transaction, budget)
-      )
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [budget, transactions]);
-  const currentMonthSpent = useMemo(
+  const periodSettings = periodSettingsForBudget(budget);
+  const periodType = periodSettings.type;
+  const periodInterval = periodSettings.interval;
+  const isOneTime = budget?.period === "one_time";
+  const selectedRange = useMemo(
     () =>
-      budgetTransactions.reduce(
-        (total, transaction) => total + Math.abs(transaction.amount),
+      isOneTime
+        ? { end: Number.MAX_SAFE_INTEGER, start: 0 }
+        : periodRange(periodType, anchor, periodInterval),
+    [anchor, isOneTime, periodInterval, periodType]
+  );
+  const selectedPeriodLabel = isOneTime
+    ? "All time"
+    : formatPeriodLabel(periodType, anchor, periodInterval);
+  const budgetTransactions = useQuery(
+    api.finance.listBudgetTransactions,
+    budget
+      ? {
+          end: selectedRange.end,
+          id: budget.id as Id<"budgets">,
+          start: selectedRange.start,
+        }
+      : "skip"
+  );
+  const selectedSpent = useMemo(
+    () =>
+      budgetTransactions?.reduce(
+        (total, transaction) => total - transaction.amount,
         0
-      ),
+      ) ?? 0,
     [budgetTransactions]
   );
+
+  const showPreviousPeriod = useCallback(() => {
+    setAnchor((current) =>
+      shiftPeriod(current, periodType, -1, periodInterval)
+    );
+  }, [periodInterval, periodType]);
+
+  const showNextPeriod = useCallback(() => {
+    setAnchor((current) => shiftPeriod(current, periodType, 1, periodInterval));
+  }, [periodInterval, periodType]);
 
   const confirmPause = useCallback(() => {
     if (!budget || isPausing || !budget._id) {
@@ -228,8 +269,8 @@ export default function BudgetDetailScreen() {
     Alert.alert(
       isPaused ? "Resume budget?" : "Pause budget?",
       isPaused
-        ? `"${budgetLabel}" will be active again and included in your monthly budget calculations.`
-        : `"${budgetLabel}" will be excluded from your monthly budget calculations.`,
+        ? `"${budgetLabel}" will be active again and included in your budget calculations.`
+        : `"${budgetLabel}" will be excluded from your budget calculations.`,
       [
         { style: "cancel", text: "Cancel" },
         {
@@ -266,7 +307,7 @@ export default function BudgetDetailScreen() {
     const budgetLabel = budget.name;
     Alert.alert(
       "End budget?",
-      `"${budgetLabel}" will be permanently ended and excluded from your monthly budget calculations. You can delete it later if needed.`,
+      `"${budgetLabel}" will be permanently ended and excluded from your budget calculations. You can delete it later if needed.`,
       [
         { style: "cancel", text: "Cancel" },
         {
@@ -345,8 +386,33 @@ export default function BudgetDetailScreen() {
           values={TAB_VALUES}
         />
 
-        {tabIndex === 0 ? (
-          <MonthOverview budget={budget} spent={currentMonthSpent} />
+        {isOneTime ? (
+          <ThemedText type="smallBold" className="text-center text-[16px]">
+            All time
+          </ThemedText>
+        ) : (
+          <PeriodSelector
+            isForwardDisabled={isCurrentPeriod(
+              periodType,
+              anchor,
+              periodInterval
+            )}
+            label={selectedPeriodLabel}
+            onNext={showNextPeriod}
+            onPrev={showPreviousPeriod}
+            periodType={periodType}
+          />
+        )}
+
+        {budgetTransactions === undefined ? (
+          <ActivityIndicator color={colors.foreground} />
+        ) : tabIndex === 0 ? (
+          <BudgetOverview
+            budget={budget}
+            periodLabel={selectedPeriodLabel}
+            range={isOneTime ? null : selectedRange}
+            spent={selectedSpent}
+          />
         ) : (
           <TransactionList transactions={budgetTransactions} />
         )}

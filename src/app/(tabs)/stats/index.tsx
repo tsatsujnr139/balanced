@@ -137,6 +137,7 @@ export default function StatsScreen() {
         notifyAtThreshold: false,
         notifyOnOverspend: false,
         period: "monthly",
+        periodInterval: 1,
         spent: budget.spent,
         symbol: budget.symbol,
         tagId: null,

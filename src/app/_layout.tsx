@@ -14,6 +14,7 @@ import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
 import { UpdateBanner } from "@/components/update-banner";
 import { useThemeColors } from "@/hooks/use-theme";
 import { applyStartupUpdate } from "@/lib/updates";
+import { refreshHomeScreenWidgets } from "@/lib/widgets";
 import { AppLockProvider } from "@/providers/app-lock-provider";
 import { ConvexClientProvider } from "@/providers/convex-provider";
 
@@ -28,6 +29,7 @@ export default function TabLayout() {
   useEffect(() => {
     Uniwind.setTheme("system");
     applyStartupUpdate();
+    refreshHomeScreenWidgets();
   }, []);
 
   return (
@@ -202,6 +204,7 @@ export default function TabLayout() {
                     headerShown: true,
                     headerStyle: androidHeaderStyle,
                     headerTransparent: process.env.EXPO_OS === "ios",
+                    title: "Planned Payment",
                   }}
                 />
                 <Stack.Screen

@@ -614,6 +614,7 @@ export const seedDemo = mutation({
         notifyAtThreshold: true,
         notifyOnOverspend: true,
         period: "monthly",
+        periodInterval: 1,
       });
     }
 

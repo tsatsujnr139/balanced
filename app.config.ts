@@ -83,6 +83,25 @@ const config: ExpoConfig = {
         },
       },
     ],
+    [
+      "expo-widgets",
+      {
+        widgets: [
+          {
+            name: "AddTransactionWidget",
+            displayName: "Add Transaction",
+            description: "Quickly open Balanced to add a new transaction.",
+            ios: {
+              supportedFamilies: ["systemSmall"],
+            },
+          },
+        ],
+      },
+    ],
+    // After expo-widgets: WidgetKit requires containerBackground on the native entry view.
+    "./plugins/withWidgetContainerBackground",
+    // Last: patches AppDelegate + adds SceneDelegate for Xcode 27 / iOS 27 SDK.
+    "./plugins/withIosSceneLifecycle",
   ],
   runtimeVersion: {
     policy: "appVersion",

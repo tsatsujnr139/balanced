@@ -82,7 +82,12 @@ export interface TransactionTemplate {
   tags: TransactionTag[];
 }
 
-export type BudgetPeriod = "weekly" | "monthly" | "yearly" | "one_time";
+export type BudgetPeriod =
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly"
+  | "one_time";
 
 export type BudgetStatus = "active" | "paused" | "ended";
 
@@ -90,7 +95,7 @@ export interface Budget {
   id: string;
   _id?: string;
   name: string;
-  /** Spent so far in minor units (cents). */
+  /** Net budget usage in minor units: expenses minus income. */
   spent: number;
   /** Budget limit in minor units (cents). */
   limit: number;
@@ -99,6 +104,8 @@ export interface Budget {
   color: string;
   /** How often the budget resets. */
   period: BudgetPeriod;
+  /** Number of weeks, months, quarters, or years in one budget period. */
+  periodInterval: number;
   /** Category whose transactions count against this budget. */
   category: string | null;
   /** Legacy optional tag association. */
