@@ -242,7 +242,9 @@ export default function AddTransactionLayout() {
   const applyTemplate = useCallback(
     (template: TransactionTemplate) => {
       setAccountId(template.accountId);
-      setAmount(minorUnitsToAmountInput(template.amount));
+      setAmount(
+        template.amount === 0 ? "" : minorUnitsToAmountInput(template.amount)
+      );
       setNarration(template.merchant);
       setTags(template.tags);
       setToAccountId(template.toAccountId);
