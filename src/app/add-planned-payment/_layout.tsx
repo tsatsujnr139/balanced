@@ -555,11 +555,19 @@ export default function AddPlannedPaymentLayout() {
             <Stack.Toolbar placement="right">
               <Stack.Toolbar.Button
                 accessibilityLabel="Add tag"
-                icon="plus"
                 onPress={() =>
                   router.push("/add-planned-payment/tag-new" as never)
                 }
-              />
+              >
+                Add
+              </Stack.Toolbar.Button>
+              <Stack.Toolbar.Button
+                accessibilityLabel="Done"
+                onPress={() => router.back()}
+                variant="done"
+              >
+                Done
+              </Stack.Toolbar.Button>
             </Stack.Toolbar>
           ) : null}
         </Stack.Screen>
