@@ -108,6 +108,7 @@ export default function PlannedPaymentsScreen() {
       )}
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => {
           setQuery("");
           searchBarRef.current?.blur();

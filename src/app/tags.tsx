@@ -95,6 +95,7 @@ export default function TagsScreen() {
       )}
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => setSearch("")}
         onChangeText={(event) => {
           setSearch(event.nativeEvent.text);

@@ -432,11 +432,11 @@ export default function AddTemplateLayout() {
               </Stack.Toolbar.Button>
               <Stack.Toolbar.Button
                 accessibilityLabel="Done"
+                icon="checkmark"
                 onPress={() => router.back()}
-                variant="done"
-              >
-                Done
-              </Stack.Toolbar.Button>
+                tintColor={colors.primary}
+                variant="prominent"
+              />
             </Stack.Toolbar>
           ) : null}
         </Stack.Screen>

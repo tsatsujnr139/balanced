@@ -116,6 +116,7 @@ export default function TemplatesScreen() {
       )}
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => {
           setQuery("");
           searchBarRef.current?.blur();

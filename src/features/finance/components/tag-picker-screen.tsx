@@ -52,6 +52,7 @@ export function TagPickerScreen({
     <>
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => setSearch("")}
         onChangeText={(event) => setSearch(event.nativeEvent.text)}
         placeholder="Search tags"

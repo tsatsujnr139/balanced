@@ -75,6 +75,7 @@ export default function TransactionsScreen() {
       )}
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => {
           setQuery("");
           searchBarRef.current?.blur();

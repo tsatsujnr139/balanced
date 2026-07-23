@@ -218,6 +218,7 @@ export default function BudgetsScreen() {
       )}
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => {
           setQuery("");
           searchBarRef.current?.blur();

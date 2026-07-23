@@ -80,6 +80,7 @@ export function CategoryPickerScreen({
     <>
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => setSearch("")}
         onChangeText={(event) => setSearch(event.nativeEvent.text)}
         placeholder="Search categories"

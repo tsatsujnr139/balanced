@@ -42,6 +42,7 @@ export default function AddTransactionTemplatesScreen() {
     <>
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar={false}
         onCancelButtonPress={() => setQuery("")}
         onChangeText={(event) => {
           setQuery(event.nativeEvent.text);
