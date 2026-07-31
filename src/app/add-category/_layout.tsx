@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { useCallback, useMemo, useState } from "react";
 import { Platform } from "react-native";
@@ -20,9 +20,10 @@ const DEFAULT_CATEGORY_SYMBOL = "square.grid.2x2.fill";
 export default function AddCategoryLayout() {
   const colors = useThemeColors();
   const disableHeaderBlur = shouldDisableHeaderBlur();
+  const params = useLocalSearchParams<{ name?: string }>();
   const [draft, setDraft] = useState<TransactionLabelDraft>(() => ({
     color: pickRandomColor() ?? DEFAULT_LABEL_COLOR,
-    name: "",
+    name: Array.isArray(params.name) ? params.name[0] : (params.name ?? ""),
     symbol: DEFAULT_CATEGORY_SYMBOL,
   }));
   const value = useMemo(() => ({ draft, setDraft }), [draft]);
