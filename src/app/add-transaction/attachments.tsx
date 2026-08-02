@@ -12,25 +12,34 @@ function imageAssetToAttachment(
 ): TransactionAttachmentDraft {
   const extension = asset.mimeType?.split("/")[1] ?? "jpg";
   const name = asset.fileName ?? `photo-${Date.now()}.${extension}`;
+  const size =
+    typeof asset.fileSize === "number" && Number.isFinite(asset.fileSize)
+      ? asset.fileSize
+      : undefined;
 
   return {
-    id: `${asset.uri}:${name}:${asset.fileSize ?? ""}`,
+    id: `${asset.uri}:${name}:${size ?? ""}`,
     mimeType: asset.mimeType ?? "image/jpeg",
     name,
     uri: asset.uri,
-    ...(asset.fileSize !== undefined ? { size: asset.fileSize } : {}),
+    ...(size !== undefined ? { size } : {}),
   };
 }
 
 function documentAssetToAttachment(
   asset: DocumentPicker.DocumentPickerAsset
 ): TransactionAttachmentDraft {
+  const size =
+    typeof asset.size === "number" && Number.isFinite(asset.size)
+      ? asset.size
+      : undefined;
+
   return {
-    id: `${asset.uri}:${asset.name}:${asset.size ?? ""}`,
+    id: `${asset.uri}:${asset.name}:${size ?? ""}`,
     name: asset.name,
     uri: asset.uri,
     ...(asset.mimeType ? { mimeType: asset.mimeType } : {}),
-    ...(asset.size !== undefined ? { size: asset.size } : {}),
+    ...(size !== undefined ? { size } : {}),
   };
 }
 

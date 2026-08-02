@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
+import { File } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { fetch } from "expo/fetch";
@@ -452,16 +453,18 @@ export default function AddTransactionLayout() {
 
       const uploadedAttachments = await Promise.all(
         attachments.map(async (attachment) => {
-          const uploadUrl = await generateAttachmentUploadUrl();
-          const fileResponse = await fetch(attachment.uri);
-          if (!fileResponse.ok) {
+          const file = new File(attachment.uri);
+          if (!file.exists) {
             throw new Error("Could not read attachment");
           }
-          const blob = await fileResponse.blob();
+
+          const uploadUrl = await generateAttachmentUploadUrl();
+          const contentType =
+            attachment.mimeType || file.type || "application/octet-stream";
           const uploadResponse = await fetch(uploadUrl, {
-            body: blob,
+            body: file,
             headers: {
-              "Content-Type": attachment.mimeType ?? "application/octet-stream",
+              "Content-Type": contentType,
             },
             method: "POST",
           });
@@ -471,11 +474,17 @@ export default function AddTransactionLayout() {
           const { storageId } = (await uploadResponse.json()) as {
             storageId: Id<"_storage">;
           };
+          const size =
+            typeof attachment.size === "number" &&
+            Number.isFinite(attachment.size)
+              ? attachment.size
+              : file.size;
+
           return {
             name: attachment.name,
+            mimeType: contentType,
             storageId,
-            ...(attachment.mimeType ? { mimeType: attachment.mimeType } : {}),
-            ...(attachment.size !== undefined ? { size: attachment.size } : {}),
+            ...(Number.isFinite(size) && size > 0 ? { size } : {}),
           };
         })
       );
