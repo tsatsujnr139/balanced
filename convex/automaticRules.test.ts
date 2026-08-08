@@ -68,13 +68,13 @@ describe("automatic transaction rules", () => {
     const coffeeTag = await createTag(testBackend, "Coffee", "#A2845E");
     const workTag = await createTag(testBackend, "Work", "#5856D6");
 
-    await testBackend.mutation(api.automaticRules.create, {
+    const coffeeRuleId = await testBackend.mutation(api.automaticRules.create, {
       category: {
         color: "#FF9500",
         name: "Eating Out",
         symbol: "fork.knife",
       },
-      matchText: "COFFEE",
+      matchTexts: ["espresso", "COFFEE", " coffee "],
       name: "Coffee purchases",
       tagIds: [coffeeTag],
       type: "expense",
@@ -85,7 +85,7 @@ describe("automatic transaction rules", () => {
         name: "Groceries",
         symbol: "cart.fill",
       },
-      matchText: "shop",
+      matchTexts: ["market", "shop"],
       name: "Shop purchases",
       tagIds: [workTag, coffeeTag],
       type: "expense",
@@ -116,6 +116,9 @@ describe("automatic transaction rules", () => {
     expect(new Set(saved.links.map((link) => link.tagId))).toEqual(
       new Set([coffeeTag, workTag])
     );
+    expect(
+      await testBackend.query(api.automaticRules.get, { id: coffeeRuleId })
+    ).toMatchObject({ matchTexts: ["espresso", "COFFEE"] });
   });
 
   test("preserves manual category and tags independently", async () => {
@@ -129,7 +132,7 @@ describe("automatic transaction rules", () => {
         name: "Eating Out",
         symbol: "fork.knife",
       },
-      matchText: "cafe",
+      matchTexts: ["cafe"],
       name: "Cafe",
       tagIds: [automaticTag],
       type: "expense",
@@ -197,7 +200,7 @@ describe("automatic transaction rules", () => {
         name: "Salary",
         symbol: "banknote.fill",
       },
-      matchText: "payroll",
+      matchTexts: ["payroll"],
       name: "Salary income",
       tagIds: [],
       type: "income",
@@ -236,7 +239,7 @@ describe("automatic transaction rules", () => {
         name: "Work & Career",
         symbol: "briefcase.fill",
       },
-      matchText: "office",
+      matchTexts: ["office"],
       name: "Office",
       tagIds: [tagId],
       type: "expense",
@@ -257,7 +260,7 @@ describe("automatic transaction rules", () => {
     const testBackend = convexTest(schema, modules);
     await expect(
       testBackend.mutation(api.automaticRules.create, {
-        matchText: "coffee",
+        matchTexts: ["coffee"],
         name: "No action",
         tagIds: [],
         type: "expense",

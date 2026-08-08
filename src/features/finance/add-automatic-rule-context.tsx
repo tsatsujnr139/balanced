@@ -7,13 +7,16 @@ interface AddAutomaticRuleContextValue {
   category: TransactionCategory | null;
   isLoadingExisting: boolean;
   isSubmitting: boolean;
-  matchText: string;
+  matchTextInput: string;
+  matchTexts: string[];
   name: string;
   tagColorDraft: string;
   tags: TransactionTag[];
   type: AutomaticRuleType;
+  addMatchText: (value: string) => void;
+  removeMatchText: (value: string) => void;
   setCategory: (category: TransactionCategory | null) => void;
-  setMatchText: (value: string) => void;
+  setMatchTextInput: (value: string) => void;
   setName: (value: string) => void;
   setTagColorDraft: (color: string) => void;
   setType: (type: AutomaticRuleType) => void;

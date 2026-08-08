@@ -66,7 +66,8 @@ const AutomaticRuleRow = ({
           numberOfLines={1}
           className="text-[15px] leading-[21px]"
         >
-          Description contains “{rule.matchText}”
+          Description contains{" "}
+          {rule.matchTexts.map((text) => `“${text}”`).join(" or ")}
         </ThemedText>
         <ThemedText
           type="small"

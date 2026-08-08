@@ -657,7 +657,7 @@ export default function AddTransactionScreen() {
     } rule`.slice(0, 80);
     setAutomaticRuleDraftPrefill(automaticRuleDraftId, {
       category: selectedCategoryName ? (selectedCategory ?? null) : null,
-      matchText: trimmedNarration,
+      matchTexts: trimmedNarration ? [trimmedNarration] : [],
       name: suggestedName,
       tags: [...tags],
       type: transactionTypeIndex === 1 ? "income" : "expense",

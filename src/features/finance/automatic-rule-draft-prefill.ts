@@ -3,7 +3,7 @@ import type { AutomaticRuleType, TransactionTag } from "./types";
 
 export interface AutomaticRuleDraftPrefill {
   category: TransactionCategory | null;
-  matchText: string;
+  matchTexts: string[];
   name: string;
   tags: TransactionTag[];
   type: AutomaticRuleType;

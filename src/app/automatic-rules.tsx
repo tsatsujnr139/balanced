@@ -21,7 +21,9 @@ const filterRules = (
   return rules.filter(
     (rule) =>
       rule.name.toLocaleLowerCase().includes(normalizedQuery) ||
-      rule.matchText.toLocaleLowerCase().includes(normalizedQuery) ||
+      rule.matchTexts.some((matchText) =>
+        matchText.toLocaleLowerCase().includes(normalizedQuery)
+      ) ||
       rule.category?.name.toLocaleLowerCase().includes(normalizedQuery) ||
       rule.tags.some((tag) =>
         tag.name.toLocaleLowerCase().includes(normalizedQuery)

@@ -52,13 +52,16 @@ export default function AddAutomaticRuleScreen() {
   const deleteRule = useMutation(api.automaticRules.remove);
   const [isDeleting, setIsDeleting] = useState(false);
   const {
+    addMatchText,
     category,
     isLoadingExisting,
     isSubmitting,
-    matchText,
+    matchTextInput,
+    matchTexts,
     name,
+    removeMatchText,
     setCategory,
-    setMatchText,
+    setMatchTextInput,
     setName,
     setType,
     tags,
@@ -156,25 +159,80 @@ export default function AddAutomaticRuleScreen() {
             style={{
               borderTopColor: colors.border,
               borderTopWidth: 1,
-              minHeight: 78,
+              minHeight: 62,
               paddingHorizontal: 18,
+              paddingVertical: 10,
             }}
           >
             <TextInput
-              accessibilityLabel="Description contains"
+              accessibilityHint="Press Done to add this match text"
+              accessibilityLabel="Add description match text"
+              autoCapitalize="none"
+              autoCorrect={false}
+              enablesReturnKeyAutomatically
               maxLength={120}
-              multiline
-              onChangeText={setMatchText}
-              placeholder="Description contains…"
+              onChangeText={setMatchTextInput}
+              onSubmitEditing={(event) => {
+                addMatchText(event.nativeEvent.text);
+              }}
+              placeholder="Add a word or phrase"
               placeholderTextColor={colors.muted}
+              returnKeyType="done"
               style={{
                 color: colors.foreground,
-                flex: 1,
                 fontSize: 17,
-                paddingVertical: 16,
+                minHeight: 42,
               }}
-              value={matchText}
+              submitBehavior="submit"
+              value={matchTextInput}
             />
+            {matchTexts.length > 0 ? (
+              <View
+                accessibilityLabel="Description match texts"
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  paddingBottom: 4,
+                  paddingTop: 6,
+                }}
+              >
+                {matchTexts.map((matchText) => (
+                  <Pressable
+                    accessibilityLabel={`Remove ${matchText}`}
+                    accessibilityRole="button"
+                    key={matchText.toLocaleLowerCase()}
+                    onPress={() => removeMatchText(matchText)}
+                    style={({ pressed }) => ({
+                      alignItems: "center",
+                      backgroundColor: colors.selected,
+                      borderCurve: "continuous",
+                      borderRadius: 999,
+                      flexDirection: "row",
+                      gap: 6,
+                      opacity: pressed ? 0.65 : 1,
+                      paddingHorizontal: 11,
+                      paddingVertical: 7,
+                    })}
+                  >
+                    <Text
+                      style={{
+                        color: colors.foreground,
+                        fontSize: 14,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {matchText}
+                    </Text>
+                    <SymbolView
+                      name="xmark"
+                      size={10}
+                      tintColor={colors.muted}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
           </View>
         </FieldGroup>
         <Text
@@ -186,8 +244,9 @@ export default function AddAutomaticRuleScreen() {
             paddingTop: 8,
           }}
         >
-          Matching ignores capitalization and can fill a missing category or add
-          tags when none are selected.
+          Press Done after each word or phrase. Matching any badge ignores
+          capitalization and can fill a missing category or add tags when none
+          are selected.
         </Text>
       </View>
 

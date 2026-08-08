@@ -63,7 +63,9 @@ export const resolveAutomaticRuleActions = async (
     .order("asc")
     .take(MAX_AUTOMATIC_RULES);
   const matchingRules = rules.filter((rule) =>
-    normalizedDescription.includes(rule.normalizedMatchText)
+    rule.normalizedMatchTexts.some((matchText) =>
+      normalizedDescription.includes(matchText)
+    )
   );
 
   let category: AutomaticRuleCategorySnapshot | null = null;

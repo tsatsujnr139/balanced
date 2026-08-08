@@ -41,7 +41,7 @@ export interface AutomaticRule {
   id: string;
   name: string;
   type: AutomaticRuleType;
-  matchText: string;
+  matchTexts: string[];
   category: AutomaticRuleCategory | null;
   tags: TransactionTag[];
 }

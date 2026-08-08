@@ -12,6 +12,7 @@ import { automaticRuleType } from "./schema";
 const DEFAULT_TAG_COLOR = "#8E8E93";
 const MAX_RULE_NAME_LENGTH = 80;
 const MAX_MATCH_TEXT_LENGTH = 120;
+const MAX_MATCH_TEXTS = 20;
 
 const categoryValidator = v.object({
   color: v.string(),
@@ -21,7 +22,7 @@ const categoryValidator = v.object({
 
 const ruleFields = {
   category: v.optional(categoryValidator),
-  matchText: v.string(),
+  matchTexts: v.array(v.string()),
   name: v.string(),
   tagIds: v.array(v.id("tags")),
   type: automaticRuleType,
@@ -29,26 +30,45 @@ const ruleFields = {
 
 const validateRuleText = (
   nameValue: string,
-  matchTextValue: string
-): { matchText: string; name: string; normalizedMatchText: string } => {
+  matchTextValues: string[]
+): { matchTexts: string[]; name: string; normalizedMatchTexts: string[] } => {
   const name = nameValue.trim();
   if (!name || name.length > MAX_RULE_NAME_LENGTH) {
     throw new Error(
       `Rule name must contain between 1 and ${MAX_RULE_NAME_LENGTH} characters`
     );
   }
+  if (
+    matchTextValues.length === 0 ||
+    matchTextValues.length > MAX_MATCH_TEXTS
+  ) {
+    throw new Error(`Choose between 1 and ${MAX_MATCH_TEXTS} match texts`);
+  }
 
-  const matchText = matchTextValue.trim();
-  if (!matchText || matchText.length > MAX_MATCH_TEXT_LENGTH) {
-    throw new Error(
-      `Match text must contain between 1 and ${MAX_MATCH_TEXT_LENGTH} characters`
-    );
+  const matchTexts: string[] = [];
+  const normalizedMatchTexts: string[] = [];
+  const seenMatchTexts = new Set<string>();
+  for (const matchTextValue of matchTextValues) {
+    const matchText = matchTextValue.trim();
+    if (!matchText || matchText.length > MAX_MATCH_TEXT_LENGTH) {
+      throw new Error(
+        `Each match text must contain between 1 and ${MAX_MATCH_TEXT_LENGTH} characters`
+      );
+    }
+
+    const normalizedMatchText = normalizeAutomaticRuleText(matchText);
+    if (seenMatchTexts.has(normalizedMatchText)) {
+      continue;
+    }
+    seenMatchTexts.add(normalizedMatchText);
+    matchTexts.push(matchText);
+    normalizedMatchTexts.push(normalizedMatchText);
   }
 
   return {
-    matchText,
+    matchTexts,
     name,
-    normalizedMatchText: normalizeAutomaticRuleText(matchText),
+    normalizedMatchTexts,
   };
 };
 
@@ -118,7 +138,7 @@ const enrichRule = async (ctx: QueryCtx, rule: Doc<"automaticRules">) => {
   return {
     category,
     id: rule._id,
-    matchText: rule.matchText,
+    matchTexts: rule.matchTexts,
     name: rule.name,
     tags: tags
       .filter(
@@ -164,7 +184,7 @@ export const create = mutation({
 
     const tagIds = await validateTagIds(ctx, args.tagIds);
     ensureRuleHasAction(args.category, tagIds);
-    const textFields = validateRuleText(args.name, args.matchText);
+    const textFields = validateRuleText(args.name, args.matchTexts);
     const categoryFields = buildCategoryFields(args.category);
     let order = -1;
     for (const rule of existingRules) {
@@ -194,7 +214,7 @@ export const update = mutation({
 
     const tagIds = await validateTagIds(ctx, args.tagIds);
     ensureRuleHasAction(args.category, tagIds);
-    const textFields = validateRuleText(args.name, args.matchText);
+    const textFields = validateRuleText(args.name, args.matchTexts);
 
     await ctx.db.patch(args.id, {
       ...buildCategoryFields(args.category),

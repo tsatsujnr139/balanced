@@ -23,6 +23,8 @@ import type {
 import { useThemeColors } from "@/hooks/use-theme";
 import { androidHeaderOptions } from "@/lib/android-header-options";
 
+const MAX_MATCH_TEXTS = 20;
+
 const closeRuleForm = (): void => {
   if (router.canDismiss()) {
     router.dismiss();
@@ -54,7 +56,8 @@ export default function AddAutomaticRuleLayout() {
     draftPrefill?.category ?? null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [matchText, setMatchText] = useState(draftPrefill?.matchText ?? "");
+  const [matchTextInput, setMatchTextInput] = useState("");
+  const [matchTexts, setMatchTexts] = useState(draftPrefill?.matchTexts ?? []);
   const [name, setName] = useState(draftPrefill?.name ?? "");
   const [tagColorDraft, setTagColorDraft] = useState(DEFAULT_LABEL_COLOR);
   const [tags, setTags] = useState<TransactionTag[]>(draftPrefill?.tags ?? []);
@@ -82,7 +85,7 @@ export default function AddAutomaticRuleLayout() {
     setCategory(
       rule.category ? { ...rule.category, keywords: [] as const } : null
     );
-    setMatchText(rule.matchText);
+    setMatchTexts(rule.matchTexts);
     setName(rule.name);
     setTags(rule.tags);
     setType(rule.type);
@@ -96,6 +99,35 @@ export default function AddAutomaticRuleLayout() {
     );
   }, []);
 
+  const addMatchText = useCallback((value: string) => {
+    const matchText = value.trim();
+    if (!matchText) {
+      return;
+    }
+
+    setMatchTexts((current) => {
+      const normalizedMatchText = matchText.toLocaleLowerCase();
+      if (
+        current.some((item) => item.toLocaleLowerCase() === normalizedMatchText)
+      ) {
+        return current;
+      }
+      if (current.length >= MAX_MATCH_TEXTS) {
+        Alert.alert(
+          "Too many match texts",
+          `You can add up to ${MAX_MATCH_TEXTS} match texts.`
+        );
+        return current;
+      }
+      return [...current, matchText];
+    });
+    setMatchTextInput("");
+  }, []);
+
+  const removeMatchText = useCallback((value: string) => {
+    setMatchTexts((current) => current.filter((item) => item !== value));
+  }, []);
+
   const submit = useCallback(async () => {
     if (isSubmitting || isLoadingExisting) {
       return;
@@ -104,10 +136,30 @@ export default function AddAutomaticRuleLayout() {
       Alert.alert("Missing name", "Enter a rule name to continue.");
       return;
     }
-    if (!matchText.trim()) {
+    const pendingMatchText = matchTextInput.trim();
+    const pendingMatchTextAlreadyExists = matchTexts.some(
+      (item) =>
+        item.toLocaleLowerCase() === pendingMatchText.toLocaleLowerCase()
+    );
+    if (
+      pendingMatchText &&
+      !pendingMatchTextAlreadyExists &&
+      matchTexts.length >= MAX_MATCH_TEXTS
+    ) {
+      Alert.alert(
+        "Too many match texts",
+        `You can add up to ${MAX_MATCH_TEXTS} match texts.`
+      );
+      return;
+    }
+    const submittedMatchTexts =
+      pendingMatchText && !pendingMatchTextAlreadyExists
+        ? [...matchTexts, pendingMatchText]
+        : matchTexts;
+    if (submittedMatchTexts.length === 0) {
       Alert.alert(
         "Missing match text",
-        "Enter the description text this rule should match."
+        "Add at least one description word or phrase this rule should match."
       );
       return;
     }
@@ -119,6 +171,8 @@ export default function AddAutomaticRuleLayout() {
       return;
     }
 
+    setMatchTexts(submittedMatchTexts);
+    setMatchTextInput("");
     setIsSubmitting(true);
     try {
       const payload = {
@@ -129,7 +183,7 @@ export default function AddAutomaticRuleLayout() {
               symbol: category.symbol,
             }
           : undefined,
-        matchText,
+        matchTexts: submittedMatchTexts,
         name,
         tagIds: tags.map((tag) => tag.id as Id<"tags">),
         type,
@@ -156,7 +210,8 @@ export default function AddAutomaticRuleLayout() {
     editingId,
     isLoadingExisting,
     isSubmitting,
-    matchText,
+    matchTextInput,
+    matchTexts,
     name,
     tags,
     type,
@@ -165,13 +220,16 @@ export default function AddAutomaticRuleLayout() {
 
   const context = useMemo(
     () => ({
+      addMatchText,
       category,
       isLoadingExisting,
       isSubmitting,
-      matchText,
+      matchTextInput,
+      matchTexts,
       name,
+      removeMatchText,
       setCategory,
-      setMatchText,
+      setMatchTextInput,
       setName,
       setTagColorDraft,
       setType,
@@ -184,11 +242,14 @@ export default function AddAutomaticRuleLayout() {
       type,
     }),
     [
+      addMatchText,
       category,
       isLoadingExisting,
       isSubmitting,
-      matchText,
+      matchTextInput,
+      matchTexts,
       name,
+      removeMatchText,
       submit,
       tagColorDraft,
       tags,
