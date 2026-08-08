@@ -427,25 +427,26 @@ export default function AddTransactionLayout() {
         );
         return;
       }
-    } else if (!selectedCategory || !account) {
+    } else if (!account || (isEditing && !selectedCategory)) {
       Alert.alert(
         "Missing transaction details",
-        "Enter an amount, then choose a category and account."
+        isEditing
+          ? "Choose a category and account."
+          : "Choose an account to continue."
       );
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const merchant =
-        trimmedNarration ||
-        (isTransfer
-          ? isFromOutOfWallet
+      const merchant = isTransfer
+        ? trimmedNarration ||
+          (isFromOutOfWallet
             ? `Transfer from ${OUT_OF_WALLET_ACCOUNT_NAME}`
             : `Transfer to ${
                 isToOutOfWallet ? OUT_OF_WALLET_ACCOUNT_NAME : toAccount!.name
-              }`
-          : selectedCategory!.name);
+              }`)
+        : trimmedNarration;
       const transactionType = isTransfer
         ? "transfer"
         : transactionTypeIndex === 1
@@ -527,12 +528,12 @@ export default function AddTransactionLayout() {
         accountId: trackedTransferAccount!.id as Id<"accounts">,
         amount: amountInMinorUnits,
         attachments: uploadedAttachments,
-        category: selectedCategory!.name,
-        color: selectedCategory!.color,
+        category: selectedCategory?.name,
+        color: selectedCategory?.color,
         createdByName: firstName,
         date,
         merchant,
-        symbol: selectedCategory!.symbol,
+        symbol: selectedCategory?.symbol,
         tagIds: tags.map((tag) => tag.id as Id<"tags">),
         externalTransferSide: isFromOutOfWallet
           ? "from"

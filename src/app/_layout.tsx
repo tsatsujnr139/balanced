@@ -88,6 +88,15 @@ export default function TabLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="automatic-rules"
+                  options={{
+                    animation: "fade",
+                    animationDuration: 150,
+                    headerStyle: androidHeaderStyle,
+                    headerTransparent: process.env.EXPO_OS === "ios",
+                  }}
+                />
+                <Stack.Screen
                   name="tags"
                   options={{
                     animation: "fade",
@@ -172,6 +181,17 @@ export default function TabLayout() {
                 />
                 <Stack.Screen
                   name="add-template"
+                  options={{
+                    contentStyle: { backgroundColor: "transparent" },
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetGrabberVisible: false,
+                    sheetInitialDetentIndex: 0,
+                    sheetShouldOverflowTopInset: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="add-automatic-rule"
                   options={{
                     contentStyle: { backgroundColor: "transparent" },
                     presentation: "formSheet",

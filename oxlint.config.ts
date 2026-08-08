@@ -5,6 +5,18 @@ const react = require("ultracite/oxlint/react").default;
 module.exports = defineConfig({
   extends: [core, react],
   ignorePatterns: [...core.ignorePatterns, "src/uniwind-types.d.ts"],
+  overrides: [
+    {
+      files: [
+        "convex/automaticRules.test.ts",
+        "convex/automaticRules.ts",
+        "convex/lib/automaticRuleMatching.ts",
+      ],
+      rules: {
+        "unicorn/filename-case": "allow",
+      },
+    },
+  ],
   rules: {
     complexity: "allow",
     "func-style": "allow",

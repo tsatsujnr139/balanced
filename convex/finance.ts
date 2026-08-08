@@ -5,6 +5,12 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
+  removeCategoryFromAutomaticRules,
+  removeTagFromAutomaticRules,
+  resolveAutomaticRuleActions,
+  UNCATEGORIZED_CATEGORY,
+} from "./lib/automaticRuleMatching";
+import {
   accountType,
   budgetPeriod,
   plannedPaymentFrequency,
@@ -1272,6 +1278,7 @@ export const deleteCategory = mutation({
       throw new Error("Category not found");
     }
     await ctx.db.patch(args.id, { archived: true });
+    await removeCategoryFromAutomaticRules(ctx, category.name);
     return args.id;
   },
 });
@@ -1304,6 +1311,8 @@ export const deleteCategoryByName = mutation({
     for (const category of matchingCategories) {
       await ctx.db.patch(category._id, { archived: true });
     }
+
+    await removeCategoryFromAutomaticRules(ctx, name);
 
     return name;
   },
@@ -1408,6 +1417,7 @@ export const deleteTag = mutation({
       });
     }
 
+    await removeTagFromAutomaticRules(ctx, args.id);
     await ctx.db.patch(args.id, { archived: true });
     return args.id;
   },
@@ -1610,15 +1620,15 @@ export const createTransaction = mutation({
         storageId: v.id("_storage"),
       })
     ),
-    category: v.string(),
-    color: v.string(),
+    category: v.optional(v.string()),
+    color: v.optional(v.string()),
     createdByName: v.optional(v.string()),
     date: v.number(),
     externalTransferSide: v.optional(
       v.union(v.literal("from"), v.literal("to"))
     ),
     merchant: v.string(),
-    symbol: v.string(),
+    symbol: v.optional(v.string()),
     tagIds: v.array(v.id("tags")),
     toAccountId: v.optional(v.id("accounts")),
     transactionCharge: v.optional(v.number()),
@@ -1853,24 +1863,56 @@ export const createTransaction = mutation({
       throw new Error("Account not found");
     }
 
-    const merchant = args.merchant.trim() || args.category;
+    const manualCategoryFieldCount = [
+      args.category,
+      args.color,
+      args.symbol,
+    ].filter((field) => field !== undefined).length;
+    if (manualCategoryFieldCount > 0 && manualCategoryFieldCount < 3) {
+      throw new Error(
+        "Category name, color, and symbol must be provided together"
+      );
+    }
+
+    const manualCategory =
+      args.category !== undefined &&
+      args.color !== undefined &&
+      args.symbol !== undefined
+        ? {
+            color: args.color,
+            name: args.category,
+            symbol: args.symbol,
+          }
+        : null;
+    const hasManualCategory = manualCategory !== null;
+    const hasManualTags = args.tagIds.length > 0;
+    const automaticActions = await resolveAutomaticRuleActions(ctx, {
+      description: args.merchant,
+      hasManualCategory,
+      hasManualTags,
+      type: args.type,
+    });
+    const category =
+      manualCategory ?? automaticActions.category ?? UNCATEGORIZED_CATEGORY;
+    const tagIds = hasManualTags ? args.tagIds : automaticActions.tagIds;
+    const merchant = args.merchant.trim() || category.name;
     const signedAmount = args.type === "expense" ? -args.amount : args.amount;
     const transactionCharge =
       args.type === "expense" ? (args.transactionCharge ?? 0) : 0;
     const mainTransactionId = await ctx.db.insert("transactions", {
       accountId: args.accountId,
       amount: signedAmount,
-      category: args.category,
-      color: args.color,
+      category: category.name,
+      color: category.color,
       createdByName,
       currency: account.currency,
       date: args.date,
       merchant,
-      symbol: args.symbol,
+      symbol: category.symbol,
       transactionKind: args.type,
     });
 
-    await replaceTransactionTags(ctx, mainTransactionId, args.tagIds);
+    await replaceTransactionTags(ctx, mainTransactionId, tagIds);
     for (const attachment of args.attachments) {
       await ctx.db.insert("transactionAttachments", {
         ...attachment,

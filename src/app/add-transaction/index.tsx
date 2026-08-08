@@ -26,6 +26,7 @@ import { Icon as SymbolView } from "@/components/icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
+import { setAutomaticRuleDraftPrefill } from "@/features/finance/automatic-rule-draft-prefill";
 import { TransactionDescriptionSuggestions } from "@/features/finance/components/transaction-description-suggestions";
 import { clearTransactionEditPrefill } from "@/features/finance/edit-transaction-prefill";
 import { DEFAULT_CURRENCY, getCurrencySymbol } from "@/features/finance/format";
@@ -644,6 +645,29 @@ export default function AddTransactionScreen() {
     });
   };
 
+  const openCreateAutomaticRule = () => {
+    const automaticRuleDraftId = `transaction-rule-${Date.now()}`;
+    const trimmedNarration = narration.trim();
+    const selectedCategoryName =
+      selectedCategory?.name === "Uncategorized"
+        ? null
+        : (selectedCategory?.name ?? null);
+    const suggestedName = `${
+      trimmedNarration || selectedCategoryName || "Transaction"
+    } rule`.slice(0, 80);
+    setAutomaticRuleDraftPrefill(automaticRuleDraftId, {
+      category: selectedCategoryName ? (selectedCategory ?? null) : null,
+      matchText: trimmedNarration,
+      name: suggestedName,
+      tags: [...tags],
+      type: transactionTypeIndex === 1 ? "income" : "expense",
+    });
+    openFormAfterDismissingSheet({
+      params: { draftId: automaticRuleDraftId },
+      pathname: "/add-automatic-rule",
+    });
+  };
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -844,13 +868,16 @@ export default function AddTransactionScreen() {
         {!isTransfer ? (
           <FieldRow
             icon={selectedCategory?.symbol ?? "square.grid.2x2.fill"}
-            iconColor={selectedCategory?.color ?? "#FF9F0A"}
+            iconColor={selectedCategory?.color ?? "#8E8E93"}
             label="Category"
             onPress={() => {
               router.push("/add-transaction/category");
             }}
-            required={!category}
-            value={category ?? undefined}
+            required={Boolean(editingTransactionId && !category)}
+            value={
+              category ??
+              (editingTransactionId ? undefined : "Automatic or Uncategorized")
+            }
           />
         ) : null}
         <FieldRow
@@ -859,7 +886,11 @@ export default function AddTransactionScreen() {
           label="Tags"
           onPress={() => router.push("/add-transaction/tags")}
           value={
-            tags.length > 0 ? tags.map((tag) => tag.name).join(", ") : "None"
+            tags.length > 0
+              ? tags.map((tag) => tag.name).join(", ")
+              : editingTransactionId
+                ? "None"
+                : "Automatic or None"
           }
         />
         <FieldRow
@@ -914,13 +945,21 @@ export default function AddTransactionScreen() {
             onPress={openDuplicateTransaction}
           />
           {!isTransfer ? (
-            <TransactionActionRow
-              icon="calendar.badge.clock"
-              iconColor="#5856D6"
-              label="Create planned payment"
-              last
-              onPress={openCreatePlannedPayment}
-            />
+            <>
+              <TransactionActionRow
+                icon="calendar.badge.clock"
+                iconColor="#5856D6"
+                label="Create planned payment"
+                onPress={openCreatePlannedPayment}
+              />
+              <TransactionActionRow
+                icon="wand.and.stars"
+                iconColor="#FF2D55"
+                label="Create automatic rule"
+                last
+                onPress={openCreateAutomaticRule}
+              />
+            </>
           ) : null}
         </FieldGroup>
       ) : null}

@@ -1,4 +1,7 @@
-const { createRunOncePlugin, withDangerousMod } = require("expo/config-plugins");
+const {
+  createRunOncePlugin,
+  withDangerousMod,
+} = require("expo/config-plugins");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -12,7 +15,7 @@ const path = require("node:path");
  * @see https://github.com/expo/expo/pull/44192
  */
 const ENTRY_VIEW_PATTERN =
-  /^(\s*)((?:WidgetsEntryView|\w+EntryView)\(entry: entry\))\s*$/gm;
+  /^(?<indent>\s*)(?<entryViewExpression>(?:WidgetsEntryView|\w+EntryView)\(entry: entry\))\s*$/gm;
 
 const CONTAINER_BACKGROUND_MARKER = "expoWidgetContainerBackground";
 
@@ -20,42 +23,47 @@ const CONTAINER_BACKGROUND_MARKER = "expoWidgetContainerBackground";
 const WIDGET_BACKGROUND_COLOR =
   "Color(red: 47.0 / 255.0, green: 107.0 / 255.0, blue: 255.0 / 255.0)";
 
-function wrapEntryView(indent, entryViewExpr) {
-  return [
+const wrapEntryView = (indent, entryViewExpression) =>
+  [
     `${indent}Group { // ${CONTAINER_BACKGROUND_MARKER}`,
     `${indent}  if #available(iOS 17.0, *) {`,
-    `${indent}    ${entryViewExpr}`,
+    `${indent}    ${entryViewExpression}`,
     `${indent}      .containerBackground(${WIDGET_BACKGROUND_COLOR}, for: .widget)`,
     `${indent}  } else {`,
-    `${indent}    ${entryViewExpr}`,
+    `${indent}    ${entryViewExpression}`,
     `${indent}  }`,
     `${indent}}`,
   ].join("\n");
-}
 
-function patchWidgetSwift(contents) {
+const replaceEntryView = (
+  _match,
+  _indent,
+  _entryViewExpression,
+  _offset,
+  _source,
+  groups
+) => wrapEntryView(groups.indent, groups.entryViewExpression);
+
+const patchWidgetSwift = (contents) => {
   if (contents.includes(CONTAINER_BACKGROUND_MARKER)) {
     return contents;
   }
 
-  const patched = contents.replace(
-    ENTRY_VIEW_PATTERN,
-    (_, indent, entryViewExpr) => wrapEntryView(indent, entryViewExpr)
-  );
+  const patched = contents.replace(ENTRY_VIEW_PATTERN, replaceEntryView);
 
   if (patched === contents) {
     return contents;
   }
 
   return patched;
-}
+};
 
 const withWidgetContainerBackground = (config) =>
   withDangerousMod(config, [
     "ios",
-    (config) => {
+    (modConfig) => {
       const targetDir = path.join(
-        config.modRequest.platformProjectRoot,
+        modConfig.modRequest.platformProjectRoot,
         "ExpoWidgetsTarget"
       );
 
@@ -63,7 +71,7 @@ const withWidgetContainerBackground = (config) =>
         console.warn(
           "[withWidgetContainerBackground] ExpoWidgetsTarget not found — skipping."
         );
-        return config;
+        return modConfig;
       }
 
       for (const fileName of fs.readdirSync(targetDir)) {
@@ -72,18 +80,16 @@ const withWidgetContainerBackground = (config) =>
         }
 
         const filePath = path.join(targetDir, fileName);
-        const original = fs.readFileSync(filePath, "utf8");
+        const original = fs.readFileSync(filePath, "utf-8");
         const patched = patchWidgetSwift(original);
 
         if (patched !== original) {
           fs.writeFileSync(filePath, patched);
-          console.log(
-            `[withWidgetContainerBackground] Patched ${fileName}`
-          );
+          console.log(`[withWidgetContainerBackground] Patched ${fileName}`);
         }
       }
 
-      return config;
+      return modConfig;
     },
   ]);
 

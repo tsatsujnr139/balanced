@@ -29,6 +29,23 @@ export interface TransactionTag {
   color: string;
 }
 
+export type AutomaticRuleType = "expense" | "income";
+
+export interface AutomaticRuleCategory {
+  name: string;
+  symbol: string;
+  color: string;
+}
+
+export interface AutomaticRule {
+  id: string;
+  name: string;
+  type: AutomaticRuleType;
+  matchText: string;
+  category: AutomaticRuleCategory | null;
+  tags: TransactionTag[];
+}
+
 export type TransactionKind =
   | "expense"
   | "income"

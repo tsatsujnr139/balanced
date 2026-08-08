@@ -45,6 +45,11 @@ export const plannedPaymentType = v.union(
   v.literal("income")
 );
 
+export const automaticRuleType = v.union(
+  v.literal("expense"),
+  v.literal("income")
+);
+
 export const plannedPaymentEntryStatus = v.union(
   v.literal("paid"),
   v.literal("skipped")
@@ -164,6 +169,22 @@ export default defineSchema({
     name: v.string(),
     normalizedName: v.string(),
   }).index("by_normalizedName", ["normalizedName"]),
+
+  automaticRules: defineTable({
+    category: v.optional(v.string()),
+    categoryColor: v.optional(v.string()),
+    categoryNormalizedName: v.optional(v.string()),
+    categorySymbol: v.optional(v.string()),
+    matchText: v.string(),
+    name: v.string(),
+    normalizedMatchText: v.string(),
+    order: v.number(),
+    tagIds: v.array(v.id("tags")),
+    type: automaticRuleType,
+    userId: v.optional(v.string()),
+  })
+    .index("by_type_and_order", ["type", "order"])
+    .index("by_categoryNormalizedName", ["categoryNormalizedName"]),
 
   transactionAttachments: defineTable({
     mimeType: v.optional(v.string()),

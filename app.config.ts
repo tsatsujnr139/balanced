@@ -99,9 +99,9 @@ const config: ExpoConfig = {
       },
     ],
     // After expo-widgets: WidgetKit requires containerBackground on the native entry view.
-    "./plugins/withWidgetContainerBackground",
+    "./plugins/with-widget-container-background",
     // Last: patches AppDelegate + adds SceneDelegate for Xcode 27 / iOS 27 SDK.
-    "./plugins/withIosSceneLifecycle",
+    "./plugins/with-ios-scene-lifecycle",
   ],
   runtimeVersion: {
     policy: "appVersion",

@@ -5,6 +5,13 @@ export interface TransactionCategory {
   keywords: readonly string[];
 }
 
+export const UNCATEGORIZED_CATEGORY: TransactionCategory = {
+  color: "#8E8E93",
+  keywords: [],
+  name: "Uncategorized",
+  symbol: "square.grid.2x2",
+};
+
 export const TRANSACTION_CATEGORIES: readonly TransactionCategory[] = [
   {
     color: "#34C759",

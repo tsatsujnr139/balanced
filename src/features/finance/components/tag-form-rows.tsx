@@ -3,7 +3,6 @@ import { Text, TextInput, View } from "react-native";
 import {
   FieldGroup,
   FieldRow,
-  FieldSectionLabel,
 } from "@/features/finance/components/form-fields";
 import {
   ColorLeading,
