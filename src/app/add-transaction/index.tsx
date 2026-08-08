@@ -33,18 +33,36 @@ import {
   OUT_OF_WALLET_ACCOUNT,
   isOutOfWalletAccountId,
 } from "@/features/finance/out-of-wallet";
+import { DEFAULT_PLANNED_FREQUENCY } from "@/features/finance/planned-payment-constants";
+import { setPlannedPaymentDraftPrefill } from "@/features/finance/planned-payment-draft-prefill";
 import {
   TRANSACTION_CATEGORIES,
   TRANSFER_CATEGORY,
 } from "@/features/finance/transaction-categories";
 import { getTransactionDescriptionSuggestions } from "@/features/finance/transaction-description-suggestions";
+import { setTransactionDraftPrefill } from "@/features/finance/transaction-draft-prefill";
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const TRANSACTION_TYPES = ["Expense", "Income", "Transfer"];
+const SHEET_REOPEN_DELAY_MS = 500;
 const TRANSACTION_CHARGE_CATEGORY = TRANSACTION_CATEGORIES.find(
   (item) => item.name === "Transaction charges"
 );
+
+type FormHref = Parameters<typeof router.push>[0];
+
+function openFormAfterDismissingSheet(href: FormHref): void {
+  if (!router.canDismiss()) {
+    router.replace("/dashboard");
+  } else {
+    router.dismiss();
+  }
+
+  setTimeout(() => {
+    router.push(href);
+  }, SHEET_REOPEN_DELAY_MS);
+}
 
 function closeAddTransaction() {
   if (router.canDismiss()) {
@@ -376,15 +394,89 @@ function FieldGroup({
   );
 }
 
+function TransactionActionRow({
+  icon,
+  iconColor,
+  label,
+  last = false,
+  onPress,
+}: {
+  icon: string;
+  iconColor: string;
+  label: string;
+  last?: boolean;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        flexDirection: "row",
+        gap: 14,
+        minHeight: 62,
+        opacity: pressed ? 0.65 : 1,
+        paddingLeft: 16,
+      })}
+    >
+      <View
+        style={{
+          alignItems: "center",
+          backgroundColor: iconColor,
+          borderRadius: 10,
+          height: 34,
+          justifyContent: "center",
+          width: 34,
+        }}
+      >
+        <SymbolView name={icon as never} size={17} tintColor="#fff" />
+      </View>
+      <View
+        style={{
+          alignItems: "center",
+          borderBottomColor: colors.border,
+          borderBottomWidth: last ? 0 : 1,
+          flex: 1,
+          flexDirection: "row",
+          minHeight: 62,
+          paddingRight: 16,
+        }}
+      >
+        <Text
+          style={{
+            color: colors.foreground,
+            flex: 1,
+            fontSize: 17,
+            fontWeight: "500",
+          }}
+        >
+          {label}
+        </Text>
+        <SymbolView name="chevron.right" size={12} tintColor={colors.muted} />
+      </View>
+    </Pressable>
+  );
+}
+
 export default function AddTransactionScreen() {
   const colors = useThemeColors();
   const colorScheme = useColorScheme();
-  const { transactionId } = useLocalSearchParams<{
+  const { draftId, formMode, transactionId } = useLocalSearchParams<{
+    draftId?: string | string[];
+    formMode?: string | string[];
     transactionId?: string | string[];
   }>();
-  const editingTransactionId = Array.isArray(transactionId)
+  const currentDraftId = Array.isArray(draftId) ? draftId[0] : draftId;
+  const currentFormMode = Array.isArray(formMode) ? formMode[0] : formMode;
+  const transactionIdParam = Array.isArray(transactionId)
     ? transactionId[0]
     : transactionId;
+  const isCreateMode = currentFormMode === "create" || Boolean(currentDraftId);
+  const editingTransactionId = isCreateMode ? undefined : transactionIdParam;
   const deleteTransaction = useMutation(api.finance.deleteTransaction);
   const previousTransactions = useQuery(api.finance.listTransactions);
   const selectedDescriptionRef = useRef<string | null>(null);
@@ -496,6 +588,61 @@ export default function AddTransactionScreen() {
       ]
     );
   }, [deleteLabel, deleteTransaction, editingTransactionId, isDeleting]);
+
+  const openDuplicateTransaction = () => {
+    const duplicateDraftId = `duplicate-${Date.now()}`;
+    setTransactionDraftPrefill(duplicateDraftId, {
+      accountId,
+      amount,
+      attachments: [...attachments],
+      category,
+      customCategories: [...customCategories],
+      date,
+      narration,
+      tags: [...tags],
+      toAccountId,
+      transactionCharge,
+      transactionTypeIndex,
+    });
+    openFormAfterDismissingSheet({
+      params: {
+        draftId: duplicateDraftId,
+        formMode: "create",
+        transactionId: "",
+      },
+      pathname: "/add-transaction",
+    });
+  };
+
+  const openCreatePlannedPayment = () => {
+    const plannedPaymentDraftId = `transaction-${Date.now()}`;
+    const trimmedNarration = narration.trim();
+    setPlannedPaymentDraftPrefill(plannedPaymentDraftId, {
+      accountId,
+      amount,
+      category: selectedCategory
+        ? {
+            color: selectedCategory.color,
+            name: selectedCategory.name,
+            symbol: selectedCategory.symbol,
+          }
+        : null,
+      date: Date.now(),
+      description: trimmedNarration,
+      frequency: DEFAULT_PLANNED_FREQUENCY,
+      interval: 1,
+      name: trimmedNarration || selectedCategory?.name || "",
+      notifyOnDue: false,
+      notifyOnOverdue: false,
+      tags: [...tags],
+      transactionCharge: transactionTypeIndex === 0 ? transactionCharge : "",
+      type: transactionTypeIndex === 1 ? "income" : "expense",
+    });
+    openFormAfterDismissingSheet({
+      params: { draftId: plannedPaymentDraftId },
+      pathname: "/add-planned-payment",
+    });
+  };
 
   return (
     <ScrollView
@@ -755,6 +902,27 @@ export default function AddTransactionScreen() {
             </Text>
           </View>
         </Pressable>
+      ) : null}
+
+      {editingTransactionId ? (
+        <FieldGroup>
+          <TransactionActionRow
+            icon="rectangle.stack.badge.plus"
+            iconColor="#0A84FF"
+            label="Duplicate transaction"
+            last={isTransfer}
+            onPress={openDuplicateTransaction}
+          />
+          {!isTransfer ? (
+            <TransactionActionRow
+              icon="calendar.badge.clock"
+              iconColor="#5856D6"
+              label="Create planned payment"
+              last
+              onPress={openCreatePlannedPayment}
+            />
+          ) : null}
+        </FieldGroup>
       ) : null}
 
       {editingTransactionId ? (

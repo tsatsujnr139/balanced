@@ -16,6 +16,10 @@ import type {
 } from "@/features/finance/add-planned-payment-context";
 import { DEFAULT_LABEL_COLOR } from "@/features/finance/color-utils";
 import { DEFAULT_PLANNED_FREQUENCY } from "@/features/finance/planned-payment-constants";
+import {
+  clearPlannedPaymentDraftPrefill,
+  getPlannedPaymentDraftPrefill,
+} from "@/features/finance/planned-payment-draft-prefill";
 import type {
   PlannedPaymentFrequency,
   PlannedPaymentType,
@@ -54,6 +58,10 @@ export default function AddPlannedPaymentLayout() {
   const params = useLocalSearchParams<{ draftId?: string; id?: string }>();
   const draftId = typeof params.draftId === "string" ? params.draftId : null;
   const editingId = typeof params.id === "string" ? params.id : null;
+  const initialDraftPrefillRef = useRef(
+    draftId ? getPlannedPaymentDraftPrefill(draftId) : undefined
+  );
+  const draftPrefill = initialDraftPrefillRef.current;
   const { accounts } = useFinance();
   const plannedPayment = useQuery(
     api.finance.getPlannedPayment,
@@ -62,30 +70,51 @@ export default function AddPlannedPaymentLayout() {
   const createPlannedPayment = useMutation(api.finance.createPlannedPayment);
   const updatePlannedPayment = useMutation(api.finance.updatePlannedPayment);
   const deletePlannedPayment = useMutation(api.finance.deletePlannedPayment);
-  const [type, setType] = useState<PlannedPaymentType>("expense");
-  const [amount, setAmount] = useState("");
-  const [transactionCharge, setTransactionCharge] = useState("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [type, setType] = useState<PlannedPaymentType>(
+    draftPrefill?.type ?? "expense"
+  );
+  const [amount, setAmount] = useState(draftPrefill?.amount ?? "");
+  const [transactionCharge, setTransactionCharge] = useState(
+    draftPrefill?.transactionCharge ?? ""
+  );
+  const [name, setName] = useState(draftPrefill?.name ?? "");
+  const [description, setDescription] = useState(
+    draftPrefill?.description ?? ""
+  );
   const [accountId, setAccountId] = useState<string | null>(
-    accounts[0]?.id ?? null
+    draftPrefill?.accountId ?? accounts[0]?.id ?? null
   );
   const [category, setCategory] = useState<PlannedCategorySelection | null>(
-    null
+    draftPrefill?.category ?? null
   );
-  const [date, setDate] = useState(DEFAULT_START_DATE);
+  const [date, setDate] = useState(draftPrefill?.date ?? DEFAULT_START_DATE);
   const [frequency, setFrequency] = useState<PlannedPaymentFrequency>(
-    DEFAULT_PLANNED_FREQUENCY
+    draftPrefill?.frequency ?? DEFAULT_PLANNED_FREQUENCY
   );
-  const [interval, setInterval] = useState(1);
-  const [tags, setTags] = useState<PlannedTagSelection[]>([]);
+  const [interval, setInterval] = useState(draftPrefill?.interval ?? 1);
+  const [tags, setTags] = useState<PlannedTagSelection[]>(
+    draftPrefill?.tags ?? []
+  );
   const [tagColorDraft, setTagColorDraft] = useState(DEFAULT_LABEL_COLOR);
-  const [notifyOnDue, setNotifyOnDue] = useState(false);
-  const [notifyOnOverdue, setNotifyOnOverdue] = useState(false);
+  const [notifyOnDue, setNotifyOnDue] = useState(
+    draftPrefill?.notifyOnDue ?? false
+  );
+  const [notifyOnOverdue, setNotifyOnOverdue] = useState(
+    draftPrefill?.notifyOnOverdue ?? false
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const hydratedPaymentIdRef = useRef<string | null>(null);
-  const draftIdRef = useRef<string | null>(null);
+  const draftIdRef = useRef<string | null>(draftId);
+
+  useEffect(
+    () => () => {
+      if (draftId) {
+        clearPlannedPaymentDraftPrefill(draftId);
+      }
+    },
+    [draftId]
+  );
 
   useEffect(() => {
     if (editingId || draftIdRef.current === draftId) {

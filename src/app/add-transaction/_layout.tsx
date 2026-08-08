@@ -31,6 +31,10 @@ import {
   TRANSFER_CATEGORY,
 } from "@/features/finance/transaction-categories";
 import type { TransactionCategory } from "@/features/finance/transaction-categories";
+import {
+  clearTransactionDraftPrefill,
+  getTransactionDraftPrefill,
+} from "@/features/finance/transaction-draft-prefill";
 import type { TransactionTemplate } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import {
@@ -68,16 +72,33 @@ function closeAddTransaction() {
 export default function AddTransactionLayout() {
   const colors = useThemeColors();
   const disableHeaderBlur = shouldDisableHeaderBlur();
-  const { accountId: accountIdParam, transactionId } = useLocalSearchParams<{
+  const {
+    accountId: accountIdParam,
+    draftId: draftIdParam,
+    formMode: formModeParam,
+    transactionId,
+  } = useLocalSearchParams<{
     accountId?: string | string[];
+    draftId?: string | string[];
+    formMode?: string | string[];
     transactionId?: string | string[];
   }>();
   const initialAccountId = Array.isArray(accountIdParam)
     ? accountIdParam[0]
     : accountIdParam;
-  const editingTransactionId = Array.isArray(transactionId)
+  const formMode = Array.isArray(formModeParam)
+    ? formModeParam[0]
+    : formModeParam;
+  const draftId = Array.isArray(draftIdParam) ? draftIdParam[0] : draftIdParam;
+  const transactionIdParam = Array.isArray(transactionId)
     ? transactionId[0]
     : transactionId;
+  const isCreateMode = formMode === "create" || Boolean(draftId);
+  const editingTransactionId = isCreateMode ? undefined : transactionIdParam;
+  const initialDraftPrefillRef = useRef(
+    draftId ? getTransactionDraftPrefill(draftId) : undefined
+  );
+  const draftPrefill = initialDraftPrefillRef.current;
   const initialNewTransactionAccountId = editingTransactionId
     ? null
     : (initialAccountId ?? null);
@@ -101,35 +122,45 @@ export default function AddTransactionLayout() {
   const lastTransactionAccountId = useLastTransactionAccountId();
   const hasHydratedRef = useRef(Boolean(initialEditState));
   const [accountId, setAccountId] = useState<string | null>(
-    initialEditState?.accountId ?? initialNewTransactionAccountId
+    draftPrefill?.accountId ??
+      initialEditState?.accountId ??
+      initialNewTransactionAccountId
   );
-  const [amount, setAmount] = useState(initialEditState?.amount ?? "");
+  const [amount, setAmount] = useState(
+    draftPrefill?.amount ?? initialEditState?.amount ?? ""
+  );
   const [attachments, setAttachments] = useState<TransactionAttachmentDraft[]>(
-    []
+    draftPrefill?.attachments ?? []
   );
   const [category, setCategory] = useState<string | null>(
-    initialEditState?.category ?? null
+    draftPrefill?.category ?? initialEditState?.category ?? null
   );
   const [customCategories, setCustomCategories] = useState<
     TransactionCategory[]
-  >(initialEditState?.customCategories ?? []);
-  const [date, setDate] = useState(() => initialEditState?.date ?? Date.now());
+  >(draftPrefill?.customCategories ?? initialEditState?.customCategories ?? []);
+  const [date, setDate] = useState(
+    () => draftPrefill?.date ?? initialEditState?.date ?? Date.now()
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [labelDraft, setLabelDraft] =
     useState<TransactionLabelDraft>(DEFAULT_LABEL_DRAFT);
   const [tagColorDraft, setTagColorDraft] = useState(DEFAULT_LABEL_DRAFT.color);
-  const [narration, setNarration] = useState(initialEditState?.narration ?? "");
+  const [narration, setNarration] = useState(
+    draftPrefill?.narration ?? initialEditState?.narration ?? ""
+  );
   const [transactionCharge, setTransactionCharge] = useState(
-    initialEditState?.transactionCharge ?? ""
+    draftPrefill?.transactionCharge ?? initialEditState?.transactionCharge ?? ""
   );
   const [toAccountId, setToAccountId] = useState<string | null>(
-    initialEditState?.toAccountId ?? null
+    draftPrefill?.toAccountId ?? initialEditState?.toAccountId ?? null
   );
   const [transactionTypeIndex, setTransactionTypeIndex] = useState(
-    initialEditState?.transactionTypeIndex ?? 0
+    draftPrefill?.transactionTypeIndex ??
+      initialEditState?.transactionTypeIndex ??
+      0
   );
   const [tags, setTags] = useState<TransactionTag[]>(
-    initialEditState?.tags ?? []
+    draftPrefill?.tags ?? initialEditState?.tags ?? []
   );
   const isEditing = Boolean(editingTransactionId);
   const isLoadingExisting =
@@ -142,8 +173,11 @@ export default function AddTransactionLayout() {
       if (editingTransactionId) {
         clearTransactionEditPrefill(editingTransactionId);
       }
+      if (draftId) {
+        clearTransactionDraftPrefill(draftId);
+      }
     },
-    [editingTransactionId]
+    [draftId, editingTransactionId]
   );
 
   useEffect(() => {
