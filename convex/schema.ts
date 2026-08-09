@@ -42,7 +42,8 @@ export const plannedPaymentFrequency = v.union(
 
 export const plannedPaymentType = v.union(
   v.literal("expense"),
-  v.literal("income")
+  v.literal("income"),
+  v.literal("transfer")
 );
 
 export const automaticRuleType = v.union(
@@ -152,6 +153,8 @@ export default defineSchema({
     /** First due date (epoch millis). */
     startDate: v.number(),
     tagIds: v.array(v.id("tags")),
+    /** Destination account for planned transfers. */
+    toAccountId: v.optional(v.id("accounts")),
     /** Default charge in minor units (cents) applied when an occurrence is paid. */
     transactionCharge: v.optional(v.number()),
     type: plannedPaymentType,

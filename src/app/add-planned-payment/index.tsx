@@ -36,7 +36,7 @@ import { TRANSACTION_CATEGORIES } from "@/features/finance/transaction-categorie
 import { useFinance } from "@/features/finance/use-finance";
 import { useThemeColors } from "@/hooks/use-theme";
 
-const PLANNED_PAYMENT_TYPES = ["Expense", "Income"];
+const PLANNED_PAYMENT_TYPES = ["Expense", "Income", "Transfer"];
 
 const TRANSACTION_CHARGE_CATEGORY = TRANSACTION_CATEGORIES.find(
   (item) => item.name === "Transaction charges"
@@ -266,14 +266,22 @@ export default function AddPlannedPaymentScreen() {
     setTransactionCharge,
     setType,
     tags,
+    toAccountId,
     transactionCharge,
     type,
   } = useAddPlannedPayment();
   const account = accounts.find((item) => item.id === accountId);
+  const toAccount = accounts.find((item) => item.id === toAccountId);
   const currencySymbol = getCurrencySymbol(
     account?.currency ?? accounts[0]?.currency ?? "GHS"
   );
-  const amountColor = type === "expense" ? colors.negative : colors.positive;
+  const amountColor =
+    type === "income"
+      ? colors.positive
+      : type === "expense"
+        ? colors.negative
+        : colors.foreground;
+  const typeIndex = type === "income" ? 1 : type === "transfer" ? 2 : 0;
 
   return (
     <ScrollView
@@ -292,11 +300,12 @@ export default function AddPlannedPaymentScreen() {
       <SegmentedControl
         appearance={colorScheme === "dark" ? "dark" : "light"}
         onChange={(event) => {
+          const selected = event.nativeEvent.selectedSegmentIndex;
           setType(
-            event.nativeEvent.selectedSegmentIndex === 0 ? "expense" : "income"
+            selected === 1 ? "income" : selected === 2 ? "transfer" : "expense"
           );
         }}
-        selectedIndex={type === "expense" ? 0 : 1}
+        selectedIndex={typeIndex}
         style={{ width: "100%" }}
         values={PLANNED_PAYMENT_TYPES}
       />
@@ -329,7 +338,7 @@ export default function AddPlannedPaymentScreen() {
             value={amount}
           />
         </View>
-        {type === "expense" ? (
+        {type === "expense" || type === "transfer" ? (
           <View
             style={{
               alignItems: "center",
@@ -435,8 +444,13 @@ export default function AddPlannedPaymentScreen() {
           <FieldRow
             icon="creditcard.fill"
             iconColor={account?.color ?? "#8E8E93"}
-            label="Account"
-            onPress={() => router.push("/add-planned-payment/account")}
+            label={type === "transfer" ? "From Account" : "Account"}
+            onPress={() =>
+              router.push({
+                params: { field: type === "transfer" ? "from" : "account" },
+                pathname: "/add-planned-payment/account",
+              })
+            }
             valueNode={
               <Text
                 style={{
@@ -448,22 +462,46 @@ export default function AddPlannedPaymentScreen() {
               </Text>
             }
           />
-          <FieldRow
-            icon={category?.symbol ?? "square.grid.2x2.fill"}
-            iconColor={category?.color ?? "#8E8E93"}
-            label="Category"
-            onPress={() => router.push("/add-planned-payment/category")}
-            valueNode={
-              <Text
-                style={{
-                  color: category ? colors.muted : colors.negative,
-                  fontSize: 17,
-                }}
-              >
-                {category?.name ?? "Required"}
-              </Text>
-            }
-          />
+          {type === "transfer" ? (
+            <FieldRow
+              icon={toAccount?.symbol ?? "tray.full.fill"}
+              iconColor={toAccount?.color ?? "#8E8E93"}
+              label="To Account"
+              onPress={() =>
+                router.push({
+                  params: { field: "to" },
+                  pathname: "/add-planned-payment/account",
+                })
+              }
+              valueNode={
+                <Text
+                  style={{
+                    color: toAccount ? colors.muted : colors.negative,
+                    fontSize: 17,
+                  }}
+                >
+                  {toAccount?.name ?? "Required"}
+                </Text>
+              }
+            />
+          ) : (
+            <FieldRow
+              icon={category?.symbol ?? "square.grid.2x2.fill"}
+              iconColor={category?.color ?? "#8E8E93"}
+              label="Category"
+              onPress={() => router.push("/add-planned-payment/category")}
+              valueNode={
+                <Text
+                  style={{
+                    color: category ? colors.muted : colors.negative,
+                    fontSize: 17,
+                  }}
+                >
+                  {category?.name ?? "Required"}
+                </Text>
+              }
+            />
+          )}
           <FieldRow
             icon="tag"
             iconColor="#5856D6"

@@ -2914,6 +2914,10 @@ export const listPlannedPayments = query({
           overdueCount,
           symbol: payment.categorySymbol,
           tags,
+          toAccountId: payment.toAccountId ?? null,
+          toAccountName: payment.toAccountId
+            ? (accountNameById.get(payment.toAccountId) ?? "Unknown")
+            : null,
           type: payment.type,
         };
       })
@@ -2942,7 +2946,7 @@ export const getPlannedPayment = query({
       return null;
     }
 
-    const [entries, account, tags] = await Promise.all([
+    const [entries, account, toAccount, tags] = await Promise.all([
       ctx.db
         .query("plannedPaymentEntries")
         .withIndex("by_plannedPaymentId", (q) =>
@@ -2950,13 +2954,16 @@ export const getPlannedPayment = query({
         )
         .collect(),
       ctx.db.get("accounts", payment.accountId),
+      payment.toAccountId
+        ? ctx.db.get("accounts", payment.toAccountId)
+        : Promise.resolve(null),
       loadPlannedPaymentTags(ctx, payment.tagIds),
     ]);
 
     const now = Date.now();
     const todayStart = startOfDay(now);
     const signedAmount =
-      payment.type === "expense" ? -payment.amount : payment.amount;
+      payment.type === "income" ? payment.amount : -payment.amount;
     const { overdueCount } = summarizePlannedPayment(payment, entries, now);
     const occurrences = buildPlannedOccurrences(payment, entries, now).map(
       (occurrence) => ({
@@ -2991,6 +2998,8 @@ export const getPlannedPayment = query({
       startDate: new Date(payment.startDate).toISOString(),
       symbol: payment.categorySymbol,
       tags,
+      toAccountId: payment.toAccountId ?? null,
+      toAccountName: toAccount?.name ?? null,
       transactionCharge: payment.transactionCharge ?? null,
       type: payment.type,
     };
@@ -3011,6 +3020,7 @@ const plannedPaymentArgs = {
   notifyOnOverdue: v.boolean(),
   startDate: v.number(),
   tagIds: v.array(v.id("tags")),
+  toAccountId: v.optional(v.id("accounts")),
   transactionCharge: v.optional(v.number()),
   type: plannedPaymentType,
 };
@@ -3022,7 +3032,9 @@ async function validatePlannedPaymentArgs(
     amount: number;
     accountId: Id<"accounts">;
     interval: number;
+    toAccountId?: Id<"accounts">;
     transactionCharge?: number;
+    type: "expense" | "income" | "transfer";
   }
 ) {
   const name = args.name.trim();
@@ -3045,6 +3057,21 @@ async function validatePlannedPaymentArgs(
   if (!account) {
     throw new Error("Account not found");
   }
+  if (args.type === "transfer") {
+    if (!args.toAccountId) {
+      throw new Error("Planned transfers require a destination account");
+    }
+    if (args.accountId === args.toAccountId) {
+      throw new Error("Transfer accounts must be different");
+    }
+    const toAccount = await ctx.db.get("accounts", args.toAccountId);
+    if (!toAccount) {
+      throw new Error("Destination account not found");
+    }
+    if (account.currency !== toAccount.currency) {
+      throw new Error("Transfer accounts must use the same currency");
+    }
+  }
   return { account, name };
 }
 
@@ -3061,9 +3088,14 @@ export const createPlannedPayment = mutation({
     return await ctx.db.insert("plannedPayments", {
       accountId: args.accountId,
       amount: args.amount,
-      category: args.category,
-      categoryColor: args.categoryColor,
-      categorySymbol: args.categorySymbol,
+      category:
+        args.type === "transfer" ? TRANSFER_CATEGORY.name : args.category,
+      categoryColor:
+        args.type === "transfer" ? TRANSFER_CATEGORY.color : args.categoryColor,
+      categorySymbol:
+        args.type === "transfer"
+          ? TRANSFER_CATEGORY.symbol
+          : args.categorySymbol,
       currency: account.currency,
       description: args.description.trim(),
       frequency: args.frequency,
@@ -3074,8 +3106,11 @@ export const createPlannedPayment = mutation({
       order: nextOrder,
       startDate: args.startDate,
       tagIds: [...new Set(args.tagIds)],
+      toAccountId: args.type === "transfer" ? args.toAccountId : undefined,
       transactionCharge:
-        args.type === "expense" ? args.transactionCharge : undefined,
+        args.type === "expense" || args.type === "transfer"
+          ? args.transactionCharge
+          : undefined,
       type: args.type,
     });
   },
@@ -3093,9 +3128,14 @@ export const updatePlannedPayment = mutation({
     await ctx.db.patch(args.id, {
       accountId: args.accountId,
       amount: args.amount,
-      category: args.category,
-      categoryColor: args.categoryColor,
-      categorySymbol: args.categorySymbol,
+      category:
+        args.type === "transfer" ? TRANSFER_CATEGORY.name : args.category,
+      categoryColor:
+        args.type === "transfer" ? TRANSFER_CATEGORY.color : args.categoryColor,
+      categorySymbol:
+        args.type === "transfer"
+          ? TRANSFER_CATEGORY.symbol
+          : args.categorySymbol,
       currency: account.currency,
       description: args.description.trim(),
       frequency: args.frequency,
@@ -3105,8 +3145,11 @@ export const updatePlannedPayment = mutation({
       notifyOnOverdue: args.notifyOnOverdue,
       startDate: args.startDate,
       tagIds: [...new Set(args.tagIds)],
+      toAccountId: args.type === "transfer" ? args.toAccountId : undefined,
       transactionCharge:
-        args.type === "expense" ? args.transactionCharge : undefined,
+        args.type === "expense" || args.type === "transfer"
+          ? args.transactionCharge
+          : undefined,
       type: args.type,
     });
 
@@ -3139,6 +3182,7 @@ export const markPlannedPaymentPaid = mutation({
     dueDate: v.number(),
     id: v.id("plannedPayments"),
     paymentDate: v.optional(v.number()),
+    toAccountId: v.optional(v.id("accounts")),
     transactionCharge: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -3175,14 +3219,104 @@ export const markPlannedPaymentPaid = mutation({
     }
     // An explicit 0 clears the payment's default charge for this occurrence.
     const transactionCharge =
-      payment.type === "expense"
+      payment.type === "expense" || payment.type === "transfer"
         ? (args.transactionCharge ?? payment.transactionCharge ?? 0)
         : 0;
 
-    const signedAmount = payment.type === "expense" ? -amount : amount;
     const merchant = payment.description.trim() || payment.name;
     const createdByName = normalizeFirstName(args.createdByName ?? "");
     const transactionDate = args.paymentDate ?? Date.now();
+
+    if (payment.type === "transfer") {
+      const toAccountId = args.toAccountId ?? payment.toAccountId;
+      if (!toAccountId) {
+        throw new Error("Transfer requires a destination account");
+      }
+      if (accountId === toAccountId) {
+        throw new Error("Transfer accounts must be different");
+      }
+      const toAccount = await ctx.db.get("accounts", toAccountId);
+      if (!toAccount) {
+        throw new Error("Destination account not found");
+      }
+      if (account.currency !== toAccount.currency) {
+        throw new Error("Transfer accounts must use the same currency");
+      }
+
+      const transferOutId = await ctx.db.insert("transactions", {
+        accountId,
+        amount: -amount,
+        category: TRANSFER_CATEGORY.name,
+        color: TRANSFER_CATEGORY.color,
+        createdByName,
+        currency: account.currency,
+        date: transactionDate,
+        merchant,
+        symbol: TRANSFER_CATEGORY.symbol,
+        toAccountId,
+        transactionKind: "transfer_out",
+      });
+      const transferInId = await ctx.db.insert("transactions", {
+        accountId: toAccountId,
+        amount,
+        category: TRANSFER_CATEGORY.name,
+        color: TRANSFER_CATEGORY.color,
+        createdByName,
+        currency: toAccount.currency,
+        date: transactionDate,
+        merchant: `Transfer from ${account.name}`,
+        symbol: TRANSFER_CATEGORY.symbol,
+        transactionKind: "transfer_in",
+      });
+      await ctx.db.patch(transferOutId, {
+        pairTransactionId: transferInId,
+      });
+      await ctx.db.patch(transferInId, {
+        pairTransactionId: transferOutId,
+      });
+
+      const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
+      await replaceTransactionTags(ctx, transferOutId, [
+        ...payment.tagIds,
+        accountTransferTagId,
+      ]);
+      await replaceTransactionTags(ctx, transferInId, [accountTransferTagId]);
+
+      if (transactionCharge > 0) {
+        const transactionChargeId = await ctx.db.insert("transactions", {
+          accountId,
+          amount: -transactionCharge,
+          category: "Transaction charges",
+          color: TRANSACTION_CHARGES_TAG_COLOR,
+          createdByName,
+          currency: account.currency,
+          date: transactionDate,
+          merchant: `${merchant} TC`,
+          parentTransactionId: transferOutId,
+          symbol: "creditcard.fill",
+          transactionKind: "charge",
+        });
+        await replaceChargeTransactionTags(ctx, transactionChargeId);
+      }
+
+      await ctx.db.patch(accountId, {
+        balance: account.balance - amount - transactionCharge,
+      });
+      await ctx.db.patch(toAccountId, {
+        balance: toAccount.balance + amount,
+      });
+      await ctx.db.insert("plannedPaymentEntries", {
+        dueDate: args.dueDate,
+        paidDate: Date.now(),
+        plannedPaymentId: payment._id,
+        status: "paid",
+        transactionId: transferOutId,
+      });
+
+      return transferOutId;
+    }
+
+    const signedAmount = payment.type === "expense" ? -amount : amount;
     const transactionId = await ctx.db.insert("transactions", {
       accountId,
       amount: signedAmount,

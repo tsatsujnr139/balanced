@@ -96,24 +96,32 @@ function PlannedPaymentRow({ payment }: { payment: PlannedPayment }) {
           numberOfLines={1}
           className="text-[15px] leading-[21px]"
         >
-          {payment.accountName}
+          {payment.type === "transfer" && payment.toAccountName
+            ? `${payment.accountName} -> ${payment.toAccountName}`
+            : payment.accountName}
         </ThemedText>
       </View>
       <View className="shrink-0 items-end gap-1">
         {payment.overdueCount > 0 ? (
           <OverdueBadge count={payment.overdueCount} />
         ) : null}
-        <ThemedText
-          type="smallBold"
-          color={amountColor}
-          className="text-base leading-[22px]"
-        >
-          {formatCurrency(
-            payment.type === "income" ? payment.amount : -payment.amount,
-            payment.currency,
-            { signed: true }
-          )}
-        </ThemedText>
+        {payment.type === "transfer" ? (
+          <ThemedText type="smallBold" className="text-base leading-[22px]">
+            Transfer
+          </ThemedText>
+        ) : (
+          <ThemedText
+            type="smallBold"
+            color={amountColor}
+            className="text-base leading-[22px]"
+          >
+            {formatCurrency(
+              payment.type === "income" ? payment.amount : -payment.amount,
+              payment.currency,
+              { signed: true }
+            )}
+          </ThemedText>
+        )}
         <ThemedText
           type="small"
           color={dueLabelColor(payment)}

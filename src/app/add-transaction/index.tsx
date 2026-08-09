@@ -636,6 +636,7 @@ export default function AddTransactionScreen() {
       notifyOnDue: false,
       notifyOnOverdue: false,
       tags: [...tags],
+      toAccountId: null,
       transactionCharge: transactionTypeIndex === 0 ? transactionCharge : "",
       type: transactionTypeIndex === 1 ? "income" : "expense",
     });

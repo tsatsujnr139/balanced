@@ -140,9 +140,11 @@ function PendingOccurrence({
 function ResolvedOccurrence({
   occurrence,
   currency,
+  isTransfer,
 }: {
   occurrence: PlannedPaymentOccurrence;
   currency: string;
+  isTransfer: boolean;
 }) {
   const colors = useThemeColors();
   const isPaid = occurrence.status === "paid";
@@ -169,7 +171,11 @@ function ResolvedOccurrence({
         </Text>
         {isPaid ? (
           <ThemedText type="small" color="muted" className="text-[15px]">
-            {formatCurrency(occurrence.amount, currency, { signed: true })}
+            {formatCurrency(
+              isTransfer ? Math.abs(occurrence.amount) : occurrence.amount,
+              currency,
+              { signed: !isTransfer }
+            )}
           </ThemedText>
         ) : null}
       </View>
@@ -327,8 +333,17 @@ export default function PlannedPaymentDetailScreen() {
               {planned.description}
             </ThemedText>
           ) : null}
+          {planned.type === "transfer" && planned.toAccountName ? (
+            <ThemedText type="small" color="muted" className="text-center">
+              {planned.accountName} -&gt; {planned.toAccountName}
+            </ThemedText>
+          ) : null}
           <ThemedText type="smallBold" color="muted" className="text-[17px]">
-            {formatCurrency(signedAmount, planned.currency, { signed: true })}
+            {formatCurrency(
+              planned.type === "transfer" ? planned.amount : signedAmount,
+              planned.currency,
+              { signed: planned.type !== "transfer" }
+            )}
           </ThemedText>
         </View>
 
@@ -351,6 +366,7 @@ export default function PlannedPaymentDetailScreen() {
                 ) : (
                   <ResolvedOccurrence
                     currency={planned.currency}
+                    isTransfer={planned.type === "transfer"}
                     occurrence={occurrence}
                   />
                 )}

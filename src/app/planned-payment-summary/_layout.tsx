@@ -53,6 +53,7 @@ export default function PlannedPaymentSummaryLayout() {
   const { accounts } = useFinance();
   const { firstName } = useLocalProfile();
   const [accountId, setAccountIdState] = useState<string | null>(null);
+  const [toAccountId, setToAccountId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [transactionCharge, setTransactionCharge] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +69,7 @@ export default function PlannedPaymentSummaryLayout() {
     }
 
     setAccountIdState((current) => current ?? planned.accountId);
+    setToAccountId((current) => current ?? planned.toAccountId);
     setAmount((current) => current || minorUnitsToAmountInput(planned.amount));
     setTransactionCharge(
       (current) =>
@@ -83,6 +85,9 @@ export default function PlannedPaymentSummaryLayout() {
     const selectedAccount = accounts.find(
       (account) => account.id === accountId
     );
+    const selectedToAccount = accounts.find(
+      (account) => account.id === toAccountId
+    );
 
     if (!(id && planned && Number.isFinite(dueDate)) || isSubmitting) {
       return;
@@ -91,6 +96,20 @@ export default function PlannedPaymentSummaryLayout() {
       Alert.alert(
         "Missing payment details",
         "Enter an amount and choose an account."
+      );
+      return;
+    }
+    if (planned.type === "transfer" && !selectedToAccount) {
+      Alert.alert("Missing destination", "Choose a destination account.");
+      return;
+    }
+    if (
+      planned.type === "transfer" &&
+      selectedAccount.currency !== selectedToAccount?.currency
+    ) {
+      Alert.alert(
+        "Currency mismatch",
+        "Transfer accounts must use the same currency."
       );
       return;
     }
@@ -104,10 +123,14 @@ export default function PlannedPaymentSummaryLayout() {
         dueDate,
         id: id as Id<"plannedPayments">,
         paymentDate,
+        toAccountId:
+          planned.type === "transfer"
+            ? (selectedToAccount?.id as Id<"accounts">)
+            : undefined,
         // Always sent for expenses so clearing the field removes the
         // payment's default charge for this occurrence.
         transactionCharge:
-          planned.type === "expense"
+          planned.type === "expense" || planned.type === "transfer"
             ? amountInputToMinorUnits(transactionCharge)
             : undefined,
       });
@@ -131,6 +154,7 @@ export default function PlannedPaymentSummaryLayout() {
     markPaid,
     paymentDate,
     planned,
+    toAccountId,
     transactionCharge,
   ]);
 
@@ -143,11 +167,21 @@ export default function PlannedPaymentSummaryLayout() {
       setAccountId: setAccountIdState,
       setAmount,
       setPaymentDate,
+      setToAccountId,
       setTransactionCharge,
       submit,
       transactionCharge,
+      toAccountId,
     }),
-    [accountId, amount, isSubmitting, paymentDate, submit, transactionCharge]
+    [
+      accountId,
+      amount,
+      isSubmitting,
+      paymentDate,
+      submit,
+      toAccountId,
+      transactionCharge,
+    ]
   );
 
   const renderBackButton = useCallback(
