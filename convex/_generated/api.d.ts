@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as automaticRules from "../automaticRules.js";
 import type * as finance from "../finance.js";
+import type * as lib_automaticRuleMatching from "../lib/automaticRuleMatching.js";
 import type * as seed from "../seed.js";
 
 import type {
@@ -18,7 +20,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  automaticRules: typeof automaticRules;
   finance: typeof finance;
+  "lib/automaticRuleMatching": typeof lib_automaticRuleMatching;
   seed: typeof seed;
 }>;
 

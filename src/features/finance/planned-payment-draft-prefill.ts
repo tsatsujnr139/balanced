@@ -16,6 +16,7 @@ export interface PlannedPaymentDraftPrefill {
   notifyOnDue: boolean;
   notifyOnOverdue: boolean;
   tags: PlannedTagSelection[];
+  toAccountId: string | null;
   transactionCharge: string;
   type: PlannedPaymentType;
 }

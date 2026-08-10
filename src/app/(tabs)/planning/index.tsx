@@ -138,6 +138,14 @@ export default function PlanningScreen() {
       symbol: "square.grid.2x2.fill",
       title: "Categories",
     },
+    {
+      color: "#FF2D55",
+      href: "/automatic-rules" as never,
+      id: "automatic-rules",
+      subtitle: "Categorize new transactions",
+      symbol: "wand.and.stars",
+      title: "Automatic Rules",
+    },
   ];
 
   return (

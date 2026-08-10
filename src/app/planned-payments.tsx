@@ -25,7 +25,8 @@ function filterPlannedPayments(
     (payment) =>
       payment.name.toLowerCase().includes(normalized) ||
       payment.category.toLowerCase().includes(normalized) ||
-      payment.accountName.toLowerCase().includes(normalized)
+      payment.accountName.toLowerCase().includes(normalized) ||
+      payment.toAccountName?.toLowerCase().includes(normalized)
   );
 }
 

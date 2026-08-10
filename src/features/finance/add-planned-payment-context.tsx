@@ -21,6 +21,7 @@ interface AddPlannedPaymentContextValue {
   name: string;
   description: string;
   accountId: string | null;
+  toAccountId: string | null;
   category: PlannedCategorySelection | null;
   date: number;
   frequency: PlannedPaymentFrequency;
@@ -40,6 +41,7 @@ interface AddPlannedPaymentContextValue {
   setName: (name: string) => void;
   setDescription: (description: string) => void;
   setAccountId: (accountId: string) => void;
+  setToAccountId: (accountId: string | null) => void;
   setCategory: (category: PlannedCategorySelection) => void;
   setDate: (date: number) => void;
   setFrequency: (frequency: PlannedPaymentFrequency) => void;

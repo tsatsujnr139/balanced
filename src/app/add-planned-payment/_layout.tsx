@@ -20,6 +20,7 @@ import {
   clearPlannedPaymentDraftPrefill,
   getPlannedPaymentDraftPrefill,
 } from "@/features/finance/planned-payment-draft-prefill";
+import { TRANSFER_CATEGORY } from "@/features/finance/transaction-categories";
 import type {
   PlannedPaymentFrequency,
   PlannedPaymentType,
@@ -84,6 +85,9 @@ export default function AddPlannedPaymentLayout() {
   const [accountId, setAccountId] = useState<string | null>(
     draftPrefill?.accountId ?? accounts[0]?.id ?? null
   );
+  const [toAccountId, setToAccountId] = useState<string | null>(
+    draftPrefill?.toAccountId ?? null
+  );
   const [category, setCategory] = useState<PlannedCategorySelection | null>(
     draftPrefill?.category ?? null
   );
@@ -129,6 +133,7 @@ export default function AddPlannedPaymentLayout() {
     setName("");
     setDescription("");
     setAccountId(accounts[0]?.id ?? null);
+    setToAccountId(null);
     setCategory(null);
     setDate(Date.now());
     setFrequency(DEFAULT_PLANNED_FREQUENCY);
@@ -159,6 +164,7 @@ export default function AddPlannedPaymentLayout() {
     setName(plannedPayment.name);
     setDescription(plannedPayment.description);
     setAccountId(plannedPayment.accountId);
+    setToAccountId(plannedPayment.toAccountId);
     setCategory({
       color: plannedPayment.color,
       name: plannedPayment.category,
@@ -203,7 +209,25 @@ export default function AddPlannedPaymentLayout() {
       );
       return;
     }
-    if (!category) {
+    const account = accounts.find((item) => item.id === accountId);
+    const toAccount = accounts.find((item) => item.id === toAccountId);
+    const selectedCategory = type === "transfer" ? TRANSFER_CATEGORY : category;
+    if (!account) {
+      Alert.alert("Missing account", "Choose an account for this payment.");
+      return;
+    }
+    if (type === "transfer" && !toAccount) {
+      Alert.alert("Missing destination", "Choose a destination account.");
+      return;
+    }
+    if (type === "transfer" && account.currency !== toAccount?.currency) {
+      Alert.alert(
+        "Currency mismatch",
+        "Transfer accounts must use the same currency."
+      );
+      return;
+    }
+    if (!selectedCategory) {
       Alert.alert(
         "Missing category",
         "Choose a category for this planned payment."
@@ -215,15 +239,15 @@ export default function AddPlannedPaymentLayout() {
     try {
       const chargeMinorUnits = amountInputToMinorUnits(transactionCharge);
       const payload = {
-        accountId: accountId as Id<"accounts">,
+        accountId: account.id as Id<"accounts">,
         amount: amountMinorUnits,
         transactionCharge:
-          type === "expense" && chargeMinorUnits > 0
+          (type === "expense" || type === "transfer") && chargeMinorUnits > 0
             ? chargeMinorUnits
             : undefined,
-        category: category.name,
-        categoryColor: category.color,
-        categorySymbol: category.symbol,
+        category: selectedCategory.name,
+        categoryColor: selectedCategory.color,
+        categorySymbol: selectedCategory.symbol,
         description,
         frequency,
         interval: Math.max(1, Math.round(interval)),
@@ -232,6 +256,8 @@ export default function AddPlannedPaymentLayout() {
         notifyOnOverdue,
         startDate: date,
         tagIds: tags.map((tag) => tag.id as Id<"tags">),
+        toAccountId:
+          type === "transfer" ? (toAccount?.id as Id<"accounts">) : undefined,
         type,
       };
 
@@ -253,6 +279,7 @@ export default function AddPlannedPaymentLayout() {
     }
   }, [
     accountId,
+    accounts,
     amount,
     category,
     createPlannedPayment,
@@ -266,6 +293,7 @@ export default function AddPlannedPaymentLayout() {
     notifyOnDue,
     notifyOnOverdue,
     tags,
+    toAccountId,
     transactionCharge,
     type,
     updatePlannedPayment,
@@ -334,6 +362,7 @@ export default function AddPlannedPaymentLayout() {
       setNotifyOnDue,
       setNotifyOnOverdue,
       setTagColorDraft,
+      setToAccountId,
       setTransactionCharge,
       setType,
       submit: () => {
@@ -341,6 +370,7 @@ export default function AddPlannedPaymentLayout() {
       },
       tagColorDraft,
       tags,
+      toAccountId,
       transactionCharge,
       toggleTag: (tag: PlannedTagSelection) => {
         setTags((current) =>
@@ -368,6 +398,7 @@ export default function AddPlannedPaymentLayout() {
       notifyOnOverdue,
       tagColorDraft,
       tags,
+      toAccountId,
       transactionCharge,
       submit,
       type,

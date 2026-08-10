@@ -29,6 +29,23 @@ export interface TransactionTag {
   color: string;
 }
 
+export type AutomaticRuleType = "expense" | "income";
+
+export interface AutomaticRuleCategory {
+  name: string;
+  symbol: string;
+  color: string;
+}
+
+export interface AutomaticRule {
+  id: string;
+  name: string;
+  type: AutomaticRuleType;
+  matchTexts: string[];
+  category: AutomaticRuleCategory | null;
+  tags: TransactionTag[];
+}
+
 export type TransactionKind =
   | "expense"
   | "income"
@@ -123,7 +140,7 @@ export interface Budget {
 
 export type PlannedPaymentFrequency = "once" | "weekly" | "monthly" | "yearly";
 
-export type PlannedPaymentType = "expense" | "income";
+export type PlannedPaymentType = "expense" | "income" | "transfer";
 
 export type PlannedPaymentDueStatus =
   | "overdue"
@@ -137,6 +154,8 @@ export interface PlannedPayment {
   description: string;
   accountId: string;
   accountName: string;
+  toAccountId: string | null;
+  toAccountName: string | null;
   category: string;
   symbol: string;
   color: string;
@@ -178,6 +197,8 @@ export interface PlannedPaymentDetail {
   description: string;
   accountId: string;
   accountName: string;
+  toAccountId: string | null;
+  toAccountName: string | null;
   category: string;
   symbol: string;
   color: string;

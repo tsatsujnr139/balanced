@@ -172,13 +172,21 @@ export default function PlannedPaymentSummaryScreen() {
     amount,
     setAmount,
     setTransactionCharge,
+    toAccountId,
     transactionCharge,
   } = usePlannedPaymentSummary();
   const selectedAccount = accounts.find((account) => account.id === accountId);
+  const selectedToAccount = accounts.find(
+    (account) => account.id === toAccountId
+  );
   const currency = selectedAccount?.currency ?? planned?.currency ?? "GHS";
   const currencySymbol = getCurrencySymbol(currency);
   const amountColor =
-    planned?.type === "income" ? colors.positive : colors.negative;
+    planned?.type === "income"
+      ? colors.positive
+      : planned?.type === "expense"
+        ? colors.negative
+        : colors.foreground;
 
   if (planned === undefined) {
     return (
@@ -257,7 +265,7 @@ export default function PlannedPaymentSummaryScreen() {
             value={amount}
           />
         </View>
-        {planned.type === "expense" ? (
+        {planned.type === "expense" || planned.type === "transfer" ? (
           <View
             style={{
               alignItems: "center",
@@ -326,11 +334,33 @@ export default function PlannedPaymentSummaryScreen() {
           <FieldRow
             icon={selectedAccount?.symbol ?? "banknote.fill"}
             iconColor={selectedAccount?.color ?? planned.color}
-            label="Account"
-            last
+            label={planned.type === "transfer" ? "From Account" : "Account"}
+            last={planned.type !== "transfer"}
             value={selectedAccount?.name ?? "Choose account"}
-            onPress={() => router.push("/planned-payment-summary/account")}
+            onPress={() =>
+              router.push({
+                params: {
+                  field: planned.type === "transfer" ? "from" : "account",
+                },
+                pathname: "/planned-payment-summary/account",
+              })
+            }
           />
+          {planned.type === "transfer" ? (
+            <FieldRow
+              icon={selectedToAccount?.symbol ?? "tray.full.fill"}
+              iconColor={selectedToAccount?.color ?? planned.color}
+              label="To Account"
+              last
+              value={selectedToAccount?.name ?? "Choose account"}
+              onPress={() =>
+                router.push({
+                  params: { field: "to" },
+                  pathname: "/planned-payment-summary/account",
+                })
+              }
+            />
+          ) : null}
         </FieldGroup>
       </View>
     </ScrollView>

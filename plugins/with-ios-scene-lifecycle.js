@@ -154,13 +154,13 @@ const withIosSceneLifecycle = (config) => {
     UIApplicationSceneManifest: SCENE_MANIFEST,
   };
 
-  config = IOSConfig.XcodeProjectFile.withBuildSourceFile(config, {
+  let nextConfig = IOSConfig.XcodeProjectFile.withBuildSourceFile(config, {
     contents: SCENE_DELEGATE_CONTENTS,
     filePath: "SceneDelegate.swift",
     overwrite: true,
   });
 
-  config = withAppDelegate(config, (mod) => {
+  nextConfig = withAppDelegate(nextConfig, (mod) => {
     if (mod.modResults.language !== "swift") {
       throw new Error(
         "withIosSceneLifecycle only supports a Swift AppDelegate"
@@ -188,9 +188,11 @@ const withIosSceneLifecycle = (config) => {
     return mod;
   });
 
-  config = withPodfile(config, (mod) => {
+  nextConfig = withPodfile(nextConfig, (mod) => {
     const { contents } = mod.modResults;
-    if (contents.includes(`@generated begin ${MIN_POD_DEPLOYMENT_TARGET_TAG}`)) {
+    if (
+      contents.includes(`@generated begin ${MIN_POD_DEPLOYMENT_TARGET_TAG}`)
+    ) {
       return mod;
     }
 
@@ -207,7 +209,7 @@ const withIosSceneLifecycle = (config) => {
     return mod;
   });
 
-  return config;
+  return nextConfig;
 };
 
 module.exports = createRunOncePlugin(

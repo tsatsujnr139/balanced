@@ -42,6 +42,12 @@ export const plannedPaymentFrequency = v.union(
 
 export const plannedPaymentType = v.union(
   v.literal("expense"),
+  v.literal("income"),
+  v.literal("transfer")
+);
+
+export const automaticRuleType = v.union(
+  v.literal("expense"),
   v.literal("income")
 );
 
@@ -147,6 +153,8 @@ export default defineSchema({
     /** First due date (epoch millis). */
     startDate: v.number(),
     tagIds: v.array(v.id("tags")),
+    /** Destination account for planned transfers. */
+    toAccountId: v.optional(v.id("accounts")),
     /** Default charge in minor units (cents) applied when an occurrence is paid. */
     transactionCharge: v.optional(v.number()),
     type: plannedPaymentType,
@@ -164,6 +172,22 @@ export default defineSchema({
     name: v.string(),
     normalizedName: v.string(),
   }).index("by_normalizedName", ["normalizedName"]),
+
+  automaticRules: defineTable({
+    category: v.optional(v.string()),
+    categoryColor: v.optional(v.string()),
+    categoryNormalizedName: v.optional(v.string()),
+    categorySymbol: v.optional(v.string()),
+    matchTexts: v.array(v.string()),
+    name: v.string(),
+    normalizedMatchTexts: v.array(v.string()),
+    order: v.number(),
+    tagIds: v.array(v.id("tags")),
+    type: automaticRuleType,
+    userId: v.optional(v.string()),
+  })
+    .index("by_type_and_order", ["type", "order"])
+    .index("by_categoryNormalizedName", ["categoryNormalizedName"]),
 
   transactionAttachments: defineTable({
     mimeType: v.optional(v.string()),
