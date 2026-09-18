@@ -1179,6 +1179,37 @@ export const deleteAccount = mutation({
   },
 });
 
+export const reorderAccounts = mutation({
+  args: {
+    ids: v.array(v.id("accounts")),
+  },
+  handler: async (ctx, args) => {
+    const accounts = await ctx.db.query("accounts").collect();
+    const existingIds = new Set(accounts.map((account) => account._id));
+    const ordered: Id<"accounts">[] = [];
+    const seen = new Set<Id<"accounts">>();
+
+    for (const id of args.ids) {
+      if (existingIds.has(id) && !seen.has(id)) {
+        ordered.push(id);
+        seen.add(id);
+      }
+    }
+
+    const remaining = accounts
+      .filter((account) => !seen.has(account._id))
+      .sort((a, b) => a.order - b.order);
+    for (const account of remaining) {
+      ordered.push(account._id);
+    }
+
+    await Promise.all(
+      ordered.map((id, index) => ctx.db.patch(id, { order: index }))
+    );
+
+    return ordered.length;
+  },
+});
 export const listCategories = query({
   args: {},
   handler: async (ctx) => {

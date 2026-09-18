@@ -1,4 +1,6 @@
+import { useMutation } from "convex/react";
 import { router } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import type { DimensionValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,10 +9,14 @@ import { Icon as SymbolView } from "@/components/icon";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BottomTabInset, MaxContentWidth } from "@/constants/theme";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   DEFAULT_ACCOUNT_COLOR,
   ACCOUNT_TYPE_LABEL,
 } from "@/features/finance/account-constants";
+import { AccountGrid } from "@/features/finance/components/account-grid";
+import type { AccountGridLayout } from "@/features/finance/components/account-grid";
 import { BudgetList } from "@/features/finance/components/budget-list";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import { DEFAULT_CURRENCY, formatCurrency } from "@/features/finance/format";
@@ -29,8 +35,6 @@ const ROW_GAP = 10;
 const PAGE_GAP = 10;
 const ACCOUNT_PAGE_PEEK = 28;
 const GRID_COLUMNS = 2;
-const GRID_ROWS = 2;
-const ACCOUNTS_PER_PAGE = GRID_COLUMNS * GRID_ROWS;
 const ACCOUNT_CARD_HEIGHT = 104;
 const DEFAULT_NEW_ACCOUNT_PARAMS = {
   balance: "0.00",
@@ -122,112 +126,60 @@ function buildNewAccountParams() {
   };
 }
 
-const ADD_ACCOUNT_SLOT = { id: "__add__", kind: "add" as const };
-
-type AccountGridItem = Account | typeof ADD_ACCOUNT_SLOT;
-
-function isAddAccountSlot(
-  item: AccountGridItem
-): item is typeof ADD_ACCOUNT_SLOT {
-  return "kind" in item && item.kind === "add";
-}
-
-function chunk<T>(items: T[], size: number): T[][] {
-  const pages: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    pages.push(items.slice(i, i + size));
-  }
-  return pages;
-}
-
-function buildAccountPages(accounts: Account[]): (AccountGridItem | null)[][] {
-  const items: AccountGridItem[] = [...accounts, ADD_ACCOUNT_SLOT];
-  const pages = chunk(items, ACCOUNTS_PER_PAGE).map((page) => {
-    const slots: (AccountGridItem | null)[] = Array.from(
-      { length: ACCOUNTS_PER_PAGE },
-      () => null
-    );
-
-    page.forEach((item, index) => {
-      const column = Math.floor(index / GRID_ROWS);
-      const row = index % GRID_ROWS;
-      slots[row * GRID_COLUMNS + column] = item;
-    });
-
-    return slots;
-  });
-
-  return pages.length > 0 ? pages : [[ADD_ACCOUNT_SLOT, null, null, null]];
-}
-
 function AccountCard({
   account,
-  width,
   isBalanceVisible,
 }: {
   account: Account;
-  width: number;
   isBalanceVisible: boolean;
 }) {
   const balance = formatCurrency(account.balance, account.currency);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      style={{ height: ACCOUNT_CARD_HEIGHT, width }}
-      onPress={() => {
-        router.push({
-          params: { id: account.id },
-          pathname: "/account/[id]",
-        });
-      }}
+    <ThemedView
+      variant="card"
+      className="h-full w-full justify-between rounded-2xl px-3.5 py-3"
     >
-      <ThemedView
-        variant="card"
-        className="h-full justify-between rounded-2xl px-3.5 py-3"
-        style={{ width }}
-      >
-        <View className="flex-row items-center justify-between">
-          <View
-            className="size-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: account.color }}
-          >
-            <SymbolView
-              name={account.symbol as never}
-              size={15}
-              tintColor="#fff"
-            />
-          </View>
-          <ThemedText
-            type="small"
-            color="muted"
-            numberOfLines={1}
-            className="text-xs leading-4"
-          >
-            {ACCOUNT_TYPE_LABEL[account.type]}
-          </ThemedText>
+      <View className="flex-row items-center justify-between">
+        <View
+          className="size-8 items-center justify-center rounded-full"
+          style={{ backgroundColor: account.color }}
+        >
+          <SymbolView
+            name={account.symbol as never}
+            size={15}
+            tintColor="#fff"
+          />
         </View>
-        <View className="gap-0">
-          <ThemedText
-            type="small"
-            color="muted"
-            numberOfLines={1}
-            className="text-[15px] leading-5"
-          >
-            {account.name}
-          </ThemedText>
-          <ThemedText
-            type="smallBold"
-            color={account.balance < 0 ? "negative" : "foreground"}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            className="text-xl leading-7"
-          >
-            {isBalanceVisible ? balance : maskCurrencyValue(balance)}
-          </ThemedText>
-        </View>
-      </ThemedView>
-    </Pressable>
+        <ThemedText
+          type="small"
+          color="muted"
+          numberOfLines={1}
+          className="text-xs leading-4"
+        >
+          {ACCOUNT_TYPE_LABEL[account.type]}
+        </ThemedText>
+      </View>
+      <View className="gap-0">
+        <ThemedText
+          type="small"
+          color="muted"
+          numberOfLines={1}
+          className="text-[15px] leading-5"
+        >
+          {account.name}
+        </ThemedText>
+        <ThemedText
+          type="smallBold"
+          color={account.balance < 0 ? "negative" : "foreground"}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          className="text-xl leading-7"
+        >
+          {isBalanceVisible ? balance : maskCurrencyValue(balance)}
+        </ThemedText>
+      </View>
+    </ThemedView>
   );
 }
 
@@ -337,7 +289,41 @@ export default function DashboardScreen() {
   const { accounts, transactions, budgets, balanceByCurrency, isLoading } =
     useFinance();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
-  const accountPages = buildAccountPages(accounts);
+  const reorderAccounts = useMutation(api.finance.reorderAccounts);
+  const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
+
+  const accountGridLayout = useMemo<AccountGridLayout>(
+    () => ({
+      cardHeight: ACCOUNT_CARD_HEIGHT,
+      cardWidth,
+      columnGap: COLUMN_GAP,
+      pageGap: PAGE_GAP,
+      pageWidth,
+      rowGap: ROW_GAP,
+    }),
+    [cardWidth, pageWidth]
+  );
+
+  const handlePressAccount = useCallback((account: Account) => {
+    router.push({
+      params: { id: account.id },
+      pathname: "/account/[id]",
+    });
+  }, []);
+
+  const handleReorderAccounts = useCallback(
+    (ids: string[]) => {
+      const current = accounts.map((account) => account.id);
+      const unchanged =
+        ids.length === current.length &&
+        ids.every((id, index) => id === current[index]);
+      if (unchanged) {
+        return;
+      }
+      void reorderAccounts({ ids: ids as Id<"accounts">[] });
+    },
+    [accounts, reorderAccounts]
+  );
 
   return (
     <ScrollView
@@ -345,6 +331,7 @@ export default function DashboardScreen() {
       className="flex-1 bg-background"
       contentContainerClassName="items-center px-5"
       contentInsetAdjustmentBehavior="automatic"
+      scrollEnabled={!isReorderingAccounts}
       contentContainerStyle={{
         paddingBottom: insets.bottom + BottomTabInset + 24,
       }}
@@ -417,56 +404,22 @@ export default function DashboardScreen() {
           {isLoading ? (
             <AccountGridSkeleton cardWidth={cardWidth} />
           ) : (
-            <ScrollView
-              horizontal
-              decelerationRate="fast"
-              nestedScrollEnabled
-              snapToAlignment="start"
-              snapToInterval={pageWidth + PAGE_GAP}
-              showsHorizontalScrollIndicator={false}
-              style={{ marginLeft: -HORIZONTAL_PADDING, width: carouselWidth }}
-              contentContainerStyle={{
-                gap: PAGE_GAP,
-                paddingLeft: HORIZONTAL_PADDING,
-                paddingRight: HORIZONTAL_PADDING + PAGE_GAP,
-              }}
-            >
-              {accountPages.map((page, pageIndex) => (
-                <View
-                  key={pageIndex}
-                  style={{ gap: ROW_GAP, width: pageWidth }}
-                >
-                  {chunk(page, GRID_COLUMNS).map((row, rowIndex) => (
-                    <View
-                      key={rowIndex}
-                      className="flex-row"
-                      style={{ gap: COLUMN_GAP }}
-                    >
-                      {row.map((item, slotIndex) =>
-                        item === null ? (
-                          <View
-                            key={`empty-${pageIndex}-${rowIndex}-${slotIndex}`}
-                            style={{
-                              height: ACCOUNT_CARD_HEIGHT,
-                              width: cardWidth,
-                            }}
-                          />
-                        ) : isAddAccountSlot(item) ? (
-                          <AddAccountCard key={item.id} width={cardWidth} />
-                        ) : (
-                          <AccountCard
-                            key={item.id}
-                            account={item}
-                            width={cardWidth}
-                            isBalanceVisible={isBalanceVisible}
-                          />
-                        )
-                      )}
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
+            <AccountGrid
+              accounts={accounts}
+              carouselWidth={carouselWidth}
+              horizontalPadding={HORIZONTAL_PADDING}
+              layout={accountGridLayout}
+              onDraggingChange={setIsReorderingAccounts}
+              onPressAccount={handlePressAccount}
+              onReorder={handleReorderAccounts}
+              renderAccount={(account) => (
+                <AccountCard
+                  account={account}
+                  isBalanceVisible={isBalanceVisible}
+                />
+              )}
+              renderAddAccount={() => <AddAccountCard width={cardWidth} />}
+            />
           )}
         </View>
 
