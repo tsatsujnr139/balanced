@@ -9,6 +9,8 @@ export interface TransactionAttachmentDraft {
   name: string;
   mimeType?: string;
   size?: number;
+  /** Set for attachments already stored on the transaction. */
+  storageId?: string;
 }
 
 export interface TransactionTag {

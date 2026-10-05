@@ -41,7 +41,12 @@ function OverdueBadge({ count }: { count: number }) {
 }
 
 function PlannedPaymentRow({ payment }: { payment: PlannedPayment }) {
-  const amountColor = payment.type === "income" ? "positive" : "negative";
+  const amountColor =
+    payment.type === "income"
+      ? "positive"
+      : payment.type === "expense"
+        ? "negative"
+        : undefined;
   const dueColor =
     payment.dueStatus === "overdue"
       ? PLANNED_OVERDUE_COLOR
@@ -106,8 +111,12 @@ function PlannedPaymentRow({ payment }: { payment: PlannedPayment }) {
           <OverdueBadge count={payment.overdueCount} />
         ) : null}
         {payment.type === "transfer" ? (
-          <ThemedText type="smallBold" className="text-base leading-[22px]">
-            Transfer
+          <ThemedText
+            type="smallBold"
+            color={amountColor}
+            className="text-base leading-[22px]"
+          >
+            {formatCurrency(payment.amount, payment.currency)}
           </ThemedText>
         ) : (
           <ThemedText

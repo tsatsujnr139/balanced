@@ -35,7 +35,10 @@ import {
   clearTransactionDraftPrefill,
   getTransactionDraftPrefill,
 } from "@/features/finance/transaction-draft-prefill";
-import type { TransactionTemplate } from "@/features/finance/types";
+import type {
+  TransactionAttachmentRecord,
+  TransactionTemplate,
+} from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import {
   setLastTransactionAccountId,
@@ -52,6 +55,19 @@ function amountInputToMinorUnits(value: string): number {
 
 function minorUnitsToAmountInput(value: number): string {
   return (Math.abs(value) / 100).toFixed(2);
+}
+
+function attachmentRecordToDraft(
+  record: TransactionAttachmentRecord
+): TransactionAttachmentDraft {
+  return {
+    id: record.id,
+    name: record.name,
+    storageId: record.storageId,
+    uri: record.url ?? "",
+    ...(record.mimeType !== undefined ? { mimeType: record.mimeType } : {}),
+    ...(record.size !== undefined ? { size: record.size } : {}),
+  };
 }
 
 const DEFAULT_LABEL_DRAFT: TransactionLabelDraft = {
@@ -117,10 +133,17 @@ export default function AddTransactionLayout() {
       ? { id: editingTransactionId as Id<"transactions"> }
       : "skip"
   );
+  const existingAttachments = useQuery(
+    api.finance.listTransactionAttachments,
+    editingTransactionId
+      ? { id: editingTransactionId as Id<"transactions"> }
+      : "skip"
+  );
   const { accounts } = useFinance();
   const { firstName } = useLocalProfile();
   const lastTransactionAccountId = useLastTransactionAccountId();
   const hasHydratedRef = useRef(Boolean(initialEditState));
+  const attachmentsHydratedRef = useRef(false);
   const [accountId, setAccountId] = useState<string | null>(
     draftPrefill?.accountId ??
       initialEditState?.accountId ??
@@ -244,6 +267,23 @@ export default function AddTransactionLayout() {
           ]
     );
   }, [existingTransaction]);
+
+  useEffect(() => {
+    if (attachmentsHydratedRef.current || !existingAttachments) {
+      return;
+    }
+
+    attachmentsHydratedRef.current = true;
+    setAttachments((current) => {
+      const currentIds = new Set(current.map((attachment) => attachment.id));
+      return [
+        ...current,
+        ...existingAttachments
+          .filter((attachment) => !currentIds.has(attachment.id))
+          .map(attachmentRecordToDraft),
+      ];
+    });
+  }, [existingAttachments]);
 
   const effectiveAccountId =
     accountId ??
@@ -453,41 +493,19 @@ export default function AddTransactionLayout() {
           ? "income"
           : "expense";
 
-      if (isEditing && editingTransactionId) {
-        await updateTransaction({
-          accountId: trackedTransferAccount!.id as Id<"accounts">,
-          amount: amountInMinorUnits,
-          category: selectedCategory!.name,
-          color: selectedCategory!.color,
-          createdByName: firstName,
-          date,
-          id: editingTransactionId as Id<"transactions">,
-          merchant,
-          symbol: selectedCategory!.symbol,
-          tagIds: tags.map((tag) => tag.id as Id<"tags">),
-          externalTransferSide: isFromOutOfWallet
-            ? "from"
-            : isToOutOfWallet
-              ? "to"
-              : undefined,
-          toAccountId:
-            isTransfer && !(isFromOutOfWallet || isToOutOfWallet)
-              ? (toAccount!.id as Id<"accounts">)
-              : undefined,
-          transactionCharge:
-            (transactionType === "expense" || transactionType === "transfer") &&
-            chargeInMinorUnits > 0
-              ? chargeInMinorUnits
-              : undefined,
-          type: transactionType,
-        });
-        setLastTransactionAccountId(trackedTransferAccount!.id);
-        closeAddTransaction();
-        return;
-      }
-
       const uploadedAttachments = await Promise.all(
         attachments.map(async (attachment) => {
+          if (attachment.storageId) {
+            return {
+              name: attachment.name,
+              mimeType: attachment.mimeType,
+              storageId: attachment.storageId as Id<"_storage">,
+              ...(attachment.size !== undefined
+                ? { size: attachment.size }
+                : {}),
+            };
+          }
+
           const file = new File(attachment.uri);
           if (!file.exists) {
             throw new Error("Could not read attachment");
@@ -523,6 +541,40 @@ export default function AddTransactionLayout() {
           };
         })
       );
+
+      if (isEditing && editingTransactionId) {
+        await updateTransaction({
+          accountId: trackedTransferAccount!.id as Id<"accounts">,
+          amount: amountInMinorUnits,
+          attachments: uploadedAttachments,
+          category: selectedCategory!.name,
+          color: selectedCategory!.color,
+          createdByName: firstName,
+          date,
+          id: editingTransactionId as Id<"transactions">,
+          merchant,
+          symbol: selectedCategory!.symbol,
+          tagIds: tags.map((tag) => tag.id as Id<"tags">),
+          externalTransferSide: isFromOutOfWallet
+            ? "from"
+            : isToOutOfWallet
+              ? "to"
+              : undefined,
+          toAccountId:
+            isTransfer && !(isFromOutOfWallet || isToOutOfWallet)
+              ? (toAccount!.id as Id<"accounts">)
+              : undefined,
+          transactionCharge:
+            (transactionType === "expense" || transactionType === "transfer") &&
+            chargeInMinorUnits > 0
+              ? chargeInMinorUnits
+              : undefined,
+          type: transactionType,
+        });
+        setLastTransactionAccountId(trackedTransferAccount!.id);
+        closeAddTransaction();
+        return;
+      }
 
       await createTransaction({
         accountId: trackedTransferAccount!.id as Id<"accounts">,

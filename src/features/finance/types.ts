@@ -46,6 +46,15 @@ export interface AutomaticRule {
   tags: TransactionTag[];
 }
 
+export interface TransactionAttachmentRecord {
+  id: string;
+  name: string;
+  mimeType?: string;
+  size?: number;
+  storageId: string;
+  url: string | null;
+}
+
 export type TransactionKind =
   | "expense"
   | "income"

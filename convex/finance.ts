@@ -1096,6 +1096,36 @@ export const getTransaction = query({
   },
 });
 
+export const listTransactionAttachments = query({
+  args: {
+    id: v.id("transactions"),
+  },
+  handler: async (ctx, args) => {
+    const transaction = await resolveEditableTransaction(ctx, args.id);
+    if (!transaction) {
+      return [];
+    }
+
+    const attachments = await ctx.db
+      .query("transactionAttachments")
+      .withIndex("by_transactionId", (q) =>
+        q.eq("transactionId", transaction._id)
+      )
+      .take(50);
+
+    return await Promise.all(
+      attachments.map(async (attachment) => ({
+        id: attachment._id,
+        mimeType: attachment.mimeType,
+        name: attachment.name,
+        size: attachment.size,
+        storageId: attachment.storageId,
+        url: await ctx.storage.getUrl(attachment.storageId),
+      }))
+    );
+  },
+});
+
 const accountArgs = {
   balance: v.number(),
   color: v.string(),
@@ -1984,6 +2014,14 @@ export const updateTransaction = mutation({
   args: {
     accountId: v.id("accounts"),
     amount: v.number(),
+    attachments: v.array(
+      v.object({
+        mimeType: v.optional(v.string()),
+        name: v.string(),
+        size: v.optional(v.number()),
+        storageId: v.id("_storage"),
+      })
+    ),
     category: v.string(),
     color: v.string(),
     createdByName: v.optional(v.string()),
@@ -2154,6 +2192,12 @@ export const updateTransaction = mutation({
           await replaceChargeTransactionTags(ctx, chargeId);
         }
 
+        await replaceTransactionAttachments(
+          ctx,
+          existing._id,
+          args.attachments
+        );
+
         return existing._id;
       }
 
@@ -2314,6 +2358,8 @@ export const updateTransaction = mutation({
         await replaceChargeTransactionTags(ctx, chargeId);
       }
 
+      await replaceTransactionAttachments(ctx, existing._id, args.attachments);
+
       return existing._id;
     }
 
@@ -2404,6 +2450,7 @@ export const updateTransaction = mutation({
     }
 
     await replaceTransactionTags(ctx, existing._id, args.tagIds);
+    await replaceTransactionAttachments(ctx, existing._id, args.attachments);
 
     return existing._id;
   },
@@ -2441,6 +2488,43 @@ async function deleteTransactionDocument(
 
   await deleteTransactionArtifacts(ctx, transaction._id);
   await ctx.db.delete(transaction._id);
+}
+
+async function replaceTransactionAttachments(
+  ctx: MutationCtx,
+  transactionId: Id<"transactions">,
+  attachments: {
+    mimeType?: string;
+    name: string;
+    size?: number;
+    storageId: Id<"_storage">;
+  }[]
+) {
+  const existing = await ctx.db
+    .query("transactionAttachments")
+    .withIndex("by_transactionId", (q) => q.eq("transactionId", transactionId))
+    .take(50);
+  const nextStorageIds = new Set(attachments.map((item) => item.storageId));
+  const existingStorageIds = new Set(existing.map((item) => item.storageId));
+
+  for (const attachment of existing) {
+    if (!nextStorageIds.has(attachment.storageId)) {
+      await ctx.storage.delete(attachment.storageId);
+      await ctx.db.delete(attachment._id);
+    }
+  }
+
+  for (const attachment of attachments) {
+    if (!existingStorageIds.has(attachment.storageId)) {
+      await ctx.db.insert("transactionAttachments", {
+        mimeType: attachment.mimeType,
+        name: attachment.name,
+        size: attachment.size,
+        storageId: attachment.storageId,
+        transactionId,
+      });
+    }
+  }
 }
 
 export const deleteTransaction = mutation({
