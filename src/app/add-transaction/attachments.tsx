@@ -4,8 +4,10 @@ import * as ImagePicker from "expo-image-picker";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { Alert, FlatList, Modal, Pressable, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { Icon as SymbolView } from "@/components/icon";
+import { ZoomableImage } from "@/components/zoomable-image";
 import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import type { TransactionAttachmentDraft } from "@/features/finance/add-transaction-context";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -282,7 +284,9 @@ export default function TransactionAttachmentsScreen() {
         transparent
         visible={preview !== null}
       >
-        <View style={{ backgroundColor: "rgba(0,0,0,0.94)", flex: 1 }}>
+        <GestureHandlerRootView
+          style={{ backgroundColor: "rgba(0,0,0,0.94)", flex: 1 }}
+        >
           <View
             style={{
               alignItems: "center",
@@ -314,11 +318,7 @@ export default function TransactionAttachmentsScreen() {
           </View>
 
           {preview && isImageAttachment(preview) ? (
-            <Image
-              contentFit="contain"
-              source={{ uri: preview.uri }}
-              style={{ flex: 1, margin: 16 }}
-            />
+            <ZoomableImage key={preview.id} uri={preview.uri} />
           ) : (
             <View
               style={{
@@ -355,7 +355,7 @@ export default function TransactionAttachmentsScreen() {
               ) : null}
             </View>
           )}
-        </View>
+        </GestureHandlerRootView>
       </Modal>
     </>
   );
