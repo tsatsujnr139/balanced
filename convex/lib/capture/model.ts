@@ -1,6 +1,6 @@
 /**
  * Validation of transactions extracted by an AI model (on-device Apple
- * Foundation Models or the OpenCode Go fallback). Shared by the app and Convex.
+ * Foundation Models or the OpenCode fallback). Shared by the app and Convex.
  *
  * Models can misread or invent numbers, so every amount must appear in the
  * source text and anything unverifiable is dropped rather than guessed.

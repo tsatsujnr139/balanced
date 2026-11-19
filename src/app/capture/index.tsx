@@ -727,7 +727,7 @@ export default function CaptureScreen() {
   const confirmCloudRetry = () => {
     Alert.alert(
       "Read with OpenCode?",
-      "The unread text will be sent to OpenCode Go (zero data retention) to try again.",
+      "The unread text will be sent to OpenCode (zero data retention) to try again.",
       [
         { style: "cancel", text: "Cancel" },
         {

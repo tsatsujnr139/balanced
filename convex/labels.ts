@@ -311,7 +311,7 @@ export const suggest = action({
       const tagNames = context.tags.map((tag) => tag.name);
       const keys = unresolved.map((draft) => draft.key);
       try {
-        const response = await requestStructured({
+        const response = await requestStructured(ctx, {
           parse: parseModelSuggestions(
             new Set(keys),
             new Set(categoryNames),

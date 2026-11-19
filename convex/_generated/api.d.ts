@@ -19,7 +19,9 @@ import type * as lib_capture_model from "../lib/capture/model.js";
 import type * as lib_capture_parser from "../lib/capture/parser.js";
 import type * as lib_capture_redact from "../lib/capture/redact.js";
 import type * as lib_capture_transfers from "../lib/capture/transfers.js";
+import type * as lib_capture_usage from "../lib/capture/usage.js";
 import type * as seed from "../seed.js";
+import type * as usage from "../usage.js";
 
 import type {
   ApiFromModules,
@@ -39,7 +41,9 @@ declare const fullApi: ApiFromModules<{
   "lib/capture/parser": typeof lib_capture_parser;
   "lib/capture/redact": typeof lib_capture_redact;
   "lib/capture/transfers": typeof lib_capture_transfers;
+  "lib/capture/usage": typeof lib_capture_usage;
   seed: typeof seed;
+  usage: typeof usage;
 }>;
 
 /**

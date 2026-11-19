@@ -112,3 +112,27 @@ const snapshot = useQuery(api.finance.getSnapshot) ?? {
 
 The query returns the same `FinanceSnapshot` shape the screens already use, so no
 component changes are required.
+
+## Cloud capture usage tracking
+
+Both transaction extraction and category suggestions record each model request
+attempt in Convex's `llmUsage` table. View it in the dashboard, or run the internal
+`usage:list` query with `{"paginationOpts":{"numItems":50,"cursor":null}}`.
+Retries share a `requestId` but have separate rows, so sum all attempts for costs.
+The rows include token counts, model, operation, latency, HTTP status, and outcome.
+Message text, screenshots, API keys, and raw provider errors are not stored there.
+Logging is best effort: a failed database write emits a warning and never retries
+a successful model request.
+
+OpenCode's reported `costUsd` is separate from `listCostUsd` and `goAllowanceUsd`.
+Included Go requests can cost $0 while consuming allowance. `billingSource`
+identifies Go, balance, free, or BYOK usage; `costEstimated` identifies provider
+estimates. Missing costs stay absent, not zero. Timeouts can have unknown charges;
+reconcile totals with the provider console. There is no historical backfill.
+
+The default endpoint uses OpenCode pay-as-you-go. Set
+`LLM_BASE_URL` to `https://opencode.ai/inference/openai/v1` on the intended Convex
+deployment to override an existing Go endpoint; `LLM_MODEL` defaults to `glm-5.3-flash`. Keep `LLM_API_KEY` server-side.
+OpenCode's former Zen docs now redirect to Console models:
+https://opencode.ai/docs/console/models/. Billing metadata is documented at
+https://opencode.ai/docs/console/api/inference/#cost.

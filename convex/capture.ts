@@ -6,7 +6,7 @@ import type { ModelExtractedTransaction } from "./lib/capture/model";
 
 /**
  * Cloud fallback for transaction notifications the pattern parser and the
- * on-device model couldn't read (OpenCode Go by default; see lib/capture/chat).
+ * on-device model couldn't read (OpenCode pay-as-you-go by default; see lib/capture/chat).
  */
 
 const MAX_INPUT_CHARACTERS = 12_000;
@@ -112,7 +112,7 @@ const sanitizeTransactions = (
 
 export const extractTransactions = action({
   args: { text: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const text = args.text.trim();
     if (!text) {
       return { model: "", transactions: [] };
@@ -123,7 +123,7 @@ export const extractTransactions = action({
         message: `Text must be at most ${MAX_INPUT_CHARACTERS} characters`,
       });
     }
-    const { model, result } = await requestStructured({
+    const { model, result } = await requestStructured(ctx, {
       parse: sanitizeTransactions,
       schema: RESPONSE_SCHEMA,
       schemaName: "transaction_extraction",

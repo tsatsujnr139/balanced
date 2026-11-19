@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { usageFields } from "./lib/capture/usage";
+
 export const accountType = v.union(
   v.literal("general"),
   v.literal("cash"),
@@ -57,6 +59,7 @@ export const plannedPaymentEntryStatus = v.union(
 );
 
 export default defineSchema({
+  llmUsage: defineTable(usageFields).index("by_requestId", ["requestId"]),
   accounts: defineTable({
     /** Available balance in minor units (cents). */
     balance: v.number(),
