@@ -5,6 +5,8 @@ import type { BalanceContinuity } from "@/convex/lib/capture/parser";
 import type { CapturedTransaction } from "./parse-capture";
 
 export interface CaptureImage {
+  /** When the screenshot was taken, from the photo's metadata. */
+  capturedAt?: number;
   mimeType?: string;
   name: string;
   uri: string;
@@ -38,6 +40,8 @@ export interface CaptureDraft {
   labelSource?: CaptureLabelSource;
   selected: boolean;
   tags: CaptureTag[];
+  /** Destination account for transfers; null means "Out of wallet". */
+  toAccountId: string | null;
 }
 
 export interface CaptureContextValue {
@@ -47,6 +51,7 @@ export interface CaptureContextValue {
   images: CaptureImage[];
   isSaving: boolean;
   setDraftAccount: (key: string, accountId: string) => void;
+  setDraftToAccount: (key: string, accountId: string | null) => void;
   setDraftCategory: (key: string, category: CaptureCategory) => void;
   setDrafts: (
     drafts: CaptureDraft[] | ((current: CaptureDraft[]) => CaptureDraft[])

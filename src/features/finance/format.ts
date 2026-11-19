@@ -5,6 +5,7 @@ const CURRENCY_SYMBOL: Record<string, string> = {
   GBP: "£",
   GHS: "GH₵",
   USD: "$",
+  USDT: "₮",
 };
 
 /** Display symbol for a currency code, e.g. GH₵ for Ghanaian cedi. */

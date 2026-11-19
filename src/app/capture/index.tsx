@@ -20,7 +20,9 @@ import {
   captureDateTimeToEpoch,
   checkBalanceContinuity,
 } from "@/convex/lib/capture/parser";
+import type { CapturedTransfer } from "@/convex/lib/capture/transfers";
 import {
+  captureDestinationKey,
   captureSourceKey,
   captureSourceLabel,
   getRememberedAccountId,
@@ -46,6 +48,7 @@ import {
   useCachedTags,
 } from "@/features/finance/use-labels";
 import { useLastTransactionAccountId } from "@/features/finance/use-last-transaction-account";
+import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
 
 const MAX_IMAGES = 5;
@@ -251,6 +254,67 @@ function LabelChips({
   );
 }
 
+const PROVIDER_NAMES: Partial<Record<string, string>> = {
+  bybit: "Bybit",
+  fnb: "FNB",
+  ghanapay: "GhanaPay",
+  grey: "Grey",
+  mtn_momo: "MoMo",
+  wise: "Wise",
+};
+
+function AccountLink({
+  account,
+  disabled,
+  emptyLabel,
+  onPress,
+  prefix,
+}: {
+  account: Account | undefined;
+  disabled: boolean;
+  emptyLabel: string;
+  onPress: () => void;
+  prefix?: string;
+}) {
+  const colors = useThemeColors();
+  const isOutOfWallet = !account && emptyLabel === "Out of wallet";
+  return (
+    <Pressable
+      accessibilityLabel={`${prefix ?? "Account"}: ${account?.name ?? emptyLabel}`}
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
+    >
+      {prefix ? (
+        <Text style={{ color: colors.muted, fontSize: 13, width: 36 }}>
+          {prefix}
+        </Text>
+      ) : null}
+      <SymbolView
+        name={
+          (account?.symbol ??
+            (isOutOfWallet ? "wallet.pass" : "creditcard")) as never
+        }
+        size={13}
+        tintColor={
+          account?.color ?? (isOutOfWallet ? colors.muted : colors.negative)
+        }
+      />
+      <Text
+        style={{
+          color: account || isOutOfWallet ? colors.primary : colors.negative,
+          fontSize: 13,
+          fontWeight: "600",
+        }}
+      >
+        {account?.name ?? emptyLabel}
+      </Text>
+      <SymbolView name="chevron.right" size={10} tintColor={colors.muted} />
+    </Pressable>
+  );
+}
+
 function DraftRow({
   alreadyAdded,
   draft,
@@ -262,9 +326,11 @@ function DraftRow({
 }) {
   const colors = useThemeColors();
   const { accounts } = useFinance();
-  const { toggleDraft } = useCapture();
+  const { alreadyAdded: alreadyAddedRefs, toggleDraft } = useCapture();
   const { transaction, reader } = draft.captured;
   const account = accounts.find((item) => item.id === draft.accountId);
+  const toAccount = accounts.find((item) => item.id === draft.toAccountId);
+  const { transfer, pairedLeg } = transaction;
   const isCredit = transaction.direction === "credit";
   const readerLabel = READER_LABELS[reader];
   const selected = draft.selected && !alreadyAdded;
@@ -325,38 +391,65 @@ function DraftRow({
           {transaction.occurredAt ? "" : " (capture time)"} ·{" "}
           {captureSourceLabel(transaction)}
         </Text>
-        <Pressable
-          accessibilityLabel="Change account"
-          accessibilityRole="button"
+        {transfer?.toAmount !== undefined && transfer.toCurrency ? (
+          <Text
+            style={{
+              color: colors.positive,
+              fontSize: 14,
+              fontVariant: ["tabular-nums"],
+              fontWeight: "600",
+            }}
+          >
+            → +{formatCurrency(transfer.toAmount, transfer.toCurrency)}
+            {transfer.rate ? `  @ ${transfer.rate}` : ""}
+          </Text>
+        ) : null}
+        <AccountLink
+          account={account}
           disabled={alreadyAdded}
+          emptyLabel="Choose account"
           onPress={() =>
             router.push({
               params: { draft: draft.key },
               pathname: "/capture/account",
             })
           }
-          style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
-        >
-          <SymbolView
-            name={(account?.symbol ?? "creditcard") as never}
-            size={13}
-            tintColor={account?.color ?? colors.negative}
+          prefix={transfer ? "From" : undefined}
+        />
+        {transfer ? (
+          <AccountLink
+            account={toAccount}
+            disabled={alreadyAdded}
+            emptyLabel="Out of wallet"
+            onPress={() =>
+              router.push({
+                params: { draft: draft.key, field: "to" },
+                pathname: "/capture/account",
+              })
+            }
+            prefix="To"
           />
-          <Text
-            style={{
-              color: account ? colors.primary : colors.negative,
-              fontSize: 13,
-              fontWeight: "600",
-            }}
-          >
-            {account?.name ?? "Choose account"}
-          </Text>
-          <SymbolView name="chevron.right" size={10} tintColor={colors.muted} />
-        </Pressable>
-        <LabelChips alreadyAdded={alreadyAdded} draft={draft} />
+        ) : alreadyAdded ? null : (
+          <LabelChips alreadyAdded={alreadyAdded} draft={draft} />
+        )}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {alreadyAdded ? (
             <Badge color={colors.muted} label="Already added" />
+          ) : null}
+          {transfer ? <Badge color="#5856D6" label="Transfer" /> : null}
+          {pairedLeg && !alreadyAddedRefs.has(pairedLeg.externalRef) ? (
+            <Badge
+              color={colors.positive}
+              label={`Matched ${PROVIDER_NAMES[pairedLeg.provider] ?? pairedLeg.institution ?? "incoming"} receipt`}
+            />
+          ) : null}
+          {pairedLeg &&
+          alreadyAddedRefs.has(pairedLeg.externalRef) &&
+          !alreadyAdded ? (
+            <Badge
+              color="#FF9500"
+              label={`${PROVIDER_NAMES[pairedLeg.provider] ?? "Incoming"} receipt was already saved as income. Delete it or set To: Out of wallet to avoid counting it twice`}
+            />
           ) : null}
           {transaction.fee > 0 ? (
             <Badge
@@ -408,6 +501,51 @@ const pickAccountId = (
   return accounts.find((item) => item.currency === currency)?.id ?? null;
 };
 
+/**
+ * Remembered destination (a paired receipt shares its sender's remembered
+ * account), else the only other account in the received currency. Null means
+ * "Out of wallet" until the user picks one.
+ */
+const pickDestinationAccountId = (
+  transaction: CapturedTransfer,
+  accounts: Account[]
+): string | null => {
+  const currency = transaction.transfer?.toCurrency ?? transaction.currency;
+  const sourceAccountId = getRememberedAccountId(captureSourceKey(transaction));
+  const candidates = accounts.filter(
+    (account) => account.currency === currency && account.id !== sourceAccountId
+  );
+  const remembered = getRememberedAccountId(captureDestinationKey(transaction));
+  const rememberedAccount = candidates.find(
+    (account) => account.id === remembered
+  );
+  if (rememberedAccount) {
+    return rememberedAccount.id;
+  }
+  const [onlyCandidate] = candidates;
+  return candidates.length === 1 && onlyCandidate ? onlyCandidate.id : null;
+};
+
+const EXIF_DATE =
+  /^(?<year>\d{4}):(?<month>\d{2}):(?<day>\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})$/;
+
+/** "2026:11:19 21:08:12" (device local time) → epoch millis. */
+const exifDateToEpoch = (value: unknown): number | undefined => {
+  const match = typeof value === "string" ? EXIF_DATE.exec(value) : null;
+  if (!match) {
+    return;
+  }
+  const [, year, month, day, hour, minute, second] = match;
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second)
+  ).getTime();
+};
+
 const buildDrafts = (
   result: CaptureResult,
   fallbackAccountId: string | null,
@@ -436,6 +574,9 @@ const buildDrafts = (
       key: transaction.externalRef,
       selected: true,
       tags: [],
+      toAccountId: transaction.transfer
+        ? pickDestinationAccountId(transaction, accounts)
+        : null,
     };
   });
 };
@@ -445,6 +586,7 @@ export default function CaptureScreen() {
   const { accounts } = useFinance();
   const lastAccountId = useLastTransactionAccountId();
   const extractInCloud = useAction(api.capture.extractTransactions);
+  const { firstName } = useLocalProfile();
   const suggestLabels = useAction(api.labels.suggest);
   const { categories: customCategories } = useCachedCategories();
   const { tags: availableTags } = useCachedTags();
@@ -457,7 +599,10 @@ export default function CaptureScreen() {
         category,
       ])
     );
-    const pending = built.filter((draft) => !alreadyAdded.has(draft.key));
+    const pending = built.filter(
+      (draft) =>
+        !(alreadyAdded.has(draft.key) || draft.captured.transaction.transfer)
+    );
     if (pending.length === 0) {
       return;
     }
@@ -524,7 +669,11 @@ export default function CaptureScreen() {
     Keyboard.dismiss();
     const inputs: CaptureInput[] = [
       ...images.map(
-        (image): CaptureInput => ({ kind: "image", uri: image.uri })
+        (image): CaptureInput => ({
+          capturedAt: image.capturedAt,
+          kind: "image",
+          uri: image.uri,
+        })
       ),
       ...(text.trim() ? [{ kind: "text" as const, text }] : []),
     ];
@@ -538,6 +687,7 @@ export default function CaptureScreen() {
         cloud: async (leftover) =>
           (await extractInCloud({ text: leftover })).transactions,
         forceCloud: options.forceCloud,
+        ownerNames: firstName ? [firstName] : [],
       });
       setResult(next);
       const built = buildDrafts(next, fallbackAccountId, accounts);
@@ -553,6 +703,7 @@ export default function CaptureScreen() {
   const pickImages = async () => {
     const picked = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
+      exif: true,
       mediaTypes: ["images"],
       quality: 1,
       selectionLimit: MAX_IMAGES,
@@ -561,6 +712,7 @@ export default function CaptureScreen() {
       return;
     }
     const next: CaptureImage[] = picked.assets.map((asset, index) => ({
+      capturedAt: exifDateToEpoch(asset.exif?.DateTimeOriginal),
       mimeType: asset.mimeType ?? undefined,
       name: asset.fileName ?? `screenshot-${Date.now()}-${index}.png`,
       uri: asset.uri,

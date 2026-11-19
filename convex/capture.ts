@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = `You read bank and mobile money notifications (SMS text, o
 Extract every complete transaction notification. Copy numbers exactly as printed and never invent values: use null when the message does not state a field.
 Skip promotional messages, Messages-app timestamps, and messages cut off at the start or end.
 direction is "debit" when money left the account holder's account and "credit" when it arrived.
-Amounts, fees, and balances are digits with an optional decimal point (e.g. 1071.75), without currency.
+Amounts, fees, and balances are digits with an optional decimal point (e.g. 1071.75), without currency. currency is the code the amount is in (GHS, USD, USDT, …); use GHS for cedis.
 occurredAt is the date and time printed inside the message as "YYYY-MM-DD HH:MM".
 summary is a short description of what the payment was for.
 balanceAfter is the account balance printed after the transaction. counterparty is the other party's name, phone number, or network. institution is who sent the notification (e.g. MTN MoMo, Telecel Cash, a bank). sourceText is the notification copied verbatim.`;
@@ -33,6 +33,7 @@ const RESPONSE_SCHEMA = {
           amount: { type: "string" },
           balanceAfter: OPTIONAL_STRING,
           counterparty: OPTIONAL_STRING,
+          currency: OPTIONAL_STRING,
           direction: { enum: ["debit", "credit"], type: "string" },
           fee: OPTIONAL_STRING,
           institution: OPTIONAL_STRING,
@@ -46,6 +47,7 @@ const RESPONSE_SCHEMA = {
           "amount",
           "balanceAfter",
           "counterparty",
+          "currency",
           "direction",
           "fee",
           "institution",
@@ -67,6 +69,7 @@ const RESPONSE_SCHEMA = {
 const STRING_FIELDS = [
   "balanceAfter",
   "counterparty",
+  "currency",
   "fee",
   "institution",
   "occurredAt",

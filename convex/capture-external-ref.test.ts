@@ -103,3 +103,38 @@ test("a deleted transaction can be captured again", async () => {
 
   await expect(create("ghanapay:600000000004")).resolves.toBeDefined();
 });
+
+test("a screenshot shared by several captured transactions survives until the last is deleted", async () => {
+  const { accountId, t } = await setup();
+  const storageId = await t.run(
+    async (ctx) => await ctx.storage.store(new Blob(["screenshot"]))
+  );
+  const attachments = [{ name: "shot.png", storageId }];
+  const create = (externalRef: string) =>
+    t.mutation(api.finance.createTransaction, {
+      accountId,
+      amount: 1000,
+      attachments,
+      date: Date.now(),
+      externalRef,
+      merchant: externalRef,
+      tagIds: [],
+      type: "expense",
+    });
+  const first = await create("ghanapay:1");
+  const second = await create("ghanapay:2");
+
+  await t.mutation(api.finance.deleteTransaction, {
+    id: first.mainTransactionId,
+  });
+  expect(
+    await t.run(async (ctx) => (await ctx.storage.get(storageId)) !== null)
+  ).toBe(true);
+
+  await t.mutation(api.finance.deleteTransaction, {
+    id: second.mainTransactionId,
+  });
+  expect(
+    await t.run(async (ctx) => (await ctx.storage.get(storageId)) !== null)
+  ).toBe(false);
+});

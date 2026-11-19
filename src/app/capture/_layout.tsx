@@ -13,6 +13,7 @@ import { MaterialIcons } from "@/constants/material-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
+  captureDestinationKey,
   captureSourceKey,
   rememberAccountId,
 } from "@/features/capture/capture-accounts";
@@ -75,7 +76,15 @@ export default function CaptureLayout() {
   const [isSaving, setIsSaving] = useState(false);
 
   const externalRefs = useMemo(
-    () => drafts.map((draft) => draft.key).slice(0, MAX_DUPLICATE_LOOKUPS),
+    () =>
+      drafts
+        .flatMap((draft) => [
+          draft.key,
+          ...(draft.captured.transaction.pairedLeg
+            ? [draft.captured.transaction.pairedLeg.externalRef]
+            : []),
+        ])
+        .slice(0, MAX_DUPLICATE_LOOKUPS),
     [drafts]
   );
   const capturedRefs = useQuery(
@@ -135,6 +144,32 @@ export default function CaptureLayout() {
       })
     );
   }, []);
+
+  const setDraftToAccount = useCallback(
+    (key: string, accountId: string | null) => {
+      setDrafts((current) => {
+        const target = current.find((draft) => draft.key === key);
+        if (!target) {
+          return current;
+        }
+        const destinationKey = captureDestinationKey(
+          target.captured.transaction
+        );
+        if (accountId) {
+          rememberAccountId(destinationKey, accountId);
+        }
+        return current.map((draft) =>
+          draft.key === key ||
+          (draft.captured.transaction.transfer &&
+            captureDestinationKey(draft.captured.transaction) ===
+              destinationKey)
+            ? { ...draft, toAccountId: accountId }
+            : draft
+        );
+      });
+    },
+    []
+  );
 
   const toggleDraft = useCallback((key: string) => {
     setDrafts((current) =>
@@ -197,6 +232,27 @@ export default function CaptureLayout() {
       );
       return;
     }
+    const destinationMismatch = toSave.find((draft) => {
+      const { transfer, currency } = draft.captured.transaction;
+      if (!(transfer && draft.toAccountId)) {
+        return false;
+      }
+      const toAccount = accounts.find((item) => item.id === draft.toAccountId);
+      const expected = transfer.toCurrency ?? currency;
+      return (
+        toAccount?.id === draft.accountId ||
+        (toAccount && toAccount.currency !== expected)
+      );
+    });
+    if (destinationMismatch) {
+      const { transfer, currency, description } =
+        destinationMismatch.captured.transaction;
+      Alert.alert(
+        "Check the destination account",
+        `"${description}" arrives in ${transfer?.toCurrency ?? currency}. Choose a different account in that currency, or Out of wallet.`
+      );
+      return;
+    }
 
     setIsSaving(true);
     let added = 0;
@@ -215,6 +271,35 @@ export default function CaptureLayout() {
         }
         const isExpense = transaction.direction === "debit";
         try {
+          if (transaction.transfer) {
+            const toAccount = accounts.find(
+              (item) => item.id === draft.toAccountId
+            );
+            await createTransaction({
+              accountId: draft.accountId as Id<"accounts">,
+              amount: transaction.amount,
+              attachments,
+              createdByName: firstName || undefined,
+              date: draft.date,
+              externalRef: transaction.externalRef,
+              externalTransferSide: toAccount ? undefined : "to",
+              merchant: transaction.description,
+              tagIds: [],
+              toAccountId: toAccount?.id as Id<"accounts"> | undefined,
+              toAmount: transaction.transfer.toAmount,
+              // A receipt saved earlier stays as it is; don't claim its ref twice.
+              toExternalRef:
+                transaction.pairedLeg &&
+                !alreadyAdded.has(transaction.pairedLeg.externalRef)
+                  ? transaction.pairedLeg.externalRef
+                  : undefined,
+              transactionCharge:
+                transaction.fee > 0 ? transaction.fee : undefined,
+              type: "transfer",
+            });
+            added += 1;
+            continue;
+          }
           await createTransaction({
             accountId: draft.accountId as Id<"accounts">,
             amount: transaction.amount,
@@ -272,6 +357,7 @@ export default function CaptureLayout() {
       isSaving,
       setDraftAccount,
       setDraftCategory,
+      setDraftToAccount,
       setDrafts,
       setImages,
       setText,
@@ -286,6 +372,7 @@ export default function CaptureLayout() {
       isSaving,
       setDraftAccount,
       setDraftCategory,
+      setDraftToAccount,
       text,
       toggleDraft,
       toggleDraftTag,

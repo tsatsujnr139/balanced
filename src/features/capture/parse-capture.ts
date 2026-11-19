@@ -2,6 +2,9 @@ import { normalizeModelTransactions } from "@/convex/lib/capture/model";
 import type { ModelExtractedTransaction } from "@/convex/lib/capture/model";
 import { parseCaptureText } from "@/convex/lib/capture/parser";
 import type { ParsedCaptureTransaction } from "@/convex/lib/capture/parser";
+import { redactSensitive } from "@/convex/lib/capture/redact";
+import { resolveTransfers } from "@/convex/lib/capture/transfers";
+import type { CapturedTransfer } from "@/convex/lib/capture/transfers";
 
 import {
   extractTransactionsOnDevice,
@@ -10,7 +13,7 @@ import {
 } from "../../../modules/balanced-capture";
 
 export type CaptureInput =
-  | { kind: "image"; uri: string }
+  | { capturedAt?: number; kind: "image"; uri: string }
   | { kind: "text"; text: string };
 
 export type CaptureReader = "cloud" | "on-device" | "pattern";
@@ -20,7 +23,7 @@ export interface CapturedTransaction {
   reader: CaptureReader;
   /** Screenshot it came from, if any. */
   sourceImageUri?: string;
-  transaction: ParsedCaptureTransaction;
+  transaction: CapturedTransfer;
 }
 
 export interface CaptureResult {
@@ -55,9 +58,9 @@ const readInput = async (input: CaptureInput): Promise<ReadInput> => {
   const recognized = await recognizeImageText(input.uri);
   return {
     imageUri: input.uri,
-    referenceDate: recognized.capturedAt
-      ? new Date(recognized.capturedAt)
-      : new Date(),
+    referenceDate: new Date(
+      recognized.capturedAt ?? input.capturedAt ?? Date.now()
+    ),
     text: recognized.text,
   };
 };
@@ -92,7 +95,8 @@ const extractInCloud = async (
     return { issue: "cloud model: not configured" };
   }
   try {
-    const extracted = await cloud(text);
+    // Account numbers and emails never leave the phone.
+    const extracted = await cloud(redactSensitive(text));
     return { transactions: normalizeModelTransactions(extracted, text) };
   } catch (error) {
     return { issue: `cloud model: ${describeError(error)}` };
@@ -106,7 +110,12 @@ const extractInCloud = async (
  */
 export const parseCapture = async (
   inputs: CaptureInput[],
-  options: { cloud?: CloudExtractor; forceCloud?: boolean } = {}
+  options: {
+    cloud?: CloudExtractor;
+    forceCloud?: boolean;
+    /** Names that identify the user, to spot transfers to their own accounts. */
+    ownerNames?: string[];
+  } = {}
 ): Promise<CaptureResult> => {
   const reads = await Promise.all(inputs.map(readInput));
   const transactions: CapturedTransaction[] = [];
@@ -167,12 +176,31 @@ export const parseCapture = async (
     }
   }
 
+  // Own-account transfers absorb their incoming leg from the same capture.
+  const resolved = resolveTransfers(
+    transactions.map((item) => item.transaction),
+    options.ownerNames ?? []
+  );
+  const readerByRef = new Map(
+    transactions.map((item) => [item.transaction.externalRef, item])
+  );
+  const finalTransactions: CapturedTransaction[] = resolved.map(
+    (transaction) => {
+      const original = readerByRef.get(transaction.externalRef);
+      return {
+        reader: original?.reader ?? "pattern",
+        sourceImageUri: original?.sourceImageUri,
+        transaction,
+      };
+    }
+  );
+
   const [firstRead] = reads;
   return {
     modelIssue,
     referenceDate: firstRead?.referenceDate ?? new Date(),
     sourceText: reads.map((read) => read.text).join("\n\n"),
-    transactions,
+    transactions: finalTransactions,
     unreadSegments,
   };
 };

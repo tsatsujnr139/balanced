@@ -195,7 +195,9 @@ export default defineSchema({
     size: v.optional(v.number()),
     storageId: v.id("_storage"),
     transactionId: v.id("transactions"),
-  }).index("by_transactionId", ["transactionId"]),
+  })
+    .index("by_transactionId", ["transactionId"])
+    .index("by_storageId", ["storageId"]),
 
   transactionTags: defineTable({
     tagId: v.id("tags"),

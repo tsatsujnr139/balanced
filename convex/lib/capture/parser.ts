@@ -7,7 +7,28 @@
  */
 
 /** Known notification formats; "other" is anything read by an AI model. */
-export type CaptureProvider = "fnb" | "ghanapay" | "mtn_momo" | "other";
+export type CaptureProvider =
+  | "bybit"
+  | "fnb"
+  | "ghanapay"
+  | "grey"
+  | "mtn_momo"
+  | "other"
+  | "wise";
+
+/**
+ * Money moving between the user's own accounts (or an exchange), rather than
+ * spending or income.
+ */
+export interface CaptureTransferDetails {
+  /** What the destination looks like on screen, e.g. "Grey" or "GHS P2P buyer". */
+  destinationHint?: string;
+  /** Exchange rate as printed (destination units per source unit). */
+  rate?: number;
+  /** Amount received, minor units of `toCurrency`, when it differs from `amount`. */
+  toAmount?: number;
+  toCurrency?: string;
+}
 
 export type CaptureDirection = "credit" | "debit";
 
@@ -33,7 +54,8 @@ export interface ParsedCaptureTransaction {
   counterpartyAccount?: string;
   /** Name or network of the other party. */
   counterpartyName?: string;
-  currency: "GHS";
+  /** ISO-like code, e.g. "GHS", "USD", "USDT". */
+  currency: string;
   /** Suggested transaction description. */
   description: string;
   direction: CaptureDirection;
@@ -54,6 +76,8 @@ export interface ParsedCaptureTransaction {
   sourceText: string;
   /** Provider transaction ID, when printed. */
   transactionId?: string;
+  /** Set when this is a transfer or exchange rather than spending/income. */
+  transfer?: CaptureTransferDetails;
 }
 
 export interface ParseCaptureOptions {
@@ -143,20 +167,26 @@ const THREAD_TIMESTAMP =
   /\b(?:(?<relative>Today|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)|(?:(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),? )?(?<day>\d{1,2}) (?<month>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: (?<year>\d{4}))?(?: at)?) (?<hour>\d{1,2}):(?<minute>\d{2})\b/g;
 
 const WHITESPACE = /\s+/g;
-const UNPARSED_AMOUNT = /GHS\s?\d/i;
+const UNPARSED_AMOUNT = /(?:GHS|USDT?|\$)\s?\d|\d\s?(?:GHS|USDT?)\b/i;
 const HAS_LETTER = /\p{L}/u;
 const NON_DIGIT = /\D/g;
 const WORD_START = /(?<prefix>^|[\s-])(?<letter>\p{L})/gu;
 const MINOR_UNITS_PER_MAJOR = 100;
 const DAYS_IN_WEEK = 7;
 
-/** Converts "1,071.75" to 107175 without floating-point rounding. */
+const HALF_UP_DIGIT = 5;
+
+/**
+ * Converts "1,071.75" to 107175 without floating-point rounding. Extra
+ * decimals (USDT "815.6606") round half up to two places.
+ */
 export const parseAmountToMinorUnits = (value: string): number => {
   const [whole = "0", fraction = ""] = value.replaceAll(",", "").split(".");
-  return (
-    Number.parseInt(whole, 10) * MINOR_UNITS_PER_MAJOR +
-    Number.parseInt(fraction.padEnd(2, "0").slice(0, 2), 10)
-  );
+  const cents =
+    Number.parseInt(whole || "0", 10) * MINOR_UNITS_PER_MAJOR +
+    Number.parseInt(fraction.padEnd(2, "0").slice(0, 2), 10);
+  const nextDigit = Number.parseInt(fraction.charAt(2) || "0", 10);
+  return nextDigit >= HALF_UP_DIGIT ? cents + 1 : cents;
 };
 
 const normalizeText = (text: string): string =>
@@ -458,11 +488,280 @@ const parseFnbPayment = (text: string): Match[] =>
     };
   });
 
+// ---------------------------------------------------------------------------
+// App screens (text recognised from screenshots of banking / exchange apps)
+// ---------------------------------------------------------------------------
+
+const BYBIT_ORDER_HEADING = /\b(?<side>Sell|Buy) USDT\b/g;
+const BYBIT_ORDER_HEADING_ONCE = /\b(?:Sell|Buy) USDT\b/;
+const BYBIT_COMPLETED = /\bCompleted\b/;
+const BYBIT_FIAT = /(?<fiat>[\d,]+\.\d{2}) GHS/;
+const BYBIT_PRICE = /Price:? (?<price>[\d,]+\.\d+) GHS/;
+const BYBIT_QTY = /Qty:? (?<qty>[\d,]+\.\d+) USDT/;
+// P2P order numbers are 19 digits; OCR sometimes reads the copy icon after
+// them as an extra digit, so take exactly 19.
+const BYBIT_ORDER_NO = /Order No\.? ?(?<orderNo>\d{19})/;
+const BYBIT_COUNTERPARTY = /(?:^|\s)[•=·] ?(?<party>.+?) \d{4}-\d{2}-\d{2}/;
+const ISO_DATE_TIME =
+  /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})/;
+
+/** Bybit P2P "Orders" list: one transaction per completed order. */
+const parseBybitP2pOrders = (text: string): Match[] => {
+  const headings = [...text.matchAll(BYBIT_ORDER_HEADING)];
+  const matches: Match[] = [];
+  headings.forEach((heading, index) => {
+    const start = heading.index;
+    const end = headings[index + 1]?.index ?? text.length;
+    const block = text.slice(start, end);
+    const fiat = BYBIT_FIAT.exec(block)?.[1];
+    const price = BYBIT_PRICE.exec(block)?.[1];
+    const qty = BYBIT_QTY.exec(block)?.[1];
+    const orderNo = BYBIT_ORDER_NO.exec(block)?.[1];
+    const when = ISO_DATE_TIME.exec(block);
+    // Skip cancelled orders and blocks cut off by the screenshot edge.
+    if (
+      !(BYBIT_COMPLETED.test(block) && fiat && price && qty && orderNo && when)
+    ) {
+      return;
+    }
+    const [, year, month, day, hour, minute, second] = when;
+    const occurredAt: CaptureDateTime = {
+      day: Number(day),
+      hour: Number(hour),
+      minute: Number(minute),
+      month: Number(month),
+      second: Number(second),
+      year: Number(year),
+    };
+    const counterpartyName = BYBIT_COUNTERPARTY.exec(block)?.[1]?.trim();
+    const isSell = heading[1] === "Sell";
+    const usdt = parseAmountToMinorUnits(qty);
+    const ghs = parseAmountToMinorUnits(fiat);
+    const rate = Number.parseFloat(price.replaceAll(",", ""));
+    const partyText = counterpartyName
+      ? ` ${isSell ? "to" : "from"} ${counterpartyName}`
+      : "";
+    matches.push({
+      end: start + when.index + when[0].length,
+      start,
+      transaction: {
+        // Selling sends USDT out of Bybit and GHS arrives in a cedi account;
+        // buying sends GHS from a cedi account and USDT arrives in Bybit.
+        amount: isSell ? usdt : ghs,
+        counterpartyName,
+        currency: isSell ? "USDT" : "GHS",
+        description: `${isSell ? "Sell" : "Buy"} USDT${partyText}`,
+        direction: "debit",
+        externalRef: `bybit:${orderNo}`,
+        fee: 0,
+        institution: "Bybit",
+        occurredAt,
+        occurredAtSource: "message",
+        provider: isSell ? "bybit" : "other",
+        transactionId: orderNo,
+        transfer: {
+          destinationHint: isSell ? "Cedi account (P2P buyer pays)" : "Bybit",
+          rate,
+          toAmount: isSell ? ghs : usdt,
+          toCurrency: isSell ? "GHS" : "USDT",
+        },
+      },
+    });
+  });
+  return matches;
+};
+
+// MTN MoMo app "Transaction details": "Date and time 17 Nov 2026 | 09:06
+// Beneficiary JOHN DOE Transaction ID 94007436004 Status SUCCESSFUL To
+// 233200000000 Transaction type MoMo User Reference Water piping work Amount
+// GHS 138 Txn Fees GHS 1.03 Tax GHS 0 Total GHS 139.03"
+const MOMO_APP_DETAILS = new RegExp(
+  String.raw`Date and time (\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4}) ?\|* ?(\d{1,2}):(\d{2}) Beneficiary (.+?) Transaction ID (\d+) Status SUCCESSFUL (?:To (\d+) )?(?:Transaction type .+? )?(?:Reference (.+?) )?Amount ${GHS}${AMOUNT} Txn Fees ${GHS}${AMOUNT}(?: Tax ${GHS}\S+)?(?: Total ${GHS}${AMOUNT_BODY})?`,
+  "gi"
+);
+
+const parseMomoAppDetails = (text: string): Match[] =>
+  [...text.matchAll(MOMO_APP_DETAILS)].map((match) => {
+    const [
+      full,
+      day,
+      month,
+      year,
+      hour,
+      minute,
+      beneficiary,
+      transactionId,
+      to,
+      reference,
+      amount,
+      fee,
+    ] = match;
+    const ref = meaningfulReference(reference);
+    const counterpartyName = titleCase(beneficiary?.trim() ?? "");
+    return {
+      end: match.index + full.length,
+      start: match.index,
+      transaction: {
+        amount: parseAmountToMinorUnits(amount ?? "0"),
+        counterpartyAccount: to,
+        counterpartyName,
+        currency: "GHS",
+        description: ref ?? counterpartyName,
+        direction: "debit",
+        // Same key as the SMS for this payment, so the two never double up.
+        externalRef: `mtn_momo:${transactionId}`,
+        fee: parseAmountToMinorUnits(fee ?? "0"),
+        occurredAt: {
+          day: Number(day),
+          hour: Number(hour),
+          minute: Number(minute),
+          month: monthIndex(month ?? "") + 1,
+          second: 0,
+          year: Number(year),
+        },
+        occurredAtSource: "message",
+        provider: "mtn_momo",
+        reference: ref,
+        transactionId,
+      },
+    };
+  });
+
+// Wise transfer details: "You sent 2,001.13 USD Wise's fees 1.13 USD You
+// received 2,000 USD Transaction number #2492752766"
+const WISE_DETAILS = new RegExp(
+  String.raw`You sent ${AMOUNT} ([A-Z]{3}) Wise.?s fees ${AMOUNT} [A-Z]{3} (?:You received|Recipient gets) ${AMOUNT} ([A-Z]{3}) Transaction number #?(\d+)`,
+  "gi"
+);
+const WISE_RECIPIENT =
+  /\bSent [\d,.]+ [A-Z]{3} (?<recipient>.+?) (?:General|Updates|Details)\b/;
+const WISE_NICKNAME = /\bNickname (?<nickname>.+?) Account holder name\b/;
+
+const parseWiseDetails = (text: string): Match[] =>
+  [...text.matchAll(WISE_DETAILS)].map((match) => {
+    const [
+      full,
+      sent,
+      sentCurrency,
+      fees,
+      received,
+      receivedCurrency,
+      transactionId,
+    ] = match;
+    const fee = parseAmountToMinorUnits(fees ?? "0");
+    const receivedMinor = parseAmountToMinorUnits(received ?? "0");
+    const sameCurrency = sentCurrency === receivedCurrency;
+    const recipientMatch = WISE_RECIPIENT.exec(text);
+    const recipient = recipientMatch?.[1]?.trim();
+    const nickname = WISE_NICKNAME.exec(text)?.[1]?.trim();
+    return {
+      end: match.index + full.length,
+      // Include the "Sent 2,000 USD <name>" header so it isn't left unread.
+      start: Math.min(match.index, recipientMatch?.index ?? match.index),
+      transaction: {
+        amount: parseAmountToMinorUnits(sent ?? "0") - fee,
+        counterpartyName: recipient,
+        currency: sentCurrency ?? "USD",
+        description: `Wise transfer${recipient ? ` to ${recipient}` : ""}`,
+        direction: "debit",
+        externalRef: `wise:${transactionId}`,
+        fee,
+        institution: "Wise",
+        provider: "wise",
+        transactionId,
+        transfer: {
+          destinationHint: nickname,
+          toAmount: sameCurrency ? undefined : receivedMinor,
+          toCurrency: sameCurrency ? undefined : receivedCurrency,
+        },
+      },
+    };
+  });
+
+// Grey transaction details: "Sent to JANE DOE Nov 16, 2026 | 12:42pm ...
+// Recipient receives ·897.20 Amount sent $900.00 Transaction fee -$1.00
+// Exchange rate 1 USD = 1.00 USDT ... Reference code EPBFO02Q8NQ"
+const GREY_DETAILS = new RegExp(
+  String.raw`Sent to (.+?) ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) ?\| ?(\d{1,2}):(\d{2}) ?(am|pm)\b[\s\S]{0,80}?Completed Recipient receives \D{0,3}${AMOUNT} Amount sent \D{0,3}${AMOUNT} Transaction fee -?\D{0,3}${AMOUNT} Exchange rate 1 ([A-Z]{3,4}) = ([\d.]+) ([A-Z]{3,4})`,
+  "gi"
+);
+// The code is upper-case letters and digits; OCR can place other labels
+// (e.g. "Session ID") between the label and the value.
+const GREY_REFERENCE =
+  /Reference code\b[\s\S]{0,40}?\b(?<reference>(?=[A-Z0-9]*\d)[A-Z0-9]{8,})\b/;
+const HOURS_PER_HALF_DAY = 12;
+
+const parseGreyDetails = (text: string): Match[] =>
+  [...text.matchAll(GREY_DETAILS)].map((match) => {
+    const [
+      full,
+      recipient,
+      month,
+      day,
+      year,
+      hour12,
+      minute,
+      meridiem,
+      received,
+      sent,
+      fees,
+      fromCurrency,
+      rate,
+      toCurrency,
+    ] = match;
+    const reference = GREY_REFERENCE.exec(text.slice(match.index))?.[1];
+    const fee = parseAmountToMinorUnits(fees ?? "0");
+    let hour = Number(hour12) % HOURS_PER_HALF_DAY;
+    if (meridiem?.toLowerCase() === "pm") {
+      hour += HOURS_PER_HALF_DAY;
+    }
+    const sameCurrency = fromCurrency === toCurrency;
+    return {
+      end: match.index + full.length,
+      start: match.index,
+      transaction: {
+        // "Amount sent" includes Grey's fee; the fee is recorded separately.
+        amount: parseAmountToMinorUnits(sent ?? "0") - fee,
+        counterpartyName: recipient?.trim(),
+        currency: fromCurrency ?? "USD",
+        description: `Grey transfer to ${recipient?.trim() ?? "recipient"}`,
+        direction: "debit",
+        externalRef: `grey:${reference ?? `${year}${month}${day}${hour}${minute}:${sent}`}`,
+        fee,
+        institution: "Grey",
+        occurredAt: {
+          day: Number(day),
+          hour,
+          minute: Number(minute),
+          month: monthIndex(month ?? "") + 1,
+          second: 0,
+          year: Number(year),
+        },
+        occurredAtSource: "message",
+        provider: "grey",
+        reference,
+        transactionId: reference,
+        transfer: {
+          destinationHint: `${toCurrency} wallet`,
+          rate: Number.parseFloat(rate ?? "1"),
+          toAmount: sameCurrency
+            ? undefined
+            : parseAmountToMinorUnits(received ?? "0"),
+          toCurrency: sameCurrency ? undefined : toCurrency,
+        },
+      },
+    };
+  });
+
 const PARSERS = [
   parseGhanaPay,
   parseMomoPayment,
   parseMomoPaymentCompleted,
   parseFnbPayment,
+  parseBybitP2pOrders,
+  parseMomoAppDetails,
+  parseWiseDetails,
+  parseGreyDetails,
 ] as const;
 
 const findUnparsedSegments = (
@@ -476,9 +775,13 @@ const findUnparsedSegments = (
     cursor = Math.max(cursor, span.end);
   }
   segments.push(text.slice(cursor));
-  return segments
-    .map((segment) => segment.trim())
-    .filter((segment) => UNPARSED_AMOUNT.test(segment));
+  return (
+    segments
+      .map((segment) => segment.trim())
+      .filter((segment) => UNPARSED_AMOUNT.test(segment))
+      // A Bybit order heading left over means that order was cut off.
+      .filter((segment) => !BYBIT_ORDER_HEADING_ONCE.test(segment))
+  );
 };
 
 /**

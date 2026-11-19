@@ -2066,17 +2066,22 @@ export const createTransaction = mutation({
     ...createTransactionArgs,
     /** Stable source identifier (e.g. an SMS transaction ID) used to skip re-captures. */
     externalRef: v.optional(v.string()),
+    /** External ref of the incoming leg of a transfer (e.g. the receiving SMS). */
+    toExternalRef: v.optional(v.string()),
   },
-  handler: async (ctx, { externalRef, ...args }) => {
+  handler: async (ctx, { externalRef, toExternalRef, ...args }) => {
     const normalizedExternalRef = externalRef?.trim() || undefined;
-    if (
-      normalizedExternalRef &&
-      (await findTransactionByExternalRef(ctx, normalizedExternalRef))
-    ) {
-      throw new ConvexError({
-        code: "DUPLICATE_EXTERNAL_REF",
-        externalRef: normalizedExternalRef,
-      });
+    const normalizedToExternalRef =
+      args.type === "transfer" && args.toAccountId
+        ? toExternalRef?.trim() || undefined
+        : undefined;
+    for (const ref of [normalizedExternalRef, normalizedToExternalRef]) {
+      if (ref && (await findTransactionByExternalRef(ctx, ref))) {
+        throw new ConvexError({
+          code: "DUPLICATE_EXTERNAL_REF",
+          externalRef: ref,
+        });
+      }
     }
 
     const result = await insertTransaction(ctx, args);
@@ -2084,6 +2089,14 @@ export const createTransaction = mutation({
       await ctx.db.patch(result.mainTransactionId, {
         externalRef: normalizedExternalRef,
       });
+    }
+    if (normalizedToExternalRef) {
+      const main = await ctx.db.get("transactions", result.mainTransactionId);
+      if (main?.pairTransactionId) {
+        await ctx.db.patch(main.pairTransactionId, {
+          externalRef: normalizedToExternalRef,
+        });
+      }
     }
     return result;
   },
@@ -2582,8 +2595,29 @@ async function deleteTransactionArtifacts(
     .withIndex("by_transactionId", (q) => q.eq("transactionId", transactionId))
     .collect();
   for (const attachment of attachments) {
+    await deleteAttachment(ctx, attachment);
+  }
+}
+
+/**
+ * Removes an attachment row and, once no other transaction uses it, its file.
+ * One captured screenshot can be attached to several transactions.
+ */
+async function deleteAttachment(
+  ctx: MutationCtx,
+  attachment: Doc<"transactionAttachments">
+) {
+  await ctx.db.delete(attachment._id);
+  const stillUsed = await ctx.db
+    .query("transactionAttachments")
+    .withIndex("by_storageId", (q) => q.eq("storageId", attachment.storageId))
+    .first();
+  if (stillUsed) {
+    return;
+  }
+  // Files deleted by older versions may already be gone.
+  if (await ctx.db.system.get("_storage", attachment.storageId)) {
     await ctx.storage.delete(attachment.storageId);
-    await ctx.db.delete(attachment._id);
   }
 }
 
@@ -2618,8 +2652,7 @@ async function replaceTransactionAttachments(
 
   for (const attachment of existing) {
     if (!nextStorageIds.has(attachment.storageId)) {
-      await ctx.storage.delete(attachment.storageId);
-      await ctx.db.delete(attachment._id);
+      await deleteAttachment(ctx, attachment);
     }
   }
 

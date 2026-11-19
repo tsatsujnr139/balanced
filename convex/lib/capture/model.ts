@@ -18,6 +18,8 @@ export interface ModelExtractedTransaction {
   amount: string;
   balanceAfter?: string;
   counterparty?: string;
+  /** Currency code as printed, e.g. "GHS", "USD", "USDT". */
+  currency?: string;
   direction: string;
   fee?: string;
   institution?: string;
@@ -36,6 +38,25 @@ const MODEL_DATE_TIME =
   /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})[ T](?<hour>\d{2}):(?<minute>\d{2})/;
 const WHITESPACE = /\s+/g;
 const DIRECTIONS = new Set<string>(["credit", "debit"]);
+const CURRENCY_CODE = /^[A-Z]{3,4}$/;
+const DEFAULT_CURRENCY = "GHS";
+
+/**
+ * Same ref prefixes as the fixed patterns, so a payment read by the AI from
+ * one source and by a pattern from another is recognised as one transaction.
+ */
+const INSTITUTION_REF_PREFIXES: [RegExp, string][] = [
+  [/\b(?:mtn|momo|mobile ?money)\b/i, "mtn_momo"],
+  [/\bghana ?pay\b/i, "ghanapay"],
+  [/\bwise\b/i, "wise"],
+  [/\bgrey\b/i, "grey"],
+  [/\bbybit\b/i, "bybit"],
+];
+
+const refPrefix = (institution: string | undefined): string =>
+  INSTITUTION_REF_PREFIXES.find(([pattern]) =>
+    pattern.test(institution ?? "")
+  )?.[1] ?? "txn";
 const MAX_MONTH = 12;
 const MAX_DAY = 31;
 const MAX_HOUR = 23;
@@ -107,7 +128,7 @@ const modelExternalRef = (transaction: {
   transactionId?: string;
 }): string => {
   if (transaction.transactionId) {
-    return `txn:${transaction.transactionId}`;
+    return `${refPrefix(transaction.institution)}:${transaction.transactionId}`;
   }
   const { occurredAt } = transaction;
   const when = occurredAt
@@ -166,7 +187,10 @@ export const normalizeModelTransactions = (
       amount,
       balanceAfter,
       counterpartyName,
-      currency: "GHS",
+      currency:
+        item.currency && CURRENCY_CODE.test(item.currency.trim().toUpperCase())
+          ? item.currency.trim().toUpperCase()
+          : DEFAULT_CURRENCY,
       description:
         clean(item.summary) ?? reference ?? counterpartyName ?? "Transaction",
       direction: typedDirection,

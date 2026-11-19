@@ -107,3 +107,34 @@ describe("normalizeModelTransactions", () => {
     expect(result[0]?.externalRef).toBe("model:mtn:debit:2000::");
   });
 });
+
+describe("cross-source refs", () => {
+  test("uses the provider prefix so AI and pattern reads share a ref", () => {
+    const [transaction] = normalizeModelTransactions(
+      [
+        {
+          amount: "20.00",
+          currency: "ghs",
+          direction: "debit",
+          institution: "MTN Mobile Money",
+          transactionId: "90000000002",
+        },
+      ],
+      SOURCE
+    );
+
+    expect(transaction).toMatchObject({
+      currency: "GHS",
+      externalRef: "mtn_momo:90000000002",
+    });
+  });
+
+  test("keeps non-cedi currencies", () => {
+    const [transaction] = normalizeModelTransactions(
+      [{ amount: "20.00", currency: "USDT", direction: "credit" }],
+      SOURCE
+    );
+
+    expect(transaction?.currency).toBe("USDT");
+  });
+});

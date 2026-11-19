@@ -163,3 +163,28 @@ test("deleting a cross-currency transfer restores both balances", async () => {
   expect(await balanceOf(grey)).toBe(500_000);
   expect(await balanceOf(bybit)).toBe(0);
 });
+
+test("records the incoming leg's external ref on a captured transfer", async () => {
+  const { bybit, grey, t } = await setup();
+
+  await t.mutation(api.finance.createTransaction, {
+    accountId: grey,
+    amount: 89_900,
+    attachments: [],
+    date: Date.now(),
+    externalRef: "grey:REF1",
+    merchant: "Grey transfer",
+    tagIds: [],
+    toAccountId: bybit,
+    toAmount: 89_720,
+    toExternalRef: "bybit-deposit:DEP1",
+    transactionCharge: 100,
+    type: "transfer",
+  });
+
+  expect(
+    await t.query(api.finance.findCapturedExternalRefs, {
+      externalRefs: ["grey:REF1", "bybit-deposit:DEP1"],
+    })
+  ).toEqual(["grey:REF1", "bybit-deposit:DEP1"]);
+});
