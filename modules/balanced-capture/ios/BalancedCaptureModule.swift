@@ -210,13 +210,20 @@ enum TransactionExtractor {
     }
 
     let session = LanguageModelSession(instructions: extractionInstructions)
+    // Xcode 27 renamed this initializer; EAS can still build with Xcode 26.
+    let options: GenerationOptions
+    #if compiler(>=6.4)
+    options = GenerationOptions(samplingMode: .greedy)
+    #else
+    options = GenerationOptions(sampling: .greedy)
+    #endif
     do {
-      let response = try await session.respond(
+      let response: LanguageModelSession.Response<TransactionExtraction> = try await session.respond(
         to: text,
         generating: TransactionExtraction.self,
-        options: GenerationOptions(samplingMode: .greedy)
+        options: options
       )
-      return response.content.transactions.map(\.dictionary)
+      return response.content.transactions.map { transaction in transaction.dictionary }
     } catch {
       if isContextOverflow(error) {
         throw InputTooLongException()
@@ -227,11 +234,14 @@ enum TransactionExtractor {
 
   @available(iOS 26.0, *)
   private static func isContextOverflow(_ error: Error) -> Bool {
+    // A runtime availability check alone cannot hide a type from an older SDK.
+    #if compiler(>=6.4)
     if #available(iOS 27.0, *), let error = error as? LanguageModelError,
       case .contextSizeExceeded = error
     {
       return true
     }
+    #endif
     if let error = error as? LanguageModelSession.GenerationError,
       case .exceededContextWindowSize = error
     {
