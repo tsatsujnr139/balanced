@@ -18,9 +18,11 @@ import {
 } from "@/features/capture/capture-accounts";
 import { CaptureContext } from "@/features/capture/capture-context";
 import type {
+  CaptureCategory,
   CaptureContextValue,
   CaptureDraft,
   CaptureImage,
+  CaptureTag,
 } from "@/features/capture/capture-context";
 import { useFinance } from "@/features/finance/use-finance";
 import { setLastTransactionAccountId } from "@/features/finance/use-last-transaction-account";
@@ -101,6 +103,37 @@ export default function CaptureLayout() {
           : draft
       );
     });
+  }, []);
+
+  const setDraftCategory = useCallback(
+    (key: string, category: CaptureCategory) => {
+      setDrafts((current) =>
+        current.map((draft) =>
+          draft.key === key
+            ? { ...draft, category, labelSource: "manual" }
+            : draft
+        )
+      );
+    },
+    []
+  );
+
+  const toggleDraftTag = useCallback((key: string, tag: CaptureTag) => {
+    setDrafts((current) =>
+      current.map((draft) => {
+        if (draft.key !== key) {
+          return draft;
+        }
+        const hasTag = draft.tags.some((item) => item.id === tag.id);
+        return {
+          ...draft,
+          labelSource: "manual",
+          tags: hasTag
+            ? draft.tags.filter((item) => item.id !== tag.id)
+            : [...draft.tags, tag],
+        };
+      })
+    );
   }, []);
 
   const toggleDraft = useCallback((key: string) => {
@@ -186,11 +219,14 @@ export default function CaptureLayout() {
             accountId: draft.accountId as Id<"accounts">,
             amount: transaction.amount,
             attachments,
+            category: draft.category?.name,
+            color: draft.category?.color,
             createdByName: firstName || undefined,
             date: draft.date,
             externalRef: transaction.externalRef,
             merchant: transaction.description,
-            tagIds: [],
+            symbol: draft.category?.symbol,
+            tagIds: draft.tags.map((tag) => tag.id as Id<"tags">),
             transactionCharge:
               isExpense && transaction.fee > 0 ? transaction.fee : undefined,
             type: isExpense ? "expense" : "income",
@@ -235,13 +271,25 @@ export default function CaptureLayout() {
       images,
       isSaving,
       setDraftAccount,
+      setDraftCategory,
       setDrafts,
       setImages,
       setText,
       text,
       toggleDraft,
+      toggleDraftTag,
     }),
-    [alreadyAdded, drafts, images, isSaving, setDraftAccount, text, toggleDraft]
+    [
+      alreadyAdded,
+      drafts,
+      images,
+      isSaving,
+      setDraftAccount,
+      setDraftCategory,
+      text,
+      toggleDraft,
+      toggleDraftTag,
+    ]
   );
 
   const selectedCount = drafts.filter(
@@ -327,6 +375,44 @@ export default function CaptureLayout() {
                   variant="prominent"
                 />
               )}
+            </Stack.Toolbar>
+          ) : null}
+        </Stack.Screen>
+        <Stack.Screen
+          name="category"
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Category",
+          }}
+        >
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
+            </Stack.Toolbar>
+          ) : null}
+        </Stack.Screen>
+        <Stack.Screen
+          name="tags"
+          options={{
+            headerBackVisible: false,
+            ...androidHeaderOptions({ headerLeft: renderBackButton }),
+            title: "Tags",
+          }}
+        >
+          {Platform.OS === "ios" ? (
+            <Stack.Toolbar placement="left">
+              <Stack.Toolbar.Button
+                accessibilityLabel="Back"
+                icon="chevron.left"
+                onPress={() => router.back()}
+                separateBackground
+              />
             </Stack.Toolbar>
           ) : null}
         </Stack.Screen>

@@ -29,6 +29,7 @@ import { useCapture } from "@/features/capture/capture-context";
 import type {
   CaptureDraft,
   CaptureImage,
+  CaptureLabelSource,
 } from "@/features/capture/capture-context";
 import { parseCapture } from "@/features/capture/parse-capture";
 import type {
@@ -37,8 +38,13 @@ import type {
   CaptureResult,
 } from "@/features/capture/parse-capture";
 import { formatCurrency } from "@/features/finance/format";
+import { TRANSACTION_CATEGORIES } from "@/features/finance/transaction-categories";
 import type { Account } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
+import {
+  useCachedCategories,
+  useCachedTags,
+} from "@/features/finance/use-labels";
 import { useLastTransactionAccountId } from "@/features/finance/use-last-transaction-account";
 import { useThemeColors } from "@/hooks/use-theme";
 
@@ -138,6 +144,110 @@ function ActionButton({
         </>
       )}
     </Pressable>
+  );
+}
+
+const LABEL_SOURCE_TEXT: Record<CaptureLabelSource, string> = {
+  ai: "Suggested by OpenCode",
+  history: "From your history",
+  manual: "",
+  rule: "Automatic rule",
+};
+
+function LabelChips({
+  alreadyAdded,
+  draft,
+}: {
+  alreadyAdded: boolean;
+  draft: CaptureDraft;
+}) {
+  const colors = useThemeColors();
+  const sourceText = draft.labelSource
+    ? LABEL_SOURCE_TEXT[draft.labelSource]
+    : "";
+  const openPicker = (pathname: "/capture/category" | "/capture/tags") =>
+    router.push({ params: { draft: draft.key }, pathname });
+
+  return (
+    <View style={{ gap: 4 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        <Pressable
+          accessibilityLabel={`Category: ${draft.category?.name ?? "Automatic"}`}
+          accessibilityRole="button"
+          disabled={alreadyAdded}
+          onPress={() => openPicker("/capture/category")}
+          style={{
+            alignItems: "center",
+            backgroundColor: `${draft.category?.color ?? colors.muted}22`,
+            borderRadius: 8,
+            flexDirection: "row",
+            gap: 5,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+          }}
+        >
+          <SymbolView
+            name={(draft.category?.symbol ?? "square.grid.2x2") as never}
+            size={12}
+            tintColor={draft.category?.color ?? colors.muted}
+          />
+          <Text
+            style={{
+              color: draft.category?.color ?? colors.muted,
+              fontSize: 12,
+              fontWeight: "600",
+            }}
+          >
+            {draft.category?.name ?? "Automatic category"}
+          </Text>
+        </Pressable>
+        {draft.tags.map((tag) => (
+          <Pressable
+            accessibilityLabel={`Tag ${tag.name}`}
+            accessibilityRole="button"
+            disabled={alreadyAdded}
+            key={tag.id}
+            onPress={() => openPicker("/capture/tags")}
+            style={{
+              backgroundColor: tag.color,
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>
+              {tag.name}
+            </Text>
+          </Pressable>
+        ))}
+        {alreadyAdded ? null : (
+          <Pressable
+            accessibilityLabel="Edit tags"
+            accessibilityRole="button"
+            hitSlop={6}
+            onPress={() => openPicker("/capture/tags")}
+            style={{
+              alignItems: "center",
+              borderColor: colors.border,
+              borderRadius: 8,
+              borderWidth: 1,
+              flexDirection: "row",
+              gap: 4,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+            }}
+          >
+            <SymbolView name="tag" size={11} tintColor={colors.muted} />
+            <Text style={{ color: colors.muted, fontSize: 12 }}>
+              {draft.tags.length > 0 ? "Edit" : "Tags"}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+      {sourceText && !alreadyAdded ? (
+        <Text style={{ color: colors.muted, fontSize: 11 }}>{sourceText}</Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -243,6 +353,7 @@ function DraftRow({
           </Text>
           <SymbolView name="chevron.right" size={10} tintColor={colors.muted} />
         </Pressable>
+        <LabelChips alreadyAdded={alreadyAdded} draft={draft} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {alreadyAdded ? (
             <Badge color={colors.muted} label="Already added" />
@@ -317,12 +428,14 @@ const buildDrafts = (
         accounts
       ),
       captured,
+      category: null,
       continuity: continuity[index] ?? "unknown",
       date: transaction.occurredAt
         ? captureDateTimeToEpoch(transaction.occurredAt)
         : result.referenceDate.getTime(),
       key: transaction.externalRef,
       selected: true,
+      tags: [],
     };
   });
 };
@@ -332,6 +445,66 @@ export default function CaptureScreen() {
   const { accounts } = useFinance();
   const lastAccountId = useLastTransactionAccountId();
   const extractInCloud = useAction(api.capture.extractTransactions);
+  const suggestLabels = useAction(api.labels.suggest);
+  const { categories: customCategories } = useCachedCategories();
+  const { tags: availableTags } = useCachedTags();
+  const [isLabelling, setIsLabelling] = useState(false);
+
+  const applyLabelSuggestions = async (built: CaptureDraft[]) => {
+    const categoryByName = new Map(
+      [...TRANSACTION_CATEGORIES, ...customCategories].map((category) => [
+        category.name,
+        category,
+      ])
+    );
+    const pending = built.filter((draft) => !alreadyAdded.has(draft.key));
+    if (pending.length === 0) {
+      return;
+    }
+    setIsLabelling(true);
+    try {
+      const { suggestions } = await suggestLabels({
+        categoryNames: [...categoryByName.keys()],
+        drafts: pending.map(({ captured, key }) => ({
+          counterparty: captured.transaction.counterpartyName,
+          description: captured.transaction.description,
+          direction: captured.transaction.direction,
+          key,
+          reference: captured.transaction.reference,
+        })),
+      });
+      const byKey = new Map(suggestions.map((item) => [item.key, item]));
+      setDrafts((current) =>
+        current.map((draft) => {
+          const suggestion = byKey.get(draft.key);
+          // Never overwrite a choice the user made while suggestions loaded.
+          if (!suggestion || draft.labelSource === "manual") {
+            return draft;
+          }
+          const category = suggestion.category
+            ? categoryByName.get(suggestion.category)
+            : undefined;
+          const suggestedTagIds = new Set<string>(suggestion.tagIds);
+          return {
+            ...draft,
+            category: category
+              ? {
+                  color: category.color,
+                  name: category.name,
+                  symbol: category.symbol,
+                }
+              : null,
+            labelSource: suggestion.source,
+            tags: availableTags.filter((tag) => suggestedTagIds.has(tag.id)),
+          };
+        })
+      );
+    } catch {
+      // Suggestions are optional; drafts stay unlabelled.
+    } finally {
+      setIsLabelling(false);
+    }
+  };
   const { alreadyAdded, drafts, images, setDrafts, setImages, setText, text } =
     useCapture();
   const [isReading, setIsReading] = useState(false);
@@ -367,7 +540,9 @@ export default function CaptureScreen() {
         forceCloud: options.forceCloud,
       });
       setResult(next);
-      setDrafts(buildDrafts(next, fallbackAccountId, accounts));
+      const built = buildDrafts(next, fallbackAccountId, accounts);
+      setDrafts(built);
+      void applyLabelSuggestions(built);
     } catch (error) {
       setReadError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -510,6 +685,7 @@ export default function CaptureScreen() {
       {result && !isReading ? (
         <Text style={{ color: colors.muted, fontSize: 14 }}>
           {summarize(drafts.length, alreadyAddedCount)}
+          {isLabelling ? " Suggesting categories…" : ""}
         </Text>
       ) : null}
 

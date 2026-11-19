@@ -11,7 +11,10 @@
 import type * as automaticRules from "../automaticRules.js";
 import type * as capture from "../capture.js";
 import type * as finance from "../finance.js";
+import type * as labels from "../labels.js";
 import type * as lib_automaticRuleMatching from "../lib/automaticRuleMatching.js";
+import type * as lib_capture_chat from "../lib/capture/chat.js";
+import type * as lib_capture_labels from "../lib/capture/labels.js";
 import type * as lib_capture_model from "../lib/capture/model.js";
 import type * as lib_capture_parser from "../lib/capture/parser.js";
 import type * as seed from "../seed.js";
@@ -26,7 +29,10 @@ declare const fullApi: ApiFromModules<{
   automaticRules: typeof automaticRules;
   capture: typeof capture;
   finance: typeof finance;
+  labels: typeof labels;
   "lib/automaticRuleMatching": typeof lib_automaticRuleMatching;
+  "lib/capture/chat": typeof lib_capture_chat;
+  "lib/capture/labels": typeof lib_capture_labels;
   "lib/capture/model": typeof lib_capture_model;
   "lib/capture/parser": typeof lib_capture_parser;
   seed: typeof seed;
