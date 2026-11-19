@@ -95,6 +95,15 @@ const config: ExpoConfig = {
               supportedFamilies: ["systemSmall"],
             },
           },
+          {
+            name: "CaptureWidget",
+            displayName: "Capture",
+            description:
+              "Paste, dictate, or pick screenshots of bank and MoMo messages.",
+            ios: {
+              supportedFamilies: ["systemSmall"],
+            },
+          },
         ],
       },
     ],

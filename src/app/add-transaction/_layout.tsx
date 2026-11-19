@@ -76,6 +76,20 @@ const DEFAULT_LABEL_DRAFT: TransactionLabelDraft = {
   symbol: "square.grid.2x2.fill",
 };
 
+const CAPTURE_SHEET_REOPEN_DELAY_MS = 500;
+
+/** Swaps this sheet for the capture sheet (sheets can't stack). */
+function openCapture() {
+  if (!router.canDismiss()) {
+    router.replace("/capture");
+    return;
+  }
+  router.dismiss();
+  setTimeout(() => {
+    router.push("/capture");
+  }, CAPTURE_SHEET_REOPEN_DELAY_MS);
+}
+
 function closeAddTransaction() {
   if (router.canDismiss()) {
     router.dismiss();
@@ -748,6 +762,13 @@ export default function AddTransactionLayout() {
           ) : null}
           {Platform.OS === "ios" ? (
             <Stack.Toolbar placement="right">
+              {isEditing ? null : (
+                <Stack.Toolbar.Button
+                  accessibilityLabel="Capture from text or screenshots"
+                  icon="text.viewfinder"
+                  onPress={openCapture}
+                />
+              )}
               {isSubmitting || isLoadingExisting ? (
                 <Stack.Toolbar.View>
                   <ActivityIndicator />

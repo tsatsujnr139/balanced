@@ -1,5 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import type { ObjectType } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -1669,185 +1670,123 @@ export const generateAttachmentUploadUrl = mutation({
   handler: async (ctx) => await ctx.storage.generateUploadUrl(),
 });
 
-export const createTransaction = mutation({
-  args: {
-    accountId: v.id("accounts"),
-    amount: v.number(),
-    attachments: v.array(
-      v.object({
-        mimeType: v.optional(v.string()),
-        name: v.string(),
-        size: v.optional(v.number()),
-        storageId: v.id("_storage"),
-      })
-    ),
-    category: v.optional(v.string()),
-    color: v.optional(v.string()),
-    createdByName: v.optional(v.string()),
-    date: v.number(),
-    externalTransferSide: v.optional(
-      v.union(v.literal("from"), v.literal("to"))
-    ),
-    merchant: v.string(),
-    symbol: v.optional(v.string()),
-    tagIds: v.array(v.id("tags")),
-    toAccountId: v.optional(v.id("accounts")),
-    transactionCharge: v.optional(v.number()),
-    type: v.union(
-      v.literal("expense"),
-      v.literal("income"),
-      v.literal("transfer")
-    ),
-  },
-  handler: async (ctx, args) => {
-    if (!Number.isFinite(args.amount) || args.amount <= 0) {
-      throw new Error("Transaction amounts must be positive");
-    }
-    if (
-      args.transactionCharge !== undefined &&
-      (!Number.isFinite(args.transactionCharge) || args.transactionCharge <= 0)
-    ) {
-      throw new Error("Transaction charge must be positive");
-    }
+const createTransactionArgs = {
+  accountId: v.id("accounts"),
+  amount: v.number(),
+  attachments: v.array(
+    v.object({
+      mimeType: v.optional(v.string()),
+      name: v.string(),
+      size: v.optional(v.number()),
+      storageId: v.id("_storage"),
+    })
+  ),
+  category: v.optional(v.string()),
+  color: v.optional(v.string()),
+  createdByName: v.optional(v.string()),
+  date: v.number(),
+  externalTransferSide: v.optional(v.union(v.literal("from"), v.literal("to"))),
+  merchant: v.string(),
+  symbol: v.optional(v.string()),
+  tagIds: v.array(v.id("tags")),
+  toAccountId: v.optional(v.id("accounts")),
+  transactionCharge: v.optional(v.number()),
+  type: v.union(
+    v.literal("expense"),
+    v.literal("income"),
+    v.literal("transfer")
+  ),
+};
 
-    const createdByName = normalizeFirstName(args.createdByName ?? "");
+type CreateTransactionArgs = ObjectType<typeof createTransactionArgs>;
 
-    if (args.type === "transfer") {
-      if (args.externalTransferSide === "from") {
-        const account = await ctx.db.get("accounts", args.accountId);
-        if (!account) {
-          throw new Error("Account not found");
-        }
+const insertTransaction = async (
+  ctx: MutationCtx,
+  args: CreateTransactionArgs
+): Promise<{
+  mainTransactionId: Id<"transactions">;
+  transactionChargeId: Id<"transactions"> | null;
+}> => {
+  if (!Number.isFinite(args.amount) || args.amount <= 0) {
+    throw new Error("Transaction amounts must be positive");
+  }
+  if (
+    args.transactionCharge !== undefined &&
+    (!Number.isFinite(args.transactionCharge) || args.transactionCharge <= 0)
+  ) {
+    throw new Error("Transaction charge must be positive");
+  }
 
-        const merchant =
-          args.merchant.trim() || `Transfer from ${OUT_OF_WALLET_ACCOUNT_NAME}`;
-        const transactionCharge = args.transactionCharge ?? 0;
-        const transferInId = await ctx.db.insert("transactions", {
-          accountId: args.accountId,
-          amount: args.amount,
-          category: TRANSFER_CATEGORY.name,
-          color: TRANSFER_CATEGORY.color,
-          createdByName,
-          currency: account.currency,
-          date: args.date,
-          merchant,
-          symbol: TRANSFER_CATEGORY.symbol,
-          transactionKind: "transfer_in",
-        });
+  const createdByName = normalizeFirstName(args.createdByName ?? "");
 
-        const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
-        await replaceTransactionTags(ctx, transferInId, [
-          ...args.tagIds,
-          accountTransferTagId,
-        ]);
-        for (const attachment of args.attachments) {
-          await ctx.db.insert("transactionAttachments", {
-            ...attachment,
-            transactionId: transferInId,
-          });
-        }
-
-        let transactionChargeId = null;
-        if (transactionCharge > 0) {
-          transactionChargeId = await ctx.db.insert("transactions", {
-            accountId: args.accountId,
-            amount: -transactionCharge,
-            category: "Transaction charges",
-            color: TRANSACTION_CHARGES_TAG_COLOR,
-            createdByName,
-            currency: account.currency,
-            date: args.date,
-            merchant: `${merchant} TC`,
-            parentTransactionId: transferInId,
-            symbol: "creditcard.fill",
-            transactionKind: "charge",
-          });
-          await replaceChargeTransactionTags(ctx, transactionChargeId);
-        }
-
-        await ctx.db.patch(args.accountId, {
-          balance: account.balance + args.amount - transactionCharge,
-        });
-
-        return { mainTransactionId: transferInId, transactionChargeId };
-      }
-
-      if (args.externalTransferSide === "to") {
-        const account = await ctx.db.get("accounts", args.accountId);
-        if (!account) {
-          throw new Error("Account not found");
-        }
-
-        const merchant =
-          args.merchant.trim() || `Transfer to ${OUT_OF_WALLET_ACCOUNT_NAME}`;
-        const transactionCharge = args.transactionCharge ?? 0;
-        const transferOutId = await ctx.db.insert("transactions", {
-          accountId: args.accountId,
-          amount: -args.amount,
-          category: TRANSFER_CATEGORY.name,
-          color: TRANSFER_CATEGORY.color,
-          createdByName,
-          currency: account.currency,
-          date: args.date,
-          merchant,
-          symbol: TRANSFER_CATEGORY.symbol,
-          transactionKind: "transfer_out",
-        });
-
-        const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
-        await replaceTransactionTags(ctx, transferOutId, [
-          ...args.tagIds,
-          accountTransferTagId,
-        ]);
-        for (const attachment of args.attachments) {
-          await ctx.db.insert("transactionAttachments", {
-            ...attachment,
-            transactionId: transferOutId,
-          });
-        }
-
-        let transactionChargeId = null;
-        if (transactionCharge > 0) {
-          transactionChargeId = await ctx.db.insert("transactions", {
-            accountId: args.accountId,
-            amount: -transactionCharge,
-            category: "Transaction charges",
-            color: TRANSACTION_CHARGES_TAG_COLOR,
-            createdByName,
-            currency: account.currency,
-            date: args.date,
-            merchant: `${merchant} TC`,
-            parentTransactionId: transferOutId,
-            symbol: "creditcard.fill",
-            transactionKind: "charge",
-          });
-          await replaceChargeTransactionTags(ctx, transactionChargeId);
-        }
-
-        await ctx.db.patch(args.accountId, {
-          balance: account.balance - args.amount - transactionCharge,
-        });
-
-        return { mainTransactionId: transferOutId, transactionChargeId };
-      }
-
-      if (!args.toAccountId) {
-        throw new Error("Transfer requires a destination account");
-      }
-      if (args.accountId === args.toAccountId) {
-        throw new Error("Transfer accounts must be different");
-      }
-
-      const fromAccount = await ctx.db.get("accounts", args.accountId);
-      const toAccount = await ctx.db.get("accounts", args.toAccountId);
-      if (!fromAccount || !toAccount) {
+  if (args.type === "transfer") {
+    if (args.externalTransferSide === "from") {
+      const account = await ctx.db.get("accounts", args.accountId);
+      if (!account) {
         throw new Error("Account not found");
       }
-      if (fromAccount.currency !== toAccount.currency) {
-        throw new Error("Transfer accounts must use the same currency");
+
+      const merchant =
+        args.merchant.trim() || `Transfer from ${OUT_OF_WALLET_ACCOUNT_NAME}`;
+      const transactionCharge = args.transactionCharge ?? 0;
+      const transferInId = await ctx.db.insert("transactions", {
+        accountId: args.accountId,
+        amount: args.amount,
+        category: TRANSFER_CATEGORY.name,
+        color: TRANSFER_CATEGORY.color,
+        createdByName,
+        currency: account.currency,
+        date: args.date,
+        merchant,
+        symbol: TRANSFER_CATEGORY.symbol,
+        transactionKind: "transfer_in",
+      });
+
+      const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
+      await replaceTransactionTags(ctx, transferInId, [
+        ...args.tagIds,
+        accountTransferTagId,
+      ]);
+      for (const attachment of args.attachments) {
+        await ctx.db.insert("transactionAttachments", {
+          ...attachment,
+          transactionId: transferInId,
+        });
       }
 
-      const merchant = args.merchant.trim() || `Transfer to ${toAccount.name}`;
+      let transactionChargeId = null;
+      if (transactionCharge > 0) {
+        transactionChargeId = await ctx.db.insert("transactions", {
+          accountId: args.accountId,
+          amount: -transactionCharge,
+          category: "Transaction charges",
+          color: TRANSACTION_CHARGES_TAG_COLOR,
+          createdByName,
+          currency: account.currency,
+          date: args.date,
+          merchant: `${merchant} TC`,
+          parentTransactionId: transferInId,
+          symbol: "creditcard.fill",
+          transactionKind: "charge",
+        });
+        await replaceChargeTransactionTags(ctx, transactionChargeId);
+      }
+
+      await ctx.db.patch(args.accountId, {
+        balance: account.balance + args.amount - transactionCharge,
+      });
+
+      return { mainTransactionId: transferInId, transactionChargeId };
+    }
+
+    if (args.externalTransferSide === "to") {
+      const account = await ctx.db.get("accounts", args.accountId);
+      if (!account) {
+        throw new Error("Account not found");
+      }
+
+      const merchant =
+        args.merchant.trim() || `Transfer to ${OUT_OF_WALLET_ACCOUNT_NAME}`;
       const transactionCharge = args.transactionCharge ?? 0;
       const transferOutId = await ctx.db.insert("transactions", {
         accountId: args.accountId,
@@ -1855,35 +1794,18 @@ export const createTransaction = mutation({
         category: TRANSFER_CATEGORY.name,
         color: TRANSFER_CATEGORY.color,
         createdByName,
-        currency: fromAccount.currency,
+        currency: account.currency,
         date: args.date,
         merchant,
         symbol: TRANSFER_CATEGORY.symbol,
-        toAccountId: args.toAccountId,
         transactionKind: "transfer_out",
       });
-      const transferInId = await ctx.db.insert("transactions", {
-        accountId: args.toAccountId,
-        amount: args.amount,
-        category: TRANSFER_CATEGORY.name,
-        color: TRANSFER_CATEGORY.color,
-        createdByName,
-        currency: toAccount.currency,
-        date: args.date,
-        merchant: `Transfer from ${fromAccount.name}`,
-        symbol: TRANSFER_CATEGORY.symbol,
-        transactionKind: "transfer_in",
-      });
-
-      await ctx.db.patch(transferOutId, { pairTransactionId: transferInId });
-      await ctx.db.patch(transferInId, { pairTransactionId: transferOutId });
 
       const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
       await replaceTransactionTags(ctx, transferOutId, [
         ...args.tagIds,
         accountTransferTagId,
       ]);
-      await replaceTransactionTags(ctx, transferInId, [accountTransferTagId]);
       for (const attachment of args.attachments) {
         await ctx.db.insert("transactionAttachments", {
           ...attachment,
@@ -1899,7 +1821,7 @@ export const createTransaction = mutation({
           category: "Transaction charges",
           color: TRANSACTION_CHARGES_TAG_COLOR,
           createdByName,
-          currency: fromAccount.currency,
+          currency: account.currency,
           date: args.date,
           merchant: `${merchant} TC`,
           parentTransactionId: transferOutId,
@@ -1910,74 +1832,69 @@ export const createTransaction = mutation({
       }
 
       await ctx.db.patch(args.accountId, {
-        balance: fromAccount.balance - args.amount - transactionCharge,
-      });
-      await ctx.db.patch(args.toAccountId, {
-        balance: toAccount.balance + args.amount,
+        balance: account.balance - args.amount - transactionCharge,
       });
 
       return { mainTransactionId: transferOutId, transactionChargeId };
     }
 
-    const account = await ctx.db.get("accounts", args.accountId);
-    if (!account) {
+    if (!args.toAccountId) {
+      throw new Error("Transfer requires a destination account");
+    }
+    if (args.accountId === args.toAccountId) {
+      throw new Error("Transfer accounts must be different");
+    }
+
+    const fromAccount = await ctx.db.get("accounts", args.accountId);
+    const toAccount = await ctx.db.get("accounts", args.toAccountId);
+    if (!fromAccount || !toAccount) {
       throw new Error("Account not found");
     }
-
-    const manualCategoryFieldCount = [
-      args.category,
-      args.color,
-      args.symbol,
-    ].filter((field) => field !== undefined).length;
-    if (manualCategoryFieldCount > 0 && manualCategoryFieldCount < 3) {
-      throw new Error(
-        "Category name, color, and symbol must be provided together"
-      );
+    if (fromAccount.currency !== toAccount.currency) {
+      throw new Error("Transfer accounts must use the same currency");
     }
 
-    const manualCategory =
-      args.category !== undefined &&
-      args.color !== undefined &&
-      args.symbol !== undefined
-        ? {
-            color: args.color,
-            name: args.category,
-            symbol: args.symbol,
-          }
-        : null;
-    const hasManualCategory = manualCategory !== null;
-    const hasManualTags = args.tagIds.length > 0;
-    const automaticActions = await resolveAutomaticRuleActions(ctx, {
-      description: args.merchant,
-      hasManualCategory,
-      hasManualTags,
-      type: args.type,
-    });
-    const category =
-      manualCategory ?? automaticActions.category ?? UNCATEGORIZED_CATEGORY;
-    const tagIds = hasManualTags ? args.tagIds : automaticActions.tagIds;
-    const merchant = args.merchant.trim() || category.name;
-    const signedAmount = args.type === "expense" ? -args.amount : args.amount;
-    const transactionCharge =
-      args.type === "expense" ? (args.transactionCharge ?? 0) : 0;
-    const mainTransactionId = await ctx.db.insert("transactions", {
+    const merchant = args.merchant.trim() || `Transfer to ${toAccount.name}`;
+    const transactionCharge = args.transactionCharge ?? 0;
+    const transferOutId = await ctx.db.insert("transactions", {
       accountId: args.accountId,
-      amount: signedAmount,
-      category: category.name,
-      color: category.color,
+      amount: -args.amount,
+      category: TRANSFER_CATEGORY.name,
+      color: TRANSFER_CATEGORY.color,
       createdByName,
-      currency: account.currency,
+      currency: fromAccount.currency,
       date: args.date,
       merchant,
-      symbol: category.symbol,
-      transactionKind: args.type,
+      symbol: TRANSFER_CATEGORY.symbol,
+      toAccountId: args.toAccountId,
+      transactionKind: "transfer_out",
+    });
+    const transferInId = await ctx.db.insert("transactions", {
+      accountId: args.toAccountId,
+      amount: args.amount,
+      category: TRANSFER_CATEGORY.name,
+      color: TRANSFER_CATEGORY.color,
+      createdByName,
+      currency: toAccount.currency,
+      date: args.date,
+      merchant: `Transfer from ${fromAccount.name}`,
+      symbol: TRANSFER_CATEGORY.symbol,
+      transactionKind: "transfer_in",
     });
 
-    await replaceTransactionTags(ctx, mainTransactionId, tagIds);
+    await ctx.db.patch(transferOutId, { pairTransactionId: transferInId });
+    await ctx.db.patch(transferInId, { pairTransactionId: transferOutId });
+
+    const accountTransferTagId = await getOrCreateAccountTransferTagId(ctx);
+    await replaceTransactionTags(ctx, transferOutId, [
+      ...args.tagIds,
+      accountTransferTagId,
+    ]);
+    await replaceTransactionTags(ctx, transferInId, [accountTransferTagId]);
     for (const attachment of args.attachments) {
       await ctx.db.insert("transactionAttachments", {
         ...attachment,
-        transactionId: mainTransactionId,
+        transactionId: transferOutId,
       });
     }
 
@@ -1987,26 +1904,173 @@ export const createTransaction = mutation({
         accountId: args.accountId,
         amount: -transactionCharge,
         category: "Transaction charges",
-        color: "#8E8E93",
+        color: TRANSACTION_CHARGES_TAG_COLOR,
         createdByName,
-        currency: account.currency,
+        currency: fromAccount.currency,
         date: args.date,
         merchant: `${merchant} TC`,
-        parentTransactionId: mainTransactionId,
+        parentTransactionId: transferOutId,
         symbol: "creditcard.fill",
         transactionKind: "charge",
-      });
-      await ctx.db.patch(mainTransactionId, {
-        pairTransactionId: transactionChargeId,
       });
       await replaceChargeTransactionTags(ctx, transactionChargeId);
     }
 
     await ctx.db.patch(args.accountId, {
-      balance: account.balance + signedAmount - transactionCharge,
+      balance: fromAccount.balance - args.amount - transactionCharge,
+    });
+    await ctx.db.patch(args.toAccountId, {
+      balance: toAccount.balance + args.amount,
     });
 
-    return { mainTransactionId, transactionChargeId };
+    return { mainTransactionId: transferOutId, transactionChargeId };
+  }
+
+  const account = await ctx.db.get("accounts", args.accountId);
+  if (!account) {
+    throw new Error("Account not found");
+  }
+
+  const manualCategoryFieldCount = [
+    args.category,
+    args.color,
+    args.symbol,
+  ].filter((field) => field !== undefined).length;
+  if (manualCategoryFieldCount > 0 && manualCategoryFieldCount < 3) {
+    throw new Error(
+      "Category name, color, and symbol must be provided together"
+    );
+  }
+
+  const manualCategory =
+    args.category !== undefined &&
+    args.color !== undefined &&
+    args.symbol !== undefined
+      ? {
+          color: args.color,
+          name: args.category,
+          symbol: args.symbol,
+        }
+      : null;
+  const hasManualCategory = manualCategory !== null;
+  const hasManualTags = args.tagIds.length > 0;
+  const automaticActions = await resolveAutomaticRuleActions(ctx, {
+    description: args.merchant,
+    hasManualCategory,
+    hasManualTags,
+    type: args.type,
+  });
+  const category =
+    manualCategory ?? automaticActions.category ?? UNCATEGORIZED_CATEGORY;
+  const tagIds = hasManualTags ? args.tagIds : automaticActions.tagIds;
+  const merchant = args.merchant.trim() || category.name;
+  const signedAmount = args.type === "expense" ? -args.amount : args.amount;
+  const transactionCharge =
+    args.type === "expense" ? (args.transactionCharge ?? 0) : 0;
+  const mainTransactionId = await ctx.db.insert("transactions", {
+    accountId: args.accountId,
+    amount: signedAmount,
+    category: category.name,
+    color: category.color,
+    createdByName,
+    currency: account.currency,
+    date: args.date,
+    merchant,
+    symbol: category.symbol,
+    transactionKind: args.type,
+  });
+
+  await replaceTransactionTags(ctx, mainTransactionId, tagIds);
+  for (const attachment of args.attachments) {
+    await ctx.db.insert("transactionAttachments", {
+      ...attachment,
+      transactionId: mainTransactionId,
+    });
+  }
+
+  let transactionChargeId = null;
+  if (transactionCharge > 0) {
+    transactionChargeId = await ctx.db.insert("transactions", {
+      accountId: args.accountId,
+      amount: -transactionCharge,
+      category: "Transaction charges",
+      color: "#8E8E93",
+      createdByName,
+      currency: account.currency,
+      date: args.date,
+      merchant: `${merchant} TC`,
+      parentTransactionId: mainTransactionId,
+      symbol: "creditcard.fill",
+      transactionKind: "charge",
+    });
+    await ctx.db.patch(mainTransactionId, {
+      pairTransactionId: transactionChargeId,
+    });
+    await replaceChargeTransactionTags(ctx, transactionChargeId);
+  }
+
+  await ctx.db.patch(args.accountId, {
+    balance: account.balance + signedAmount - transactionCharge,
+  });
+
+  return { mainTransactionId, transactionChargeId };
+};
+
+const findTransactionByExternalRef = async (
+  ctx: QueryCtx,
+  externalRef: string
+): Promise<Doc<"transactions"> | null> =>
+  await ctx.db
+    .query("transactions")
+    .withIndex("by_externalRef", (q) => q.eq("externalRef", externalRef))
+    .first();
+
+export const createTransaction = mutation({
+  args: {
+    ...createTransactionArgs,
+    /** Stable source identifier (e.g. an SMS transaction ID) used to skip re-captures. */
+    externalRef: v.optional(v.string()),
+  },
+  handler: async (ctx, { externalRef, ...args }) => {
+    const normalizedExternalRef = externalRef?.trim() || undefined;
+    if (
+      normalizedExternalRef &&
+      (await findTransactionByExternalRef(ctx, normalizedExternalRef))
+    ) {
+      throw new ConvexError({
+        code: "DUPLICATE_EXTERNAL_REF",
+        externalRef: normalizedExternalRef,
+      });
+    }
+
+    const result = await insertTransaction(ctx, args);
+    if (normalizedExternalRef) {
+      await ctx.db.patch(result.mainTransactionId, {
+        externalRef: normalizedExternalRef,
+      });
+    }
+    return result;
+  },
+});
+
+const MAX_EXTERNAL_REF_LOOKUPS = 100;
+
+/** Returns which of the given external refs are already recorded. */
+export const findCapturedExternalRefs = query({
+  args: { externalRefs: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.externalRefs.length > MAX_EXTERNAL_REF_LOOKUPS) {
+      throw new Error(
+        `At most ${MAX_EXTERNAL_REF_LOOKUPS} external refs can be checked at once`
+      );
+    }
+    const found: string[] = [];
+    for (const externalRef of new Set(args.externalRefs)) {
+      if (await findTransactionByExternalRef(ctx, externalRef)) {
+        found.push(externalRef);
+      }
+    }
+    return found;
   },
 });
 

@@ -237,6 +237,11 @@ export default defineSchema({
     currency: v.string(),
     /** Epoch millis the transaction posted. */
     date: v.number(),
+    /**
+     * Stable identifier from the source message (e.g. an SMS transaction ID),
+     * used to skip transactions that were already captured.
+     */
+    externalRef: v.optional(v.string()),
     merchant: v.string(),
     /** Linked leg: charge, transfer pair, etc. */
     pairTransactionId: v.optional(v.id("transactions")),
@@ -259,5 +264,6 @@ export default defineSchema({
       "category",
       "date",
     ])
-    .index("by_parentTransactionId", ["parentTransactionId"]),
+    .index("by_parentTransactionId", ["parentTransactionId"])
+    .index("by_externalRef", ["externalRef"]),
 });

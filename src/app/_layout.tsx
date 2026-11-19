@@ -158,6 +158,17 @@ export default function TabLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="capture"
+                  options={{
+                    contentStyle: { backgroundColor: "transparent" },
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetGrabberVisible: false,
+                    sheetInitialDetentIndex: 0,
+                    sheetShouldOverflowTopInset: true,
+                  }}
+                />
+                <Stack.Screen
                   name="add-account"
                   options={{
                     contentStyle: { backgroundColor: "transparent" },
