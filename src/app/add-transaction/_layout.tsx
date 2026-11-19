@@ -191,6 +191,9 @@ export default function AddTransactionLayout() {
   const [toAccountId, setToAccountId] = useState<string | null>(
     draftPrefill?.toAccountId ?? initialEditState?.toAccountId ?? null
   );
+  const [toAmount, setToAmount] = useState(
+    draftPrefill?.toAmount ?? initialEditState?.toAmount ?? ""
+  );
   const [transactionTypeIndex, setTransactionTypeIndex] = useState(
     draftPrefill?.transactionTypeIndex ??
       initialEditState?.transactionTypeIndex ??
@@ -254,6 +257,12 @@ export default function AddTransactionLayout() {
           : 0
     );
     setToAccountId(existingTransaction.toAccountId ?? null);
+    setToAmount(
+      existingTransaction.toAmount !== undefined &&
+        existingTransaction.toCurrency !== existingTransaction.currency
+        ? minorUnitsToAmountInput(existingTransaction.toAmount)
+        : ""
+    );
     setTags(existingTransaction.tags);
     setTransactionCharge(
       existingTransaction.transactionChargeAmount
@@ -395,11 +404,13 @@ export default function AddTransactionLayout() {
       setNarration,
       setTagColorDraft,
       setToAccountId,
+      setToAmount,
       setTransactionCharge,
       setTransactionTypeIndex,
       tagColorDraft,
       tags,
       toAccountId,
+      toAmount,
       toggleTag,
       transactionCharge,
       transactionTypeIndex,
@@ -420,6 +431,7 @@ export default function AddTransactionLayout() {
       tagColorDraft,
       tags,
       toAccountId,
+      toAmount,
       toggleTag,
       transactionCharge,
       transactionTypeIndex,
@@ -444,6 +456,11 @@ export default function AddTransactionLayout() {
       ? null
       : accounts.find((item) => item.id === toAccountId);
     const trackedTransferAccount = isFromOutOfWallet ? toAccount : account;
+    const isCrossCurrency =
+      isTransfer &&
+      Boolean(account && toAccount) &&
+      account?.currency !== toAccount?.currency;
+    const toAmountInMinorUnits = amountInputToMinorUnits(toAmount);
     const selectedCategory = isTransfer
       ? TRANSFER_CATEGORY
       : [...TRANSACTION_CATEGORIES, ...customCategories].find(
@@ -478,6 +495,13 @@ export default function AddTransactionLayout() {
         Alert.alert(
           "Invalid transfer",
           "From and to accounts must be different."
+        );
+        return;
+      }
+      if (isCrossCurrency && toAmountInMinorUnits <= 0) {
+        Alert.alert(
+          "Missing received amount",
+          `Enter how much ${toAccount?.name ?? "the account"} received in ${toAccount?.currency ?? "its currency"}.`
         );
         return;
       }
@@ -578,6 +602,7 @@ export default function AddTransactionLayout() {
             isTransfer && !(isFromOutOfWallet || isToOutOfWallet)
               ? (toAccount!.id as Id<"accounts">)
               : undefined,
+          toAmount: isCrossCurrency ? toAmountInMinorUnits : undefined,
           transactionCharge:
             (transactionType === "expense" || transactionType === "transfer") &&
             chargeInMinorUnits > 0
@@ -610,6 +635,7 @@ export default function AddTransactionLayout() {
           isTransfer && !(isFromOutOfWallet || isToOutOfWallet)
             ? (toAccount!.id as Id<"accounts">)
             : undefined,
+        toAmount: isCrossCurrency ? toAmountInMinorUnits : undefined,
         transactionCharge:
           (transactionType === "expense" || transactionType === "transfer") &&
           chargeInMinorUnits > 0
@@ -642,6 +668,7 @@ export default function AddTransactionLayout() {
     narration,
     tags,
     toAccountId,
+    toAmount,
     transactionCharge,
     transactionTypeIndex,
     updateTransaction,

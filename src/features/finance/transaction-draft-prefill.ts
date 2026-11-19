@@ -14,6 +14,7 @@ export interface TransactionDraftPrefill {
   narration: string;
   tags: TransactionTag[];
   toAccountId: string | null;
+  toAmount?: string;
   transactionCharge: string;
   transactionTypeIndex: number;
 }

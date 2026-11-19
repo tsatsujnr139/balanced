@@ -22,6 +22,7 @@ import type {
   CaptureDraft,
   CaptureImage,
 } from "@/features/capture/capture-context";
+import { useFinance } from "@/features/finance/use-finance";
 import { setLastTransactionAccountId } from "@/features/finance/use-last-transaction-account";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -61,6 +62,7 @@ export default function CaptureLayout() {
   const colors = useThemeColors();
   const disableHeaderBlur = shouldDisableHeaderBlur();
   const { firstName } = useLocalProfile();
+  const { accounts } = useFinance();
   const createTransaction = useMutation(api.finance.createTransaction);
   const generateUploadUrl = useMutation(
     api.finance.generateAttachmentUploadUrl
@@ -148,6 +150,20 @@ export default function CaptureLayout() {
       Alert.alert("Choose an account", "Every transaction needs an account.");
       return;
     }
+    const currencyMismatch = toSave.find((draft) => {
+      const account = accounts.find((item) => item.id === draft.accountId);
+      return (
+        account && account.currency !== draft.captured.transaction.currency
+      );
+    });
+    if (currencyMismatch) {
+      const { transaction } = currencyMismatch.captured;
+      Alert.alert(
+        "Account currency doesn't match",
+        `"${transaction.description}" is in ${transaction.currency}. Choose an account in that currency.`
+      );
+      return;
+    }
 
     setIsSaving(true);
     let added = 0;
@@ -202,7 +218,15 @@ export default function CaptureLayout() {
     } finally {
       setIsSaving(false);
     }
-  }, [alreadyAdded, createTransaction, drafts, firstName, images, uploadImage]);
+  }, [
+    accounts,
+    alreadyAdded,
+    createTransaction,
+    drafts,
+    firstName,
+    images,
+    uploadImage,
+  ]);
 
   const value = useMemo<CaptureContextValue>(
     () => ({

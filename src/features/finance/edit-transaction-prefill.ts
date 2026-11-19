@@ -27,6 +27,7 @@ export interface TransactionEditFormState {
   narration: string;
   tags: TransactionTag[];
   toAccountId: string | null;
+  toAmount: string;
   transactionCharge: string;
   transactionTypeIndex: number;
 }
@@ -80,6 +81,11 @@ export function buildEditFormState(
           ? OUT_OF_WALLET_ACCOUNT_ID
           : null))
       : null,
+    toAmount:
+      transaction.toAmount !== undefined &&
+      transaction.toCurrency !== transaction.currency
+        ? minorUnitsToAmountInput(transaction.toAmount)
+        : "",
     transactionCharge: transaction.transactionChargeAmount
       ? minorUnitsToAmountInput(transaction.transactionChargeAmount)
       : "",

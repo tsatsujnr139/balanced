@@ -372,6 +372,26 @@ function DateTimeFieldRow({
   );
 }
 
+const RATE_DECIMALS = 4;
+
+/** "1 USD = 0.9969 USDT" from the sent and received amount inputs. */
+function formatExchangeRate(
+  sent: string,
+  received: string,
+  fromCurrency: string,
+  toCurrency: string
+): string | null {
+  const sentValue = Number.parseFloat(sent.replaceAll(/[^0-9.]/g, ""));
+  const receivedValue = Number.parseFloat(received.replaceAll(/[^0-9.]/g, ""));
+  if (!(sentValue > 0 && receivedValue > 0)) {
+    return null;
+  }
+  const rate = receivedValue / sentValue;
+  return rate >= 1
+    ? `1 ${fromCurrency} = ${rate.toFixed(RATE_DECIMALS)} ${toCurrency}`
+    : `1 ${toCurrency} = ${(1 / rate).toFixed(RATE_DECIMALS)} ${fromCurrency}`;
+}
+
 function FieldGroup({
   children,
   clip = true,
@@ -495,9 +515,11 @@ export default function AddTransactionScreen() {
     setAmount,
     setDate,
     setNarration,
+    setToAmount,
     setTransactionCharge,
     setTransactionTypeIndex,
     toAccountId,
+    toAmount,
     transactionCharge,
     transactionTypeIndex,
     tags,
@@ -519,6 +541,21 @@ export default function AddTransactionScreen() {
   const selectedAccount = isTransfer ? fromAccount : fromAccount;
   const trackedTransferAccount = isFromOutOfWallet ? toAccount : fromAccount;
   const amountColor = amountAccentColor(transactionTypeIndex, colors);
+  const receivingCurrency =
+    isTransfer && !isFromOutOfWallet && !isToOutOfWallet && fromAccount
+      ? toAccount?.currency
+      : undefined;
+  const isCrossCurrency =
+    receivingCurrency !== undefined &&
+    receivingCurrency !== fromAccount?.currency;
+  const exchangeRateLabel = isCrossCurrency
+    ? formatExchangeRate(
+        amount,
+        toAmount,
+        fromAccount?.currency ?? "",
+        receivingCurrency
+      )
+    : null;
   const currencySymbol = getCurrencySymbol(
     (isTransfer ? trackedTransferAccount : selectedAccount)?.currency ??
       DEFAULT_CURRENCY
@@ -602,6 +639,7 @@ export default function AddTransactionScreen() {
       narration,
       tags: [...tags],
       toAccountId,
+      toAmount,
       transactionCharge,
       transactionTypeIndex,
     });
@@ -727,6 +765,68 @@ export default function AddTransactionScreen() {
             value={amount}
           />
         </View>
+        {isCrossCurrency && receivingCurrency ? (
+          <View
+            style={{
+              borderTopColor: colors.border,
+              borderTopWidth: 1,
+              gap: 2,
+              paddingHorizontal: 18,
+              paddingVertical: 10,
+            }}
+          >
+            <View
+              style={{ alignItems: "center", flexDirection: "row", gap: 12 }}
+            >
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 15,
+                  fontWeight: "500",
+                }}
+              >
+                Received
+              </Text>
+              <Text
+                style={{
+                  color: colors.positive,
+                  fontSize: 20,
+                  fontWeight: "700",
+                }}
+              >
+                {getCurrencySymbol(receivingCurrency)}
+              </Text>
+              <TextInput
+                accessibilityLabel={`Amount received in ${receivingCurrency}`}
+                keyboardType="decimal-pad"
+                onChangeText={setToAmount}
+                placeholder="0.00"
+                placeholderTextColor={colors.muted}
+                style={{
+                  color: colors.positive,
+                  flex: 1,
+                  fontSize: 24,
+                  fontWeight: "700",
+                  minHeight: 44,
+                  textAlign: "right",
+                }}
+                value={toAmount}
+              />
+            </View>
+            {exchangeRateLabel ? (
+              <Text
+                selectable
+                style={{
+                  color: colors.muted,
+                  fontSize: 13,
+                  textAlign: "right",
+                }}
+              >
+                {exchangeRateLabel}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         {transactionTypeIndex === 0 || isTransfer ? (
           <View
             style={{

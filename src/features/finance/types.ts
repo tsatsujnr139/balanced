@@ -85,6 +85,9 @@ export interface Transaction {
   fromAccountName?: string;
   toAccountId?: string;
   toAccountName?: string;
+  /** Amount received by the destination (its own currency), for transfers out. */
+  toAmount?: number;
+  toCurrency?: string;
 }
 
 export type TransactionTemplateType = "expense" | "income" | "transfer";

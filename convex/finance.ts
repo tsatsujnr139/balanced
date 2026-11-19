@@ -355,6 +355,12 @@ async function enrichTransactions(
 
     let toAccountId: Id<"accounts"> | undefined;
     let toAccountName: string | undefined;
+    const receivingLeg =
+      kind === "transfer_out" &&
+      pair &&
+      resolveTransactionKind(pair) === "transfer_in"
+        ? pair
+        : undefined;
     let fromAccountId: Id<"accounts"> | undefined;
     let fromAccountName: string | undefined;
 
@@ -408,6 +414,9 @@ async function enrichTransactions(
         })),
       toAccountId,
       toAccountName,
+      /** Amount received by the destination (its own currency), for transfers out. */
+      toAmount: receivingLeg ? Math.abs(receivingLeg.amount) : undefined,
+      toCurrency: receivingLeg?.currency,
       transactionChargeAmount,
       transactionKind: kind,
     };
@@ -1690,6 +1699,8 @@ const createTransactionArgs = {
   symbol: v.optional(v.string()),
   tagIds: v.array(v.id("tags")),
   toAccountId: v.optional(v.id("accounts")),
+  /** Amount received (destination currency, minor units) for cross-currency transfers. */
+  toAmount: v.optional(v.number()),
   transactionCharge: v.optional(v.number()),
   type: v.union(
     v.literal("expense"),
@@ -1850,9 +1861,12 @@ const insertTransaction = async (
     if (!fromAccount || !toAccount) {
       throw new Error("Account not found");
     }
-    if (fromAccount.currency !== toAccount.currency) {
-      throw new Error("Transfer accounts must use the same currency");
-    }
+    const receivedAmount = resolveReceivedAmount(
+      fromAccount,
+      toAccount,
+      args.amount,
+      args.toAmount
+    );
 
     const merchant = args.merchant.trim() || `Transfer to ${toAccount.name}`;
     const transactionCharge = args.transactionCharge ?? 0;
@@ -1871,7 +1885,7 @@ const insertTransaction = async (
     });
     const transferInId = await ctx.db.insert("transactions", {
       accountId: args.toAccountId,
-      amount: args.amount,
+      amount: receivedAmount,
       category: TRANSFER_CATEGORY.name,
       color: TRANSFER_CATEGORY.color,
       createdByName,
@@ -1920,7 +1934,7 @@ const insertTransaction = async (
       balance: fromAccount.balance - args.amount - transactionCharge,
     });
     await ctx.db.patch(args.toAccountId, {
-      balance: toAccount.balance + args.amount,
+      balance: toAccount.balance + receivedAmount,
     });
 
     return { mainTransactionId: transferOutId, transactionChargeId };
@@ -2016,6 +2030,28 @@ const insertTransaction = async (
   return { mainTransactionId, transactionChargeId };
 };
 
+/**
+ * Amount credited to the destination of a transfer between tracked accounts.
+ * Same-currency transfers move the same amount; cross-currency transfers
+ * (e.g. USD → USDT) need the received amount in the destination currency.
+ */
+function resolveReceivedAmount(
+  fromAccount: Doc<"accounts">,
+  toAccount: Doc<"accounts">,
+  amount: number,
+  toAmount: number | undefined
+): number {
+  if (fromAccount.currency === toAccount.currency) {
+    return amount;
+  }
+  if (toAmount === undefined || !Number.isFinite(toAmount) || toAmount <= 0) {
+    throw new Error(
+      "Transfers between currencies need the amount received in the destination currency"
+    );
+  }
+  return toAmount;
+}
+
 const findTransactionByExternalRef = async (
   ctx: QueryCtx,
   externalRef: string
@@ -2098,6 +2134,8 @@ export const updateTransaction = mutation({
     symbol: v.string(),
     tagIds: v.array(v.id("tags")),
     toAccountId: v.optional(v.id("accounts")),
+    /** Amount received (destination currency, minor units) for cross-currency transfers. */
+    toAmount: v.optional(v.number()),
     transactionCharge: v.optional(v.number()),
     type: v.union(
       v.literal("expense"),
@@ -2160,7 +2198,9 @@ export const updateTransaction = mutation({
           }
           if (oldToAccount && oldToAccountId) {
             await ctx.db.patch(oldToAccountId, {
-              balance: oldToAccount.balance - oldAmount,
+              balance:
+                oldToAccount.balance -
+                (oldInLeg ? Math.abs(oldInLeg.amount) : oldAmount),
             });
           }
         } else if (existingKind === "transfer_in") {
@@ -2277,9 +2317,12 @@ export const updateTransaction = mutation({
       if (!fromAccount || !toAccount) {
         throw new Error("Account not found");
       }
-      if (fromAccount.currency !== toAccount.currency) {
-        throw new Error("Transfer accounts must use the same currency");
-      }
+      const receivedAmount = resolveReceivedAmount(
+        fromAccount,
+        toAccount,
+        args.amount,
+        args.toAmount
+      );
 
       const oldPair = existing.pairTransactionId
         ? await ctx.db.get("transactions", existing.pairTransactionId)
@@ -2308,7 +2351,9 @@ export const updateTransaction = mutation({
         }
         if (oldToAccount && oldToAccountId) {
           await ctx.db.patch(oldToAccountId, {
-            balance: oldToAccount.balance - oldAmount,
+            balance:
+              oldToAccount.balance -
+              (oldInLeg ? Math.abs(oldInLeg.amount) : oldAmount),
           });
         }
       } else if (existingKind === "transfer_in") {
@@ -2345,7 +2390,7 @@ export const updateTransaction = mutation({
       if (transferInId) {
         await ctx.db.patch(transferInId, {
           accountId: args.toAccountId,
-          amount: args.amount,
+          amount: receivedAmount,
           category: TRANSFER_CATEGORY.name,
           color: TRANSFER_CATEGORY.color,
           currency: toAccount.currency,
@@ -2357,7 +2402,7 @@ export const updateTransaction = mutation({
       } else {
         transferInId = await ctx.db.insert("transactions", {
           accountId: args.toAccountId,
-          amount: args.amount,
+          amount: receivedAmount,
           category: TRANSFER_CATEGORY.name,
           color: TRANSFER_CATEGORY.color,
           createdByName,
@@ -2380,7 +2425,7 @@ export const updateTransaction = mutation({
       }
       if (updatedToAccount) {
         await ctx.db.patch(args.toAccountId, {
-          balance: updatedToAccount.balance + args.amount,
+          balance: updatedToAccount.balance + receivedAmount,
         });
       }
 
@@ -2623,7 +2668,8 @@ export const deleteTransaction = mutation({
       }
       if (toAccount) {
         await ctx.db.patch(toAccount._id, {
-          balance: toAccount.balance - amount,
+          balance:
+            toAccount.balance - (inLeg ? Math.abs(inLeg.amount) : amount),
         });
       }
 

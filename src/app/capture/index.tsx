@@ -37,6 +37,7 @@ import type {
   CaptureResult,
 } from "@/features/capture/parse-capture";
 import { formatCurrency } from "@/features/finance/format";
+import type { Account } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
 import { useLastTransactionAccountId } from "@/features/finance/use-last-transaction-account";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -252,6 +253,12 @@ function DraftRow({
               label={`Fee ${formatCurrency(transaction.fee, transaction.currency)}`}
             />
           ) : null}
+          {account && account.currency !== transaction.currency ? (
+            <Badge
+              color={colors.negative}
+              label={`${account.name} is in ${account.currency}, not ${transaction.currency}`}
+            />
+          ) : null}
           {draft.continuity === "gap" ? (
             <Badge color="#FF9500" label="Balance gap before this" />
           ) : null}
@@ -275,9 +282,25 @@ const summarize = (found: number, alreadyAddedCount: number): string => {
   return `Found ${found} transaction${plural}${added}. Tap ✓ to add the selected ones.`;
 };
 
+/** Remembered account, else the fallback, else any account in the draft's currency. */
+const pickAccountId = (
+  candidates: (string | null | undefined)[],
+  currency: string,
+  accounts: Account[]
+): string | null => {
+  for (const id of candidates) {
+    const account = accounts.find((item) => item.id === id);
+    if (account?.currency === currency) {
+      return account.id;
+    }
+  }
+  return accounts.find((item) => item.currency === currency)?.id ?? null;
+};
+
 const buildDrafts = (
   result: CaptureResult,
-  fallbackAccountId: string | null
+  fallbackAccountId: string | null,
+  accounts: Account[]
 ): CaptureDraft[] => {
   const continuity = checkBalanceContinuity(
     result.transactions.map((item) => item.transaction)
@@ -285,9 +308,14 @@ const buildDrafts = (
   return result.transactions.map((captured, index) => {
     const { transaction } = captured;
     return {
-      accountId:
-        getRememberedAccountId(captureSourceKey(transaction)) ??
-        fallbackAccountId,
+      accountId: pickAccountId(
+        [
+          getRememberedAccountId(captureSourceKey(transaction)),
+          fallbackAccountId,
+        ],
+        transaction.currency,
+        accounts
+      ),
       captured,
       continuity: continuity[index] ?? "unknown",
       date: transaction.occurredAt
@@ -339,7 +367,7 @@ export default function CaptureScreen() {
         forceCloud: options.forceCloud,
       });
       setResult(next);
-      setDrafts(buildDrafts(next, fallbackAccountId));
+      setDrafts(buildDrafts(next, fallbackAccountId, accounts));
     } catch (error) {
       setReadError(error instanceof Error ? error.message : String(error));
     } finally {

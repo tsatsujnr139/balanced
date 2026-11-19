@@ -35,6 +35,8 @@ interface AddTransactionContextValue {
   tagColorDraft: string;
   tags: TransactionTag[];
   toAccountId: string | null;
+  /** Amount received by the destination, for transfers between currencies. */
+  toAmount: string;
   transactionCharge: string;
   narration: string;
   transactionTypeIndex: number;
@@ -54,6 +56,7 @@ interface AddTransactionContextValue {
   ) => void;
   setTagColorDraft: (color: string) => void;
   setToAccountId: (accountId: string) => void;
+  setToAmount: (toAmount: string) => void;
   setTransactionCharge: (transactionCharge: string) => void;
   setNarration: (narration: string) => void;
   setTransactionTypeIndex: (index: number) => void;
