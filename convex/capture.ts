@@ -19,7 +19,8 @@ Amounts, fees, and balances are digits with an optional decimal point (e.g. 1071
 occurredAt is the date and time printed inside the message as "YYYY-MM-DD HH:MM".
 For a currency exchange, toAmount and toCurrency are the received amount and currency printed in the notification; otherwise use null.
 summary is a short description of what the payment was for.
-balanceAfter is the account balance printed after the transaction. counterparty is the other party's name, phone number, or network. institution is who sent the notification (e.g. MTN MoMo, Telecel Cash, a bank). sourceText is the notification copied verbatim.`;
+balanceAfter is the account balance printed after the transaction. counterparty is the other party's name, phone number, or network. institution is who sent the notification (e.g. MTN MoMo, Telecel Cash, a bank). sourceText is the notification copied verbatim.
+The user may instead type or dictate a quick note such as "Boiled groundnut 20 cash" or "Uber 45 momo". Read it as one transaction: the number is the amount in GHS unless another currency is named, direction is "debit" unless the note says money came in, summary is what it was for, institution is the account named (e.g. "Cash", "MoMo", "GhanaPay") or null, and sourceText is the whole note.`;
 
 // Strict schemas need every property listed as required; null means "not printed".
 const OPTIONAL_STRING = { type: ["string", "null"] } as const;

@@ -847,7 +847,7 @@ export default function CaptureScreen() {
         <ActionButton
           disabled={!hasInput}
           icon="text.viewfinder"
-          label="Read"
+          label="Capture"
           loading={isReading}
           onPress={() => {
             void read();

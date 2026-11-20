@@ -256,6 +256,39 @@ describe("households with one wallet per person", () => {
       ])
     ).toBe("tsatsu-momo");
   });
+  test("a GhanaPay message uses the GhanaPay wallet, not the last bank used", () => {
+    const transaction = parse(
+      "You have transferred GHS 600.00 to 0554848494 MTN MOBILE MONEY. Ref: customs handling. Transaction ID: 632212280813. Balance: GHS 2399.03."
+    );
+
+    expect(
+      pickCaptureSourceAccountId(
+        transaction,
+        household,
+        "tsatsu-fnb",
+        "tsatsu-fnb",
+        ["Tsatsu"]
+      )
+    ).toBe("tsatsu-ghanapay");
+  });
+
+  test("a typed note naming Cash uses the Cash account", () => {
+    const transaction = {
+      ...parse(GHANAPAY_PUSH),
+      institution: "Cash",
+      provider: "other" as const,
+    };
+
+    expect(
+      pickCaptureSourceAccountId(
+        transaction,
+        household,
+        undefined,
+        "tsatsu-fnb",
+        ["Tsatsu"]
+      )
+    ).toBe("cash");
+  });
 });
 
 test("preferOwnerAccounts keeps every candidate when none is the owner's", () => {

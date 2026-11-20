@@ -44,13 +44,15 @@ export type CloudExtractor = (
 
 interface ReadInput {
   imageUri?: string;
+  /** Typed or dictated by the user rather than read from a screenshot. */
+  isTyped: boolean;
   referenceDate: Date;
   text: string;
 }
 
 const readInput = async (input: CaptureInput): Promise<ReadInput> => {
   if (input.kind === "text") {
-    return { referenceDate: new Date(), text: input.text };
+    return { isTyped: true, referenceDate: new Date(), text: input.text };
   }
   if (!getCaptureCapabilities().textRecognition) {
     throw new Error("Reading screenshots needs iOS 18 or later.");
@@ -58,11 +60,25 @@ const readInput = async (input: CaptureInput): Promise<ReadInput> => {
   const recognized = await recognizeImageText(input.uri);
   return {
     imageUri: input.uri,
+    isTyped: false,
     referenceDate: new Date(
       recognized.capturedAt ?? input.capturedAt ?? Date.now()
     ),
     text: recognized.text,
   };
+};
+
+const HAS_NUMBER = /\d/;
+
+/**
+ * A quick note like "Boiled groundnut 20 cash" has no currency, so the
+ * patterns don't flag it as a missed notification; the models should still try.
+ */
+const typedNote = (read: ReadInput, transactionsFound: number): string[] => {
+  const text = read.text.trim();
+  return read.isTyped && transactionsFound === 0 && HAS_NUMBER.test(text)
+    ? [text]
+    : [];
 };
 
 const describeError = (error: unknown): string => {
@@ -120,7 +136,7 @@ export const parseCapture = async (
   const reads = await Promise.all(inputs.map(readInput));
   const transactions: CapturedTransaction[] = [];
   const seenRefs = new Set<string>();
-  const leftovers: { imageUri?: string; text: string }[] = [];
+  const leftovers: { imageUri?: string; isTyped: boolean; text: string }[] = [];
 
   const add = (
     transaction: ParsedCaptureTransaction,
@@ -141,10 +157,15 @@ export const parseCapture = async (
     for (const transaction of parsed.transactions) {
       add(transaction, "pattern", read.imageUri);
     }
-    if (parsed.unparsedSegments.length > 0) {
+    const unparsed =
+      parsed.unparsedSegments.length > 0
+        ? parsed.unparsedSegments
+        : typedNote(read, parsed.transactions.length);
+    if (unparsed.length > 0) {
       leftovers.push({
         imageUri: read.imageUri,
-        text: parsed.unparsedSegments.join("\n\n"),
+        isTyped: read.isTyped,
+        text: unparsed.join("\n\n"),
       });
     }
   }
@@ -153,16 +174,18 @@ export const parseCapture = async (
   const unreadSegments: string[] = [];
   for (const leftover of leftovers) {
     // The cloud is used only when the on-device model can't run (or when the
-    // user asks), so cut-off fragments aren't sent off the phone by default.
+    // user asks), so cut-off screenshot fragments aren't sent off the phone by default.
     const onDevice = options.forceCloud
       ? { issue: "skipped" }
       : await extractOnDevice(leftover.text);
     let found = onDevice.transactions;
     let reader: CaptureReader = "on-device";
-    if (!found) {
+    // Something the user typed on purpose gets a second opinion when the
+    // on-device model finds nothing in it.
+    if (!found || (leftover.isTyped && found.length === 0)) {
       const cloud = await extractInCloud(leftover.text, options.cloud);
-      found = cloud.transactions;
       reader = "cloud";
+      found = cloud.transactions;
       if (!found) {
         modelIssue = [onDevice.issue, cloud.issue].filter(Boolean).join("; ");
       }
