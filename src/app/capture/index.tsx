@@ -334,6 +334,11 @@ function DraftRow({
   const isCredit = transaction.direction === "credit";
   const readerLabel = READER_LABELS[reader];
   const selected = draft.selected && !alreadyAdded;
+  const openEditor = () =>
+    router.push({
+      pathname: "/capture/edit",
+      params: { captureDraftKey: draft.key },
+    });
 
   return (
     <View
@@ -408,12 +413,7 @@ function DraftRow({
           account={account}
           disabled={alreadyAdded}
           emptyLabel="Choose account"
-          onPress={() =>
-            router.push({
-              params: { draft: draft.key },
-              pathname: "/capture/account",
-            })
-          }
+          onPress={openEditor}
           prefix={transfer ? "From" : undefined}
         />
         {transfer ? (
@@ -421,16 +421,25 @@ function DraftRow({
             account={toAccount}
             disabled={alreadyAdded}
             emptyLabel="Out of wallet"
-            onPress={() =>
-              router.push({
-                params: { draft: draft.key, field: "to" },
-                pathname: "/capture/account",
-              })
-            }
+            onPress={openEditor}
             prefix="To"
           />
         ) : alreadyAdded ? null : (
           <LabelChips alreadyAdded={alreadyAdded} draft={draft} />
+        )}
+        {alreadyAdded ? null : (
+          <Pressable
+            accessibilityLabel={`Edit ${transaction.description}`}
+            accessibilityRole="button"
+            onPress={openEditor}
+            style={{ alignSelf: "flex-start", paddingVertical: 6 }}
+          >
+            <Text
+              style={{ color: colors.primary, fontSize: 14, fontWeight: "600" }}
+            >
+              Edit transaction
+            </Text>
+          </Pressable>
         )}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {alreadyAdded ? (
@@ -508,10 +517,10 @@ const pickAccountId = (
  */
 const pickDestinationAccountId = (
   transaction: CapturedTransfer,
-  accounts: Account[]
+  accounts: Account[],
+  sourceAccountId: string | null
 ): string | null => {
   const currency = transaction.transfer?.toCurrency ?? transaction.currency;
-  const sourceAccountId = getRememberedAccountId(captureSourceKey(transaction));
   const candidates = accounts.filter(
     (account) => account.currency === currency && account.id !== sourceAccountId
   );
@@ -556,15 +565,16 @@ const buildDrafts = (
   );
   return result.transactions.map((captured, index) => {
     const { transaction } = captured;
+    const accountId = pickAccountId(
+      [
+        getRememberedAccountId(captureSourceKey(transaction)),
+        fallbackAccountId,
+      ],
+      transaction.currency,
+      accounts
+    );
     return {
-      accountId: pickAccountId(
-        [
-          getRememberedAccountId(captureSourceKey(transaction)),
-          fallbackAccountId,
-        ],
-        transaction.currency,
-        accounts
-      ),
+      accountId,
       captured,
       category: null,
       continuity: continuity[index] ?? "unknown",
@@ -575,7 +585,7 @@ const buildDrafts = (
       selected: true,
       tags: [],
       toAccountId: transaction.transfer
-        ? pickDestinationAccountId(transaction, accounts)
+        ? pickDestinationAccountId(transaction, accounts, accountId)
         : null,
     };
   });

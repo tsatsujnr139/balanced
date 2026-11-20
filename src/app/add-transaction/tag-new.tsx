@@ -10,6 +10,7 @@ import {
 import { NewTagScreen } from "@/features/finance/components/new-tag-screen";
 
 export default function TransactionNewTagScreen() {
+  const { routeBase } = useAddTransaction();
   const params = useLocalSearchParams<{ color?: string }>();
   const [initialColor] = useState(() => pickRandomColor());
   const { setTagColorDraft, tagColorDraft, tags, toggleTag } =
@@ -24,7 +25,7 @@ export default function TransactionNewTagScreen() {
   return (
     <NewTagScreen
       color={tagColorDraft}
-      onColorPress={() => router.push("/add-transaction/tag-color" as never)}
+      onColorPress={() => router.push(`${routeBase}/tag-color` as never)}
       selectedTags={tags}
       toggleTag={toggleTag}
     />

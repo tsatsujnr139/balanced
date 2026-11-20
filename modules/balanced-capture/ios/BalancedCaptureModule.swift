@@ -268,6 +268,15 @@ struct ExtractedTransaction {
   @Guide(description: "Amount as printed, digits and decimal point only, e.g. 1071.75")
   var amount: String
 
+  @Guide(description: "Currency code for the sent amount, e.g. GHS, USD, USDT. Use the currency printed, not a default.")
+  var currency: String?
+
+  @Guide(description: "Amount received for a currency exchange, digits and decimal point only, when printed")
+  var toAmount: String?
+
+  @Guide(description: "Currency code of the received amount, e.g. USD, USDT, GHS, when printed")
+  var toCurrency: String?
+
   @Guide(
     description: "debit when money left the account holder's account, credit when it arrived",
     .anyOf(["debit", "credit"])
@@ -311,6 +320,9 @@ struct ExtractedTransaction {
     let optionals: [String: String?] = [
       "balanceAfter": balanceAfter,
       "counterparty": counterparty,
+      "currency": currency,
+      "toAmount": toAmount,
+      "toCurrency": toCurrency,
       "fee": fee,
       "institution": institution,
       "occurredAt": occurredAt,

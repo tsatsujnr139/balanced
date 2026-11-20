@@ -25,6 +25,12 @@ import type {
   CaptureImage,
   CaptureTag,
 } from "@/features/capture/capture-context";
+import {
+  applyCaptureForm,
+  captureDraftToCreateArgs,
+} from "@/features/capture/capture-editor";
+import { isOutOfWalletAccountId } from "@/features/finance/out-of-wallet";
+import type { TransactionDraftPrefill } from "@/features/finance/transaction-draft-prefill";
 import { useFinance } from "@/features/finance/use-finance";
 import { setLastTransactionAccountId } from "@/features/finance/use-last-transaction-account";
 import { useLocalProfile } from "@/features/finance/use-local-profile";
@@ -95,6 +101,17 @@ export default function CaptureLayout() {
   const alreadyAdded = useMemo(
     () => (capturedRefs ? new Set<string>(capturedRefs) : new Set<string>()),
     [capturedRefs]
+  );
+
+  const applyDraftForm = useCallback(
+    (key: string, form: TransactionDraftPrefill) => {
+      setDrafts((current) =>
+        current.map((draft) =>
+          draft.key === key ? applyCaptureForm(draft, form, accounts) : draft
+        )
+      );
+    },
+    [accounts]
   );
 
   const setDraftAccount = useCallback((key: string, accountId: string) => {
@@ -213,13 +230,20 @@ export default function CaptureLayout() {
       Alert.alert("Nothing to add", "Select at least one new transaction.");
       return;
     }
-    const missingAccount = toSave.find((draft) => !draft.accountId);
+    const missingAccount = toSave.find((draft) => {
+      const sourceIsExternal = isOutOfWalletAccountId(draft.accountId);
+      const trackedId = sourceIsExternal ? draft.toAccountId : draft.accountId;
+      return !accounts.some((account) => account.id === trackedId);
+    });
     if (missingAccount) {
       Alert.alert("Choose an account", "Every transaction needs an account.");
       return;
     }
     const currencyMismatch = toSave.find((draft) => {
-      const account = accounts.find((item) => item.id === draft.accountId);
+      const accountId = isOutOfWalletAccountId(draft.accountId)
+        ? draft.toAccountId
+        : draft.accountId;
+      const account = accounts.find((item) => item.id === accountId);
       return (
         account && account.currency !== draft.captured.transaction.currency
       );
@@ -254,67 +278,45 @@ export default function CaptureLayout() {
       return;
     }
 
+    const missingReceived = toSave.find((draft) => {
+      const { transfer, currency } = draft.captured.transaction;
+      const to = accounts.find((item) => item.id === draft.toAccountId);
+      return (
+        transfer &&
+        to &&
+        to.currency !== currency &&
+        !(transfer.toAmount && transfer.toAmount > 0)
+      );
+    });
+    if (missingReceived) {
+      Alert.alert(
+        "Missing received amount",
+        "Edit the transfer and enter the received amount or exchange rate."
+      );
+      return;
+    }
+
     setIsSaving(true);
     let added = 0;
     let skipped = 0;
     const uploads = new Map<string, Promise<UploadedAttachment>>();
     try {
       for (const draft of toSave) {
-        const { transaction, sourceImageUri } = draft.captured;
+        const { sourceImageUri } = draft.captured;
         const image = images.find((item) => item.uri === sourceImageUri);
-        let attachments: UploadedAttachment[] = [];
-        if (image) {
-          if (!uploads.has(image.uri)) {
-            uploads.set(image.uri, uploadImage(image));
+        const attachmentDrafts = draft.attachments ?? (image ? [image] : []);
+        const attachments: UploadedAttachment[] = [];
+        for (const attachment of attachmentDrafts) {
+          if (!uploads.has(attachment.uri)) {
+            uploads.set(attachment.uri, uploadImage(attachment));
           }
-          attachments = [await uploads.get(image.uri)!];
+          attachments.push(await uploads.get(attachment.uri)!);
         }
-        const isExpense = transaction.direction === "debit";
         try {
-          if (transaction.transfer) {
-            const toAccount = accounts.find(
-              (item) => item.id === draft.toAccountId
-            );
-            await createTransaction({
-              accountId: draft.accountId as Id<"accounts">,
-              amount: transaction.amount,
-              attachments,
-              createdByName: firstName || undefined,
-              date: draft.date,
-              externalRef: transaction.externalRef,
-              externalTransferSide: toAccount ? undefined : "to",
-              merchant: transaction.description,
-              tagIds: [],
-              toAccountId: toAccount?.id as Id<"accounts"> | undefined,
-              toAmount: transaction.transfer.toAmount,
-              // A receipt saved earlier stays as it is; don't claim its ref twice.
-              toExternalRef:
-                transaction.pairedLeg &&
-                !alreadyAdded.has(transaction.pairedLeg.externalRef)
-                  ? transaction.pairedLeg.externalRef
-                  : undefined,
-              transactionCharge:
-                transaction.fee > 0 ? transaction.fee : undefined,
-              type: "transfer",
-            });
-            added += 1;
-            continue;
-          }
           await createTransaction({
-            accountId: draft.accountId as Id<"accounts">,
-            amount: transaction.amount,
+            ...captureDraftToCreateArgs(draft, alreadyAdded),
             attachments,
-            category: draft.category?.name,
-            color: draft.category?.color,
             createdByName: firstName || undefined,
-            date: draft.date,
-            externalRef: transaction.externalRef,
-            merchant: transaction.description,
-            symbol: draft.category?.symbol,
-            tagIds: draft.tags.map((tag) => tag.id as Id<"tags">),
-            transactionCharge:
-              isExpense && transaction.fee > 0 ? transaction.fee : undefined,
-            type: isExpense ? "expense" : "income",
           });
           added += 1;
         } catch (error) {
@@ -352,6 +354,7 @@ export default function CaptureLayout() {
   const value = useMemo<CaptureContextValue>(
     () => ({
       alreadyAdded,
+      applyDraftForm,
       drafts,
       images,
       isSaving,
@@ -367,6 +370,7 @@ export default function CaptureLayout() {
     }),
     [
       alreadyAdded,
+      applyDraftForm,
       drafts,
       images,
       isSaving,
@@ -465,6 +469,7 @@ export default function CaptureLayout() {
             </Stack.Toolbar>
           ) : null}
         </Stack.Screen>
+        <Stack.Screen name="edit" options={{ headerShown: false }} />
         <Stack.Screen
           name="category"
           options={{

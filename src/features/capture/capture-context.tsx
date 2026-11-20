@@ -2,6 +2,8 @@ import { createContext, useContext } from "react";
 
 import type { BalanceContinuity } from "@/convex/lib/capture/parser";
 
+import type { TransactionAttachmentDraft } from "../finance/add-transaction-context";
+import type { TransactionDraftPrefill } from "../finance/transaction-draft-prefill";
 import type { CapturedTransaction } from "./parse-capture";
 
 export interface CaptureImage {
@@ -28,6 +30,7 @@ export interface CaptureTag {
 export type CaptureLabelSource = "ai" | "history" | "manual" | "rule";
 
 export interface CaptureDraft {
+  attachments?: TransactionAttachmentDraft[];
   accountId: string | null;
   /** Null leaves the category to automatic rules (or Uncategorized). */
   category: CaptureCategory | null;
@@ -47,6 +50,7 @@ export interface CaptureDraft {
 export interface CaptureContextValue {
   /** External refs of drafts that are already saved as transactions. */
   alreadyAdded: ReadonlySet<string>;
+  applyDraftForm: (key: string, form: TransactionDraftPrefill) => void;
   drafts: CaptureDraft[];
   images: CaptureImage[];
   isSaving: boolean;

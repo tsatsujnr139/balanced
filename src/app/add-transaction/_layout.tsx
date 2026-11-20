@@ -3,7 +3,14 @@ import { File } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { fetch } from "expo/fetch";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ActivityIndicator, Alert, Platform } from "react-native";
 
 import { HeaderIconButton } from "@/components/header-icon-button";
@@ -11,6 +18,8 @@ import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
 import { MaterialIcons } from "@/constants/material-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { CaptureContext } from "@/features/capture/capture-context";
+import { captureDraftToForm } from "@/features/capture/capture-editor";
 import { AddTransactionContext } from "@/features/finance/add-transaction-context";
 import type {
   TransactionAttachmentDraft,
@@ -35,6 +44,11 @@ import {
   clearTransactionDraftPrefill,
   getTransactionDraftPrefill,
 } from "@/features/finance/transaction-draft-prefill";
+import {
+  calculateExchangeRate,
+  calculateReceivedAmount,
+  positiveDecimal,
+} from "@/features/finance/transfer-amounts";
 import type {
   TransactionAttachmentRecord,
   TransactionTemplate,
@@ -103,16 +117,34 @@ export default function AddTransactionLayout() {
   const colors = useThemeColors();
   const disableHeaderBlur = shouldDisableHeaderBlur();
   const {
+    captureDraftKey: captureDraftKeyParam,
     accountId: accountIdParam,
     draftId: draftIdParam,
     formMode: formModeParam,
     transactionId,
   } = useLocalSearchParams<{
+    captureDraftKey?: string;
     accountId?: string | string[];
     draftId?: string | string[];
     formMode?: string | string[];
     transactionId?: string | string[];
   }>();
+  const captureDraftKey = useRef(captureDraftKeyParam).current;
+  const capture = useContext(CaptureContext);
+  const capturedDraft = capture?.drafts.find(
+    (draft) => draft.key === captureDraftKey
+  );
+  const isCaptureDraft = Boolean(captureDraftKey && capturedDraft);
+  const routeBase: "/capture/edit" | "/add-transaction" = isCaptureDraft
+    ? "/capture/edit"
+    : "/add-transaction";
+  const closeForm = useCallback(() => {
+    if (captureDraftKey) {
+      router.back();
+    } else {
+      closeAddTransaction();
+    }
+  }, [captureDraftKey]);
   const initialAccountId = Array.isArray(accountIdParam)
     ? accountIdParam[0]
     : accountIdParam;
@@ -123,10 +155,15 @@ export default function AddTransactionLayout() {
   const transactionIdParam = Array.isArray(transactionId)
     ? transactionId[0]
     : transactionId;
-  const isCreateMode = formMode === "create" || Boolean(draftId);
+  const isCreateMode =
+    formMode === "create" || Boolean(draftId) || isCaptureDraft;
   const editingTransactionId = isCreateMode ? undefined : transactionIdParam;
   const initialDraftPrefillRef = useRef(
-    draftId ? getTransactionDraftPrefill(draftId) : undefined
+    capturedDraft && capture
+      ? captureDraftToForm(capturedDraft, capture.images)
+      : draftId
+        ? getTransactionDraftPrefill(draftId)
+        : undefined
   );
   const draftPrefill = initialDraftPrefillRef.current;
   const initialNewTransactionAccountId = editingTransactionId
@@ -158,12 +195,12 @@ export default function AddTransactionLayout() {
   const lastTransactionAccountId = useLastTransactionAccountId();
   const hasHydratedRef = useRef(Boolean(initialEditState));
   const attachmentsHydratedRef = useRef(false);
-  const [accountId, setAccountId] = useState<string | null>(
+  const [accountId, setAccountIdValue] = useState<string | null>(
     draftPrefill?.accountId ??
       initialEditState?.accountId ??
       initialNewTransactionAccountId
   );
-  const [amount, setAmount] = useState(
+  const [amount, setAmountValue] = useState(
     draftPrefill?.amount ?? initialEditState?.amount ?? ""
   );
   const [attachments, setAttachments] = useState<TransactionAttachmentDraft[]>(
@@ -188,11 +225,40 @@ export default function AddTransactionLayout() {
   const [transactionCharge, setTransactionCharge] = useState(
     draftPrefill?.transactionCharge ?? initialEditState?.transactionCharge ?? ""
   );
-  const [toAccountId, setToAccountId] = useState<string | null>(
+  const [toAccountId, setToAccountIdValue] = useState<string | null>(
     draftPrefill?.toAccountId ?? initialEditState?.toAccountId ?? null
   );
-  const [toAmount, setToAmount] = useState(
+  const [toAmount, setToAmountValue] = useState(
     draftPrefill?.toAmount ?? initialEditState?.toAmount ?? ""
+  );
+  const [exchangeRate, setExchangeRateValue] = useState(() =>
+    calculateExchangeRate(
+      draftPrefill?.amount ?? initialEditState?.amount ?? "",
+      draftPrefill?.toAmount ?? initialEditState?.toAmount ?? ""
+    )
+  );
+  const setAmount = useCallback(
+    (value: string) => {
+      setAmountValue(value);
+      if (positiveDecimal(exchangeRate)) {
+        setToAmountValue(calculateReceivedAmount(value, exchangeRate));
+      }
+    },
+    [exchangeRate]
+  );
+  const setToAmount = useCallback(
+    (value: string) => {
+      setToAmountValue(value);
+      setExchangeRateValue(calculateExchangeRate(amount, value));
+    },
+    [amount]
+  );
+  const setExchangeRate = useCallback(
+    (value: string) => {
+      setExchangeRateValue(value);
+      setToAmountValue(calculateReceivedAmount(amount, value));
+    },
+    [amount]
   );
   const [transactionTypeIndex, setTransactionTypeIndex] = useState(
     draftPrefill?.transactionTypeIndex ??
@@ -207,6 +273,39 @@ export default function AddTransactionLayout() {
     isEditing && !initialEditState && existingTransaction === undefined;
   const transactionNotFound =
     isEditing && !initialEditState && existingTransaction === null;
+
+  const sourceCurrency =
+    accounts.find((account) => account.id === accountId)?.currency ??
+    capturedDraft?.captured.transaction.currency;
+  const destinationCurrency =
+    accounts.find((account) => account.id === toAccountId)?.currency ??
+    capturedDraft?.captured.transaction.transfer?.toCurrency;
+  const setAccountId = useCallback(
+    (id: string) => {
+      const nextCurrency = accounts.find(
+        (account) => account.id === id
+      )?.currency;
+      if (sourceCurrency && nextCurrency !== sourceCurrency) {
+        setToAmountValue("");
+        setExchangeRateValue("");
+      }
+      setAccountIdValue(id);
+    },
+    [accounts, sourceCurrency]
+  );
+  const setToAccountId = useCallback(
+    (id: string) => {
+      const nextCurrency = accounts.find(
+        (account) => account.id === id
+      )?.currency;
+      if (destinationCurrency && nextCurrency !== destinationCurrency) {
+        setToAmountValue("");
+        setExchangeRateValue("");
+      }
+      setToAccountIdValue(id);
+    },
+    [accounts, destinationCurrency]
+  );
 
   useEffect(
     () => () => {
@@ -231,13 +330,13 @@ export default function AddTransactionLayout() {
       [
         {
           onPress: () => {
-            closeAddTransaction();
+            closeForm();
           },
           text: "OK",
         },
       ]
     );
-  }, [transactionNotFound]);
+  }, [closeForm, transactionNotFound]);
 
   useEffect(() => {
     if (!existingTransaction || hasHydratedRef.current) {
@@ -245,8 +344,8 @@ export default function AddTransactionLayout() {
     }
 
     hasHydratedRef.current = true;
-    setAccountId(existingTransaction.accountId);
-    setAmount(minorUnitsToAmountInput(existingTransaction.amount));
+    setAccountIdValue(existingTransaction.accountId);
+    setAmountValue(minorUnitsToAmountInput(existingTransaction.amount));
     setCategory(existingTransaction.category);
     setDate(new Date(existingTransaction.date).getTime());
     setTransactionTypeIndex(
@@ -256,8 +355,16 @@ export default function AddTransactionLayout() {
           ? 1
           : 0
     );
-    setToAccountId(existingTransaction.toAccountId ?? null);
-    setToAmount(
+    setToAccountIdValue(existingTransaction.toAccountId ?? null);
+    setExchangeRateValue(
+      calculateExchangeRate(
+        minorUnitsToAmountInput(existingTransaction.amount),
+        existingTransaction.toAmount === undefined
+          ? ""
+          : minorUnitsToAmountInput(existingTransaction.toAmount)
+      )
+    );
+    setToAmountValue(
       existingTransaction.toAmount !== undefined &&
         existingTransaction.toCurrency !== existingTransaction.currency
         ? minorUnitsToAmountInput(existingTransaction.toAmount)
@@ -339,13 +446,15 @@ export default function AddTransactionLayout() {
   }, []);
   const applyTemplate = useCallback(
     (template: TransactionTemplate) => {
-      setAccountId(template.accountId);
-      setAmount(
+      setAccountIdValue(template.accountId);
+      setExchangeRateValue("");
+      setToAmountValue("");
+      setAmountValue(
         template.amount === 0 ? "" : minorUnitsToAmountInput(template.amount)
       );
       setNarration(template.merchant);
       setTags(template.tags);
-      setToAccountId(template.toAccountId);
+      setToAccountIdValue(template.toAccountId);
       setTransactionCharge(
         template.transactionCharge
           ? minorUnitsToAmountInput(template.transactionCharge)
@@ -384,6 +493,10 @@ export default function AddTransactionLayout() {
   }, []);
   const transactionContext = useMemo(
     () => ({
+      routeBase,
+      isCaptureDraft,
+      exchangeRate,
+      setExchangeRate,
       accountId: effectiveAccountId,
       addAttachments,
       addCustomCategory,
@@ -416,6 +529,14 @@ export default function AddTransactionLayout() {
       transactionTypeIndex,
     }),
     [
+      routeBase,
+      isCaptureDraft,
+      exchangeRate,
+      setExchangeRate,
+      setAmount,
+      setToAmount,
+      setAccountId,
+      setToAccountId,
       addCustomCategory,
       addAttachments,
       applyTemplate,
@@ -515,6 +636,32 @@ export default function AddTransactionLayout() {
       return;
     }
 
+    if (isCaptureDraft && capture && captureDraftKey) {
+      capture.applyDraftForm(captureDraftKey, {
+        accountId: effectiveAccountId,
+        amount,
+        attachments,
+        category,
+        customCategories: selectedCategory
+          ? [
+              ...customCategories.filter(
+                (item) => item.name !== selectedCategory.name
+              ),
+              { ...selectedCategory, keywords: [] },
+            ]
+          : customCategories,
+        date,
+        narration,
+        tags,
+        toAccountId,
+        toAmount,
+        transactionCharge,
+        transactionTypeIndex,
+      });
+      closeForm();
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const merchant = isTransfer
@@ -611,7 +758,7 @@ export default function AddTransactionLayout() {
           type: transactionType,
         });
         setLastTransactionAccountId(trackedTransferAccount!.id);
-        closeAddTransaction();
+        closeForm();
         return;
       }
 
@@ -644,13 +791,17 @@ export default function AddTransactionLayout() {
         type: transactionType,
       });
       setLastTransactionAccountId(trackedTransferAccount!.id);
-      closeAddTransaction();
+      closeForm();
     } catch {
       Alert.alert("Could not save transaction", "Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   }, [
+    capture,
+    captureDraftKey,
+    closeForm,
+    isCaptureDraft,
     accounts,
     amount,
     attachments,
@@ -690,10 +841,10 @@ export default function AddTransactionLayout() {
       <HeaderIconButton
         accessibilityLabel="Close"
         icon={MaterialIcons.close}
-        onPress={closeAddTransaction}
+        onPress={closeForm}
       />
     ),
-    []
+    [closeForm]
   );
 
   const renderSaveButton = useCallback(
@@ -702,7 +853,9 @@ export default function AddTransactionLayout() {
         <ActivityIndicator />
       ) : (
         <HeaderIconButton
-          accessibilityLabel="Save transaction"
+          accessibilityLabel={
+            isCaptureDraft ? "Apply changes" : "Save transaction"
+          }
           icon={MaterialIcons.check}
           onPress={() => {
             void submit();
@@ -710,7 +863,7 @@ export default function AddTransactionLayout() {
           tintColor={colors.primary}
         />
       ),
-    [isSubmitting, isLoadingExisting, submit, colors.primary]
+    [isCaptureDraft, isSubmitting, isLoadingExisting, submit, colors.primary]
   );
 
   const renderAddCategoryButton = useCallback(
@@ -718,10 +871,10 @@ export default function AddTransactionLayout() {
       <HeaderIconButton
         accessibilityLabel="Add category"
         icon={MaterialIcons.add}
-        onPress={() => router.push("/add-transaction/category-new")}
+        onPress={() => router.push(`${routeBase}/category-new`)}
       />
     ),
-    []
+    [routeBase]
   );
 
   const renderAddTagButton = useCallback(
@@ -729,10 +882,10 @@ export default function AddTransactionLayout() {
       <HeaderIconButton
         accessibilityLabel="Add tag"
         icon={MaterialIcons.add}
-        onPress={() => router.push("/add-transaction/tag-new")}
+        onPress={() => router.push(`${routeBase}/tag-new`)}
       />
     ),
-    []
+    [routeBase]
   );
 
   const renderAddTemplateButton = useCallback(
@@ -772,7 +925,11 @@ export default function AddTransactionLayout() {
               headerLeft: renderCloseButton,
               headerRight: renderSaveButton,
             }),
-            title: isEditing ? "Edit transaction" : "Add transaction",
+            title: isCaptureDraft
+              ? "Edit captured transaction"
+              : isEditing
+                ? "Edit transaction"
+                : "Add transaction",
           }}
         >
           {Platform.OS === "ios" ? (
@@ -781,7 +938,7 @@ export default function AddTransactionLayout() {
                 accessibilityLabel="Close"
                 icon="xmark"
                 onPress={() => {
-                  closeAddTransaction();
+                  closeForm();
                 }}
                 separateBackground
               />
@@ -789,7 +946,7 @@ export default function AddTransactionLayout() {
           ) : null}
           {Platform.OS === "ios" ? (
             <Stack.Toolbar placement="right">
-              {isEditing ? null : (
+              {isEditing || isCaptureDraft ? null : (
                 <Stack.Toolbar.Button
                   accessibilityLabel="Capture from text or screenshots"
                   icon="text.viewfinder"
@@ -802,7 +959,9 @@ export default function AddTransactionLayout() {
                 </Stack.Toolbar.View>
               ) : (
                 <Stack.Toolbar.Button
-                  accessibilityLabel="Save transaction"
+                  accessibilityLabel={
+                    isCaptureDraft ? "Apply changes" : "Save transaction"
+                  }
                   icon="checkmark"
                   onPress={() => {
                     void submit();
@@ -843,7 +1002,7 @@ export default function AddTransactionLayout() {
               <Stack.Toolbar.Button
                 accessibilityLabel="Add category"
                 icon="plus"
-                onPress={() => router.push("/add-transaction/category-new")}
+                onPress={() => router.push(`${routeBase}/category-new`)}
               />
             </Stack.Toolbar>
           ) : null}
@@ -968,7 +1127,7 @@ export default function AddTransactionLayout() {
             <Stack.Toolbar placement="right">
               <Stack.Toolbar.Button
                 accessibilityLabel="Add tag"
-                onPress={() => router.push("/add-transaction/tag-new")}
+                onPress={() => router.push(`${routeBase}/tag-new`)}
               >
                 Add
               </Stack.Toolbar.Button>

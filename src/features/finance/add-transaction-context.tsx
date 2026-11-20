@@ -26,8 +26,12 @@ export interface TransactionLabelDraft {
 }
 
 interface AddTransactionContextValue {
+  routeBase: "/add-transaction" | "/capture/edit";
+  isCaptureDraft: boolean;
   accountId: string | null;
   amount: string;
+  exchangeRate: string;
+  setExchangeRate: (rate: string) => void;
   attachments: TransactionAttachmentDraft[];
   category: string | null;
   date: number;

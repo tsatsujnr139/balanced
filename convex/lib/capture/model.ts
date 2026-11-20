@@ -29,6 +29,9 @@ export interface ModelExtractedTransaction {
   sourceText?: string;
   summary?: string;
   transactionId?: string;
+  /** Amount and currency received on an exchange, copied from the source. */
+  toAmount?: string;
+  toCurrency?: string;
 }
 
 const NUMBER_IN_TEXT = /\d+(?:,\d{3})*(?:\.\d{1,2})?/g;
@@ -183,14 +186,23 @@ export const normalizeModelTransactions = (
     }
     seenRefs.add(externalRef);
 
+    const currency =
+      item.currency && CURRENCY_CODE.test(item.currency.trim().toUpperCase())
+        ? item.currency.trim().toUpperCase()
+        : DEFAULT_CURRENCY;
+    const toCurrency = item.toCurrency?.trim().toUpperCase();
+    const toAmount = verifiedAmount(item.toAmount, printed);
+    const transfer =
+      toAmount && toCurrency && CURRENCY_CODE.test(toCurrency)
+        ? { toAmount, toCurrency, rate: toAmount / amount }
+        : undefined;
+
     transactions.push({
+      transfer,
       amount,
       balanceAfter,
       counterpartyName,
-      currency:
-        item.currency && CURRENCY_CODE.test(item.currency.trim().toUpperCase())
-          ? item.currency.trim().toUpperCase()
-          : DEFAULT_CURRENCY,
+      currency,
       description:
         clean(item.summary) ?? reference ?? counterpartyName ?? "Transaction",
       direction: typedDirection,

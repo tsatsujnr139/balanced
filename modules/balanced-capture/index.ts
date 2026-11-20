@@ -27,6 +27,9 @@ export interface OnDeviceExtractedTransaction {
   amount: string;
   balanceAfter?: string;
   counterparty?: string;
+  currency?: string;
+  toAmount?: string;
+  toCurrency?: string;
   direction: "credit" | "debit";
   fee?: string;
   institution?: string;

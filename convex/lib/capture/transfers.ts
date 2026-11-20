@@ -7,6 +7,10 @@ import type { CaptureDateTime, ParsedCaptureTransaction } from "./parser";
 
 /** Counterparties that are always the user's own wallet top-ups. */
 const OWN_WALLET_COUNTERPARTIES = [/\bghanapay push\b/i];
+// Explicit ownership in an exchange notification is enough even when the
+// provider omits a recipient name (or the local profile has not been filled in).
+const OWN_ACCOUNT_TEXT =
+  /\b(?:to|into) (?:(?:my|your)(?: own)?|(?:(?:his|her|their) )?own) (?:(?:[A-Z]{3,4}) )?(?:account|wallet)\b/i;
 const NAME_WORD = /\p{L}{3,}/gu;
 const MS_PER_MINUTE = 60_000;
 /** Incoming legs can land up to this long after the outgoing one. */
@@ -81,6 +85,9 @@ const classify = (
   const counterparty = transaction.counterpartyName ?? "";
   const isOwn =
     isOwnerName(counterparty, ownerNames) ||
+    Boolean(
+      transaction.transfer && OWN_ACCOUNT_TEXT.test(transaction.sourceText)
+    ) ||
     OWN_WALLET_COUNTERPARTIES.some((pattern) => pattern.test(counterparty));
   if (isOwn) {
     return {

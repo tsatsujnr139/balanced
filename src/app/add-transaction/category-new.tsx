@@ -23,7 +23,6 @@ import { CategoryFormRows } from "@/features/finance/components/category-form-ro
 import { useThemeColors } from "@/hooks/use-theme";
 import { androidHeaderOptions } from "@/lib/android-header-options";
 
-const RETURN_PATH = "/add-transaction/category-new";
 const DEFAULT_CATEGORY_SYMBOL = "square.grid.2x2.fill";
 
 function normalizeSymbolParam(symbol: string | string[] | undefined) {
@@ -32,6 +31,7 @@ function normalizeSymbolParam(symbol: string | string[] | undefined) {
 }
 
 export default function NewCategoryScreen() {
+  const { routeBase } = useAddTransaction();
   const colors = useThemeColors();
   const params = useLocalSearchParams<{
     color?: string;
@@ -150,20 +150,20 @@ export default function NewCategoryScreen() {
             name={name}
             onColorPress={() => {
               router.push({
-                params: { returnPath: RETURN_PATH },
-                pathname: "/add-transaction/color",
+                params: { returnPath: `${routeBase}/category-new` },
+                pathname: `${routeBase}/color`,
               });
             }}
             onIconPress={() => {
               router.push({
-                params: { returnPath: RETURN_PATH },
-                pathname: "/add-transaction/category-icon",
+                params: { returnPath: `${routeBase}/category-new` },
+                pathname: `${routeBase}/category-icon`,
               });
             }}
             onNamePress={() => {
               router.push({
-                params: { returnPath: RETURN_PATH },
-                pathname: "/add-transaction/label-name",
+                params: { returnPath: `${routeBase}/category-new` },
+                pathname: `${routeBase}/label-name`,
               });
             }}
             symbol={symbol}

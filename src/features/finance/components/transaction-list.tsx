@@ -25,6 +25,18 @@ interface TransactionSection {
 }
 
 function openTransactionEditor(transaction: Transaction) {
+  // Incoming transfer rows show the received currency. Fetch the outgoing leg
+  // before hydrating the editor so the sent amount and exchange rate stay correct.
+  if (
+    transaction.transactionKind === "transfer_in" &&
+    transaction.fromAccountId
+  ) {
+    router.push({
+      pathname: "/add-transaction",
+      params: { transactionId: transaction.id },
+    });
+    return;
+  }
   if (transaction.parentTransactionId) {
     router.push({
       params: { transactionId: transaction.parentTransactionId },

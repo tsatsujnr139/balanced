@@ -17,6 +17,7 @@ Skip promotional messages, Messages-app timestamps, and messages cut off at the 
 direction is "debit" when money left the account holder's account and "credit" when it arrived.
 Amounts, fees, and balances are digits with an optional decimal point (e.g. 1071.75), without currency. currency is the code the amount is in (GHS, USD, USDT, …); use GHS for cedis.
 occurredAt is the date and time printed inside the message as "YYYY-MM-DD HH:MM".
+For a currency exchange, toAmount and toCurrency are the received amount and currency printed in the notification; otherwise use null.
 summary is a short description of what the payment was for.
 balanceAfter is the account balance printed after the transaction. counterparty is the other party's name, phone number, or network. institution is who sent the notification (e.g. MTN MoMo, Telecel Cash, a bank). sourceText is the notification copied verbatim.`;
 
@@ -42,6 +43,8 @@ const RESPONSE_SCHEMA = {
           sourceText: OPTIONAL_STRING,
           summary: OPTIONAL_STRING,
           transactionId: OPTIONAL_STRING,
+          toAmount: OPTIONAL_STRING,
+          toCurrency: OPTIONAL_STRING,
         },
         required: [
           "amount",
@@ -56,6 +59,8 @@ const RESPONSE_SCHEMA = {
           "sourceText",
           "summary",
           "transactionId",
+          "toAmount",
+          "toCurrency",
         ],
         type: "object",
       },
@@ -77,6 +82,8 @@ const STRING_FIELDS = [
   "sourceText",
   "summary",
   "transactionId",
+  "toAmount",
+  "toCurrency",
 ] as const;
 
 /** Keeps only well-typed fields; anything else the model returned is dropped. */

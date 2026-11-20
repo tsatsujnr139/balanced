@@ -484,6 +484,7 @@ function TransactionActionRow({
 }
 
 export default function AddTransactionScreen() {
+  const { routeBase, isCaptureDraft } = useAddTransaction();
   const colors = useThemeColors();
   const colorScheme = useColorScheme();
   const { draftId, formMode, transactionId } = useLocalSearchParams<{
@@ -496,7 +497,8 @@ export default function AddTransactionScreen() {
   const transactionIdParam = Array.isArray(transactionId)
     ? transactionId[0]
     : transactionId;
-  const isCreateMode = currentFormMode === "create" || Boolean(currentDraftId);
+  const isCreateMode =
+    isCaptureDraft || currentFormMode === "create" || Boolean(currentDraftId);
   const editingTransactionId = isCreateMode ? undefined : transactionIdParam;
   const deleteTransaction = useMutation(api.finance.deleteTransaction);
   const previousTransactions = useQuery(api.finance.listTransactions);
@@ -505,6 +507,8 @@ export default function AddTransactionScreen() {
   const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
   const { accounts } = useFinance();
   const {
+    exchangeRate,
+    setExchangeRate,
     accountId,
     amount,
     attachments,
@@ -750,6 +754,11 @@ export default function AddTransactionScreen() {
             {currencySymbol}
           </Text>
           <TextInput
+            accessibilityLabel={
+              isTransfer
+                ? `Amount sent in ${fromAccount?.currency ?? "account currency"}`
+                : "Transaction amount"
+            }
             keyboardType="decimal-pad"
             onChangeText={setAmount}
             placeholder="0.00"
@@ -812,6 +821,31 @@ export default function AddTransactionScreen() {
                 }}
                 value={toAmount}
               />
+            </View>
+            <View
+              style={{ alignItems: "center", flexDirection: "row", gap: 12 }}
+            >
+              <Text style={{ color: colors.muted, fontSize: 14 }}>
+                1 {fromAccount?.currency} =
+              </Text>
+              <TextInput
+                accessibilityLabel={`Exchange rate from ${fromAccount?.currency} to ${receivingCurrency}`}
+                keyboardType="decimal-pad"
+                onChangeText={setExchangeRate}
+                placeholder="Exchange rate"
+                placeholderTextColor={colors.muted}
+                value={exchangeRate}
+                style={{
+                  color: colors.foreground,
+                  flex: 1,
+                  minHeight: 44,
+                  textAlign: "right",
+                  fontSize: 17,
+                }}
+              />
+              <Text style={{ color: colors.muted, fontSize: 14 }}>
+                {receivingCurrency}
+              </Text>
             </View>
             {exchangeRateLabel ? (
               <Text
@@ -936,7 +970,7 @@ export default function AddTransactionScreen() {
               onPress={() =>
                 router.push({
                   params: { field: "from" },
-                  pathname: "/add-transaction/account",
+                  pathname: `${routeBase}/account`,
                 })
               }
               required={!fromAccount}
@@ -949,7 +983,7 @@ export default function AddTransactionScreen() {
               onPress={() =>
                 router.push({
                   params: { field: "to" },
-                  pathname: "/add-transaction/account",
+                  pathname: `${routeBase}/account`,
                 })
               }
               required={!toAccount}
@@ -961,7 +995,7 @@ export default function AddTransactionScreen() {
             icon={selectedAccount?.symbol ?? "building.columns.fill"}
             iconColor={selectedAccount?.color ?? "#34A853"}
             label="Account"
-            onPress={() => router.push("/add-transaction/account")}
+            onPress={() => router.push(`${routeBase}/account`)}
             required={!selectedAccount}
             value={selectedAccount?.name}
           />
@@ -972,7 +1006,7 @@ export default function AddTransactionScreen() {
             iconColor={selectedCategory?.color ?? "#8E8E93"}
             label="Category"
             onPress={() => {
-              router.push("/add-transaction/category");
+              router.push(`${routeBase}/category`);
             }}
             required={Boolean(editingTransactionId && !category)}
             value={
@@ -985,7 +1019,7 @@ export default function AddTransactionScreen() {
           icon="tag"
           iconColor="#5856D6"
           label="Tags"
-          onPress={() => router.push("/add-transaction/tags")}
+          onPress={() => router.push(`${routeBase}/tags`)}
           value={
             tags.length > 0
               ? tags.map((tag) => tag.name).join(", ")
@@ -999,7 +1033,7 @@ export default function AddTransactionScreen() {
           iconColor="#8E8E93"
           label="Attachments"
           last
-          onPress={() => router.push("/add-transaction/attachments")}
+          onPress={() => router.push(`${routeBase}/attachments`)}
           value={
             attachments.length > 0 ? `${attachments.length} selected` : "Add"
           }
@@ -1010,7 +1044,7 @@ export default function AddTransactionScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Choose transaction template"
-          onPress={() => router.push("/add-transaction/templates")}
+          onPress={() => router.push(`${routeBase}/templates`)}
           style={({ pressed }) => ({
             alignItems: "center",
             backgroundColor: colors.card,

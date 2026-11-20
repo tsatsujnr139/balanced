@@ -4,6 +4,7 @@ import { useAddTransaction } from "@/features/finance/add-transaction-context";
 import { CategoryPickerScreen } from "@/features/finance/components/category-picker-screen";
 
 export default function TransactionCategoryScreen() {
+  const { routeBase } = useAddTransaction();
   const {
     addCustomCategory,
     category: selectedCategory,
@@ -14,7 +15,7 @@ export default function TransactionCategoryScreen() {
   return (
     <CategoryPickerScreen
       customCategories={customCategories}
-      newCategoryPathname="/add-transaction/category-new"
+      newCategoryPathname={`${routeBase}/category-new`}
       selectedCategoryName={selectedCategory}
       onSelectCategory={(category) => {
         addCustomCategory(category);
