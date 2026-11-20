@@ -161,7 +161,7 @@ function ActionButton({
 }
 
 const LABEL_SOURCE_TEXT: Record<CaptureLabelSource, string> = {
-  ai: "Suggested by OpenCode",
+  ai: "",
   history: "From your history",
   manual: "",
   rule: "Automatic rule",

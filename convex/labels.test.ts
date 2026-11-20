@@ -104,3 +104,25 @@ test("never learns from bookkeeping categories", async () => {
 
   expect(suggestions).toEqual([]);
 });
+
+test("never suggests a tag that repeats the category name", async () => {
+  const { addPast, t, treatsId } = await setup();
+  const duplicate = await t.mutation(api.finance.createTag, {
+    color: "#FF2D55",
+    name: "Home Maintenance",
+  });
+  await addPast("Water piping work", "Home Maintenance", [
+    duplicate.id,
+    treatsId,
+  ]);
+
+  const { suggestions } = await t.action(api.labels.suggest, {
+    categoryNames: [...CATEGORY_NAMES, "Home Maintenance"],
+    drafts: [draft("a", "Water piping work")],
+  });
+
+  expect(suggestions[0]).toMatchObject({
+    category: "Home Maintenance",
+    tagIds: [treatsId],
+  });
+});

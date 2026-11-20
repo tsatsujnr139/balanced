@@ -147,9 +147,16 @@ const matchRule = (
   };
 };
 
+const NON_LETTERS = /[^\p{L}\p{N}]+/gu;
+
+/** Compares label names ignoring case, emoji, spaces, and punctuation. */
+const sameLabel = (a: string, b: string): boolean =>
+  a.toLocaleLowerCase().replace(NON_LETTERS, "") ===
+  b.toLocaleLowerCase().replace(NON_LETTERS, "");
+
 const SYSTEM_PROMPT = `You label personal finance transactions for a household in Ghana.
 For each draft, pick the single best category from the allowed list and any tags from the allowed list that clearly apply.
-Follow how this household labelled similar past transactions. Use null for category, and an empty tag list, when nothing fits well.
+Follow how this household labelled similar past transactions. Never pick a tag that just repeats the chosen category's name. Use null for category, and an empty tag list, when nothing fits well.
 confidence is 0 to 1: how sure you are about the category.`;
 
 const buildSchema = (
@@ -354,9 +361,14 @@ export const suggest = action({
         confidence: suggestion.confidence,
         key: suggestion.key,
         source: suggestion.source,
-        tagIds: suggestion.tagNames.flatMap(
-          (name) => tagIdByName.get(name) ?? []
-        ),
+        // A tag named like the category ("Home Maintenance" on a Home
+        // Maintenance transaction) adds nothing, so it's never suggested.
+        tagIds: suggestion.tagNames
+          .filter(
+            (name) =>
+              !(suggestion.category && sameLabel(name, suggestion.category))
+          )
+          .flatMap((name) => tagIdByName.get(name) ?? []),
       })),
     };
   },
