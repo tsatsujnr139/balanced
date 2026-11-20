@@ -6,6 +6,32 @@ const GHANAPAY_ACCOUNT = /\bghana\s*pay\b/i;
 
 const MOMO_ACCOUNT = /\bmomo\b|\bmtn\b|\bmobile\s*money\b/i;
 
+const NAME_WORD = /\p{L}{3,}/gu;
+
+const nameWords = (value: string): string[] =>
+  value.toLocaleLowerCase().match(NAME_WORD) ?? [];
+
+/**
+ * Narrows several equally good accounts (e.g. "Tsatsu's Momo" and "Vicki's
+ * Momo") to the ones named after the person using this phone.
+ */
+export const preferOwnerAccounts = (
+  candidates: Account[],
+  ownerNames: string[]
+): Account[] => {
+  if (candidates.length < 2) {
+    return candidates;
+  }
+  const owners = new Set(ownerNames.flatMap(nameWords));
+  if (owners.size === 0) {
+    return candidates;
+  }
+  const owned = candidates.filter((account) =>
+    nameWords(account.name).some((word) => owners.has(word))
+  );
+  return owned.length > 0 ? owned : candidates;
+};
+
 const isMomoTransaction = (transaction: CapturedTransfer): boolean =>
   transaction.provider === "mtn_momo" ||
   (transaction.provider === "other" &&
@@ -14,9 +40,10 @@ const isMomoTransaction = (transaction: CapturedTransfer): boolean =>
 /** Avoid guessing when several accounts match the same wallet or bank. */
 export const matchCaptureAccounts = (
   transaction: CapturedTransfer,
-  accounts: Account[]
+  accounts: Account[],
+  ownerNames: string[] = []
 ) => {
-  const sources = isMomoTransaction(transaction)
+  const momoSources = isMomoTransaction(transaction)
     ? accounts.filter(
         (account) =>
           account.currency === transaction.currency &&
@@ -43,6 +70,7 @@ export const matchCaptureAccounts = (
               GHANAPAY_ACCOUNT.test(`${account.name} ${account.institution}`)
           )
         : [];
+  const sources = preferOwnerAccounts(momoSources, ownerNames);
   return {
     sourceId: sources.length === 1 ? sources[0]?.id : undefined,
     destinationIds: destinations.map((account) => account.id),
@@ -54,19 +82,23 @@ export const pickCaptureSourceAccountId = (
   transaction: CapturedTransfer,
   accounts: Account[],
   rememberedId: string | undefined,
-  fallbackId: string | null
+  fallbackId: string | null,
+  ownerNames: string[] = []
 ): string | null => {
-  const candidates = accounts.filter(
+  const matching = accounts.filter(
     (account) =>
       account.currency === transaction.currency &&
       (!isMomoTransaction(transaction) ||
         (account.type !== "cash" &&
           MOMO_ACCOUNT.test(`${account.name} ${account.institution}`)))
   );
-  for (const id of [rememberedId, fallbackId]) {
-    if (candidates.some((account) => account.id === id)) {
-      return id ?? null;
-    }
+  // An account the user picked before always wins.
+  if (matching.some((account) => account.id === rememberedId)) {
+    return rememberedId ?? null;
+  }
+  const candidates = preferOwnerAccounts(matching, ownerNames);
+  if (candidates.some((account) => account.id === fallbackId)) {
+    return fallbackId;
   }
   if (isMomoTransaction(transaction) && candidates.length !== 1) {
     return null;

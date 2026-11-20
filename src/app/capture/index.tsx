@@ -24,6 +24,7 @@ import type { CapturedTransfer } from "@/convex/lib/capture/transfers";
 import {
   matchCaptureAccounts,
   pickCaptureSourceAccountId,
+  preferOwnerAccounts,
   hasSpecificCaptureDestination,
 } from "@/features/capture/capture-account-matching";
 import {
@@ -510,11 +511,16 @@ const summarize = (found: number, alreadyAddedCount: number): string => {
 const pickDestinationAccountId = (
   transaction: CapturedTransfer,
   accounts: Account[],
-  sourceAccountId: string | null
+  sourceAccountId: string | null,
+  ownerNames: string[]
 ): string | null => {
   const currency = transaction.transfer?.toCurrency ?? transaction.currency;
-  const { destinationIds } = matchCaptureAccounts(transaction, accounts);
-  const candidates = accounts.filter(
+  const { destinationIds } = matchCaptureAccounts(
+    transaction,
+    accounts,
+    ownerNames
+  );
+  const matching = accounts.filter(
     (account) =>
       account.currency === currency &&
       account.id !== sourceAccountId &&
@@ -522,12 +528,13 @@ const pickDestinationAccountId = (
         destinationIds.includes(account.id))
   );
   const remembered = getRememberedAccountId(captureDestinationKey(transaction));
-  const rememberedAccount = candidates.find(
+  const rememberedAccount = matching.find(
     (account) => account.id === remembered
   );
   if (rememberedAccount) {
     return rememberedAccount.id;
   }
+  const candidates = preferOwnerAccounts(matching, ownerNames);
   const [onlyCandidate] = candidates;
   return candidates.length === 1 && onlyCandidate ? onlyCandidate.id : null;
 };
@@ -555,7 +562,8 @@ const exifDateToEpoch = (value: unknown): number | undefined => {
 const buildDrafts = (
   result: CaptureResult,
   fallbackAccountId: string | null,
-  accounts: Account[]
+  accounts: Account[],
+  ownerNames: string[]
 ): CaptureDraft[] => {
   const continuity = checkBalanceContinuity(
     result.transactions.map((item) => item.transaction)
@@ -566,7 +574,8 @@ const buildDrafts = (
       transaction,
       accounts,
       getRememberedAccountId(captureSourceKey(transaction)),
-      fallbackAccountId
+      fallbackAccountId,
+      ownerNames
     );
     return {
       accountId,
@@ -580,7 +589,7 @@ const buildDrafts = (
       selected: true,
       tags: [],
       toAccountId: transaction.transfer
-        ? pickDestinationAccountId(transaction, accounts, accountId)
+        ? pickDestinationAccountId(transaction, accounts, accountId, ownerNames)
         : null,
     };
   });
@@ -695,7 +704,12 @@ export default function CaptureScreen() {
         ownerNames: firstName ? [firstName] : [],
       });
       setResult(next);
-      const built = buildDrafts(next, fallbackAccountId, accounts);
+      const built = buildDrafts(
+        next,
+        fallbackAccountId,
+        accounts,
+        firstName ? [firstName] : []
+      );
       setDrafts(built);
       void applyLabelSuggestions(built);
     } catch (error) {
