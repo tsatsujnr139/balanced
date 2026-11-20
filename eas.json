@@ -12,7 +12,7 @@
       "node": "24.13.0",
       "pnpm": "11.6.0",
       "ios": {
-        "image": "sdk-56"
+        "image": "macos-tahoe-26.6-xcode-27.2"
       },
       "env": {
         "APP_ICON": "./src/assets/logo.png",
@@ -28,7 +28,7 @@
       "node": "24.13.0",
       "pnpm": "11.6.0",
       "ios": {
-        "image": "sdk-56"
+        "image": "macos-tahoe-26.6-xcode-27.2"
       },
       "env": {
         "APP_NAME": "Balanced",
