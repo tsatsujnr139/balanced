@@ -83,6 +83,9 @@ const config: ExpoConfig = {
         },
       },
     ],
+    // Listed before expo-widgets and expo-sharing so its Xcode mod runs after
+    // theirs (mods run in reverse order) and can untangle their Info.plists.
+    "./plugins/with-share-extension-info-plist",
     [
       "expo-widgets",
       {
@@ -105,6 +108,17 @@ const config: ExpoConfig = {
             },
           },
         ],
+      },
+    ],
+    [
+      "expo-sharing",
+      {
+        // Screenshots (and copied message text) shared from the share sheet
+        // open the capture screen.
+        ios: {
+          activationRule: { supportsImageWithMaxCount: 5, supportsText: true },
+          enabled: true,
+        },
       },
     ],
     // After expo-widgets: WidgetKit requires containerBackground on the native entry view.

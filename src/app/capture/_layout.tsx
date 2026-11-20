@@ -4,8 +4,8 @@ import { File } from "expo-file-system";
 import { router } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { fetch } from "expo/fetch";
-import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Platform } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, AppState, Platform } from "react-native";
 
 import { HeaderIconButton } from "@/components/header-icon-button";
 import { shouldDisableHeaderBlur } from "@/components/tab-stack-layout";
@@ -17,7 +17,10 @@ import {
   captureSourceKey,
   rememberAccountId,
 } from "@/features/capture/capture-accounts";
-import { CaptureContext } from "@/features/capture/capture-context";
+import {
+  CaptureContext,
+  MAX_CAPTURE_IMAGES,
+} from "@/features/capture/capture-context";
 import type {
   CaptureCategory,
   CaptureContextValue,
@@ -29,6 +32,7 @@ import {
   applyCaptureForm,
   captureDraftToCreateArgs,
 } from "@/features/capture/capture-editor";
+import { takeIncomingShare } from "@/features/capture/incoming-share";
 import { isOutOfWalletAccountId } from "@/features/finance/out-of-wallet";
 import type { TransactionDraftPrefill } from "@/features/finance/transaction-draft-prefill";
 import { useFinance } from "@/features/finance/use-finance";
@@ -83,6 +87,49 @@ export default function CaptureLayout() {
     null
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  // Screenshots shared from the share sheet land here, whether the capture
+  // screen is just opening or was already open in the background.
+  useEffect(() => {
+    let isTaking = false;
+    const takeShare = async () => {
+      if (isTaking) {
+        return;
+      }
+      isTaking = true;
+      try {
+        const share = await takeIncomingShare();
+        if (!share) {
+          return;
+        }
+        if (share.images.length > 0) {
+          setImages((current) => {
+            const known = new Set(current.map((image) => image.uri));
+            return [
+              ...current,
+              ...share.images.filter((image) => !known.has(image.uri)),
+            ].slice(0, MAX_CAPTURE_IMAGES);
+          });
+        }
+        if (share.text) {
+          setText((current) =>
+            current.trim() ? `${current}\n\n${share.text}` : share.text
+          );
+        }
+      } catch {
+        // A share that can't be read is simply not attached.
+      } finally {
+        isTaking = false;
+      }
+    };
+    void takeShare();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void takeShare();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   const externalRefs = useMemo(
     () =>

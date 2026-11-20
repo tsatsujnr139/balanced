@@ -33,7 +33,10 @@ import {
   captureSourceLabel,
   getRememberedAccountId,
 } from "@/features/capture/capture-accounts";
-import { useCapture } from "@/features/capture/capture-context";
+import {
+  MAX_CAPTURE_IMAGES,
+  useCapture,
+} from "@/features/capture/capture-context";
 import type {
   CaptureDraft,
   CaptureImage,
@@ -67,7 +70,6 @@ import {
 } from "../../../modules/balanced-capture/capture-drop-zone";
 import type { DroppedImage } from "../../../modules/balanced-capture/capture-drop-zone";
 
-const MAX_IMAGES = 5;
 const THUMBNAIL_SIZE = 64;
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
@@ -798,7 +800,7 @@ export default function CaptureScreen() {
       exif: true,
       mediaTypes: ["images"],
       quality: 1,
-      selectionLimit: MAX_IMAGES,
+      selectionLimit: MAX_CAPTURE_IMAGES,
     });
     if (picked.canceled) {
       return;
@@ -809,7 +811,7 @@ export default function CaptureScreen() {
       name: asset.fileName ?? `screenshot-${Date.now()}-${index}.png`,
       uri: asset.uri,
     }));
-    setImages([...images, ...next].slice(0, MAX_IMAGES));
+    setImages([...images, ...next].slice(0, MAX_CAPTURE_IMAGES));
   };
 
   const addDroppedImages = (dropped: DroppedImage[]) => {
@@ -818,7 +820,7 @@ export default function CaptureScreen() {
       name: image.name,
       uri: image.uri,
     }));
-    setImages([...images, ...next].slice(0, MAX_IMAGES));
+    setImages([...images, ...next].slice(0, MAX_CAPTURE_IMAGES));
   };
 
   const removeImage = (uri: string) => {
@@ -932,7 +934,7 @@ export default function CaptureScreen() {
 
       <View style={{ flexDirection: "row", gap: 12 }}>
         <ActionButton
-          disabled={isReading || images.length >= MAX_IMAGES}
+          disabled={isReading || images.length >= MAX_CAPTURE_IMAGES}
           icon="photo.on.rectangle"
           label="Screenshots"
           onPress={() => {

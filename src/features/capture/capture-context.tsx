@@ -6,6 +6,9 @@ import type { TransactionAttachmentDraft } from "../finance/add-transaction-cont
 import type { TransactionDraftPrefill } from "../finance/transaction-draft-prefill";
 import type { CapturedTransaction } from "./parse-capture";
 
+/** Most screenshots one capture reads. */
+export const MAX_CAPTURE_IMAGES = 5;
+
 export interface CaptureImage {
   /** When the screenshot was taken, from the photo's metadata. */
   capturedAt?: number;
