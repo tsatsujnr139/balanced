@@ -21,7 +21,11 @@ import {
   checkBalanceContinuity,
 } from "@/convex/lib/capture/parser";
 import type { CapturedTransfer } from "@/convex/lib/capture/transfers";
-import { matchCaptureAccounts } from "@/features/capture/capture-account-matching";
+import {
+  matchCaptureAccounts,
+  pickCaptureSourceAccountId,
+  hasSpecificCaptureDestination,
+} from "@/features/capture/capture-account-matching";
 import {
   captureDestinationKey,
   captureSourceKey,
@@ -498,21 +502,6 @@ const summarize = (found: number, alreadyAddedCount: number): string => {
   return `Found ${found} transaction${plural}${added}. Tap ✓ to add the selected ones.`;
 };
 
-/** Remembered account, else the fallback, else any account in the draft's currency. */
-const pickAccountId = (
-  candidates: (string | null | undefined)[],
-  currency: string,
-  accounts: Account[]
-): string | null => {
-  for (const id of candidates) {
-    const account = accounts.find((item) => item.id === id);
-    if (account?.currency === currency) {
-      return account.id;
-    }
-  }
-  return accounts.find((item) => item.currency === currency)?.id ?? null;
-};
-
 /**
  * Remembered destination (a paired receipt shares its sender's remembered
  * account), else the only other account in the received currency. Null means
@@ -529,7 +518,7 @@ const pickDestinationAccountId = (
     (account) =>
       account.currency === currency &&
       account.id !== sourceAccountId &&
-      (transaction.transfer?.kind !== "Wallet2Bank" ||
+      (!hasSpecificCaptureDestination(transaction) ||
         destinationIds.includes(account.id))
   );
   const remembered = getRememberedAccountId(captureDestinationKey(transaction));
@@ -573,14 +562,11 @@ const buildDrafts = (
   );
   return result.transactions.map((captured, index) => {
     const { transaction } = captured;
-    const accountId = pickAccountId(
-      [
-        getRememberedAccountId(captureSourceKey(transaction)),
-        matchCaptureAccounts(transaction, accounts).sourceId,
-        fallbackAccountId,
-      ],
-      transaction.currency,
-      accounts
+    const accountId = pickCaptureSourceAccountId(
+      transaction,
+      accounts,
+      getRememberedAccountId(captureSourceKey(transaction)),
+      fallbackAccountId
     );
     return {
       accountId,
