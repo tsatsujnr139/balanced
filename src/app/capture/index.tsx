@@ -46,6 +46,10 @@ import type {
   CaptureResult,
 } from "@/features/capture/parse-capture";
 import { formatCurrency } from "@/features/finance/format";
+import {
+  OUT_OF_WALLET_ACCOUNT_NAME,
+  isOutOfWalletAccountId,
+} from "@/features/finance/out-of-wallet";
 import { TRANSACTION_CATEGORIES } from "@/features/finance/transaction-categories";
 import type { Account } from "@/features/finance/types";
 import { useFinance } from "@/features/finance/use-finance";
@@ -272,18 +276,21 @@ const PROVIDER_NAMES: Partial<Record<string, string>> = {
 function AccountLink({
   account,
   disabled,
-  emptyLabel,
+  isOutOfWallet,
   onPress,
   prefix,
 }: {
   account: Account | undefined;
   disabled: boolean;
-  emptyLabel: string;
+  /** This side of the transfer is outside the tracked accounts. */
+  isOutOfWallet: boolean;
   onPress: () => void;
   prefix?: string;
 }) {
   const colors = useThemeColors();
-  const isOutOfWallet = !account && emptyLabel === "Out of wallet";
+  const emptyLabel = isOutOfWallet
+    ? OUT_OF_WALLET_ACCOUNT_NAME
+    : "Choose account";
   return (
     <Pressable
       accessibilityLabel={`${prefix ?? "Account"}: ${account?.name ?? emptyLabel}`}
@@ -418,7 +425,9 @@ function DraftRow({
         <AccountLink
           account={account}
           disabled={alreadyAdded}
-          emptyLabel="Choose account"
+          isOutOfWallet={
+            Boolean(transfer) && isOutOfWalletAccountId(draft.accountId)
+          }
           onPress={openEditor}
           prefix={transfer ? "From" : undefined}
         />
@@ -426,7 +435,7 @@ function DraftRow({
           <AccountLink
             account={toAccount}
             disabled={alreadyAdded}
-            emptyLabel="Out of wallet"
+            isOutOfWallet={!toAccount}
             onPress={openEditor}
             prefix="To"
           />
