@@ -21,6 +21,7 @@ import {
   checkBalanceContinuity,
 } from "@/convex/lib/capture/parser";
 import type { CapturedTransfer } from "@/convex/lib/capture/transfers";
+import { matchCaptureAccounts } from "@/features/capture/capture-account-matching";
 import {
   captureDestinationKey,
   captureSourceKey,
@@ -445,7 +446,9 @@ function DraftRow({
           {alreadyAdded ? (
             <Badge color={colors.muted} label="Already added" />
           ) : null}
-          {transfer ? <Badge color="#5856D6" label="Transfer" /> : null}
+          {transfer ? (
+            <Badge color="#5856D6" label={transfer.kind ?? "Transfer"} />
+          ) : null}
           {pairedLeg && !alreadyAddedRefs.has(pairedLeg.externalRef) ? (
             <Badge
               color={colors.positive}
@@ -521,8 +524,13 @@ const pickDestinationAccountId = (
   sourceAccountId: string | null
 ): string | null => {
   const currency = transaction.transfer?.toCurrency ?? transaction.currency;
+  const { destinationIds } = matchCaptureAccounts(transaction, accounts);
   const candidates = accounts.filter(
-    (account) => account.currency === currency && account.id !== sourceAccountId
+    (account) =>
+      account.currency === currency &&
+      account.id !== sourceAccountId &&
+      (transaction.transfer?.kind !== "Wallet2Bank" ||
+        destinationIds.includes(account.id))
   );
   const remembered = getRememberedAccountId(captureDestinationKey(transaction));
   const rememberedAccount = candidates.find(
@@ -568,6 +576,7 @@ const buildDrafts = (
     const accountId = pickAccountId(
       [
         getRememberedAccountId(captureSourceKey(transaction)),
+        matchCaptureAccounts(transaction, accounts).sourceId,
         fallbackAccountId,
       ],
       transaction.currency,

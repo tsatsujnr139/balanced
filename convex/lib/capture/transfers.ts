@@ -3,6 +3,7 @@
  * pairs them with the matching incoming leg from the same capture.
  */
 
+import { matchesWalletBank } from "./banks";
 import type { CaptureDateTime, ParsedCaptureTransaction } from "./parser";
 
 /** Counterparties that are always the user's own wallet top-ups. */
@@ -79,7 +80,11 @@ const classify = (
     return transaction;
   }
   // Exchange orders are always money moving between the user's own accounts.
-  if (transaction.institution === "Bybit") {
+  if (
+    transaction.institution === "Bybit" ||
+    (transaction.provider === "mtn_momo" &&
+      transaction.transfer?.kind === "Wallet2Bank")
+  ) {
     return transaction;
   }
   const counterparty = transaction.counterpartyName ?? "";
@@ -132,6 +137,11 @@ export const resolveTransfers = (
         candidate.currency === receivedCurrency &&
         candidate.amount === receivedAmount &&
         candidate.provider !== transaction.provider &&
+        (transaction.transfer?.kind !== "Wallet2Bank" ||
+          matchesWalletBank(
+            transaction.transfer.destinationHint ?? "",
+            `${candidate.institution ?? ""} ${candidate.provider}`
+          )) &&
         withinWindow(transaction, candidate)
     );
     if (incoming) {

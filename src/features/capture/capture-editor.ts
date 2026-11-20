@@ -85,6 +85,7 @@ export const applyCaptureForm = (
             : minorUnits(form.transactionCharge || "0"),
         transfer: isTransfer
           ? {
+              ...original.transfer,
               destinationHint: to?.name,
               toAmount,
               toCurrency: to?.currency,

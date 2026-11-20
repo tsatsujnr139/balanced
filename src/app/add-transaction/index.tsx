@@ -974,7 +974,11 @@ export default function AddTransactionScreen() {
                 })
               }
               required={!fromAccount}
-              value={fromAccount?.name}
+              value={
+                fromAccount?.currency
+                  ? `${fromAccount.name} (${fromAccount.currency})`
+                  : fromAccount?.name
+              }
             />
             <FieldRow
               icon={toAccount?.symbol ?? "tray.full.fill"}
@@ -987,7 +991,11 @@ export default function AddTransactionScreen() {
                 })
               }
               required={!toAccount}
-              value={toAccount?.name}
+              value={
+                toAccount?.currency
+                  ? `${toAccount.name} (${toAccount.currency})`
+                  : toAccount?.name
+              }
             />
           </>
         ) : (

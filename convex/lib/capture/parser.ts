@@ -6,6 +6,8 @@
  * functions can use it. Unknown formats are left for the AI fallback.
  */
 
+import { walletBankDestination } from "./banks";
+
 /** Known notification formats; "other" is anything read by an AI model. */
 export type CaptureProvider =
   | "bybit"
@@ -21,6 +23,7 @@ export type CaptureProvider =
  * spending or income.
  */
 export interface CaptureTransferDetails {
+  kind?: "Wallet2Bank";
   /** What the destination looks like on screen, e.g. "Grey" or "GHS P2P buyer". */
   destinationHint?: string;
   /** Exchange rate as printed (destination units per source unit). */
@@ -395,6 +398,7 @@ const parseMomoPaymentCompleted = (text: string): Match[] =>
     ] = match;
     const ref = meaningfulReference(reference);
     const counterpartyName = titleCase(party?.trim() ?? "");
+    const bank = walletBankDestination(party?.trim() ?? "");
     return {
       end: match.index + full.length,
       start: match.index,
@@ -403,7 +407,9 @@ const parseMomoPaymentCompleted = (text: string): Match[] =>
         balanceAfter: parseAmountToMinorUnits(balance ?? "0"),
         counterpartyName,
         currency: "GHS",
-        description: ref ?? counterpartyName,
+        description: bank
+          ? `Wallet2Bank to ${bank}${ref ? `: ${ref}` : ""}`
+          : (ref ?? counterpartyName),
         direction: "debit",
         externalRef: `mtn_momo:${transactionId}`,
         fee: fee === "-" ? 0 : parseAmountToMinorUnits(fee ?? "0"),
@@ -419,6 +425,9 @@ const parseMomoPaymentCompleted = (text: string): Match[] =>
         provider: "mtn_momo",
         reference: ref,
         transactionId,
+        transfer: bank
+          ? { kind: "Wallet2Bank", destinationHint: bank, toCurrency: "GHS" }
+          : undefined,
       },
     };
   });

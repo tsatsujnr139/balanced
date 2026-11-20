@@ -13,6 +13,7 @@ import type * as capture from "../capture.js";
 import type * as finance from "../finance.js";
 import type * as labels from "../labels.js";
 import type * as lib_automaticRuleMatching from "../lib/automaticRuleMatching.js";
+import type * as lib_capture_banks from "../lib/capture/banks.js";
 import type * as lib_capture_chat from "../lib/capture/chat.js";
 import type * as lib_capture_labels from "../lib/capture/labels.js";
 import type * as lib_capture_model from "../lib/capture/model.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   finance: typeof finance;
   labels: typeof labels;
   "lib/automaticRuleMatching": typeof lib_automaticRuleMatching;
+  "lib/capture/banks": typeof lib_capture_banks;
   "lib/capture/chat": typeof lib_capture_chat;
   "lib/capture/labels": typeof lib_capture_labels;
   "lib/capture/model": typeof lib_capture_model;

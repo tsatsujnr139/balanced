@@ -32,7 +32,7 @@ export const ACCOUNT_TYPES = [
   "investment",
 ] as const;
 
-export const ACCOUNT_CURRENCIES = ["USD", "EUR", "GBP", "GHS"] as const;
+export const ACCOUNT_CURRENCIES = ["USD", "USDT", "EUR", "GBP", "GHS"] as const;
 
 export type AccountCurrency = (typeof ACCOUNT_CURRENCIES)[number];
 
@@ -41,6 +41,7 @@ export const ACCOUNT_CURRENCY_LABEL: Record<AccountCurrency, string> = {
   GBP: "British Pound",
   GHS: "Ghanaian Cedi",
   USD: "US Dollar",
+  USDT: "Tether (USDT)",
 };
 
 /** Color families ordered light → medium → dark within each row. */
