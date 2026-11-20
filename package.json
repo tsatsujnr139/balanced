@@ -65,9 +65,11 @@
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
     "@types/react": "~19.2.2",
+    "@types/react-test-renderer": "19.1.0",
     "convex-test": "^0.0.55",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",
+    "react-test-renderer": "19.2.3",
     "turbo": "^2.10.3",
     "typescript": "~6.0.3",
     "ultracite": "7.8.3",

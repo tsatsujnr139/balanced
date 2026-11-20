@@ -1,97 +1,71 @@
 import * as Updates from "expo-updates";
-import { Appearance, Image as ReactNativeImage } from "react-native";
+import { useEffect } from "react";
+import { AppState } from "react-native";
 
-const STARTUP_UPDATE_TIMEOUT_MS = 8000;
-const SPLASH_ICON_SIZE = 200;
-const SPLASH_ICON = require("@/assets/logo.png");
+import { createUpdateController } from "./update-controller";
+import { getReloadScreenOptions } from "./update-screen";
+import { getUpdateTarget } from "./update-state";
 
-const getReloadScreenBackgroundColor = () =>
-  Appearance.getColorScheme() === "dark" ? "#111111" : "#f9fafa";
-
-const getReloadScreenOptions = () => {
-  const splashIcon = ReactNativeImage.resolveAssetSource(SPLASH_ICON);
-
-  return {
-    backgroundColor: getReloadScreenBackgroundColor(),
-    image: {
-      url: splashIcon.uri,
-      width: SPLASH_ICON_SIZE,
-      height: SPLASH_ICON_SIZE,
-      scale: 1,
-    },
-    imageResizeMode: "contain" as const,
-    imageFullScreen: false,
-    fade: true,
-  };
-};
-
-export const applyStartupUpdate = async (): Promise<boolean> => {
-  if (__DEV__) {
-    return false;
-  }
-
-  try {
-    const checkResult = await Updates.checkForUpdateAsync();
-    if (!checkResult.isAvailable) {
-      return false;
+const controller = createUpdateController({
+  check: async () => {
+    const result = await Updates.checkForUpdateAsync();
+    if (result.isRollBackToEmbedded) {
+      return { rollback: true };
     }
-
-    const fetchPromise = Updates.fetchUpdateAsync();
-    // eslint-disable-next-line promise/avoid-new -- React Native timers do not expose a promise API.
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      setTimeout(() => {
-        reject(new Error("Startup update timed out"));
-      }, STARTUP_UPDATE_TIMEOUT_MS);
-    });
-
-    await Promise.race([fetchPromise, timeoutPromise]);
-
+    return result.isAvailable
+      ? { id: result.manifest.id, rollback: false }
+      : null;
+  },
+  download: async () => await Updates.fetchUpdateAsync(),
+  reload: async () =>
     await Updates.reloadAsync({
       reloadScreenOptions: getReloadScreenOptions(),
-    });
-    return true;
-  } catch {
-    return false;
+    }),
+  isBusy: () =>
+    Boolean(
+      Updates.latestContext.isStartupProcedureRunning ||
+      Updates.latestContext.isChecking ||
+      Updates.latestContext.isDownloading ||
+      Updates.latestContext.isRestarting
+    ),
+  running: () => ({ id: Updates.updateId, embedded: Updates.isEmbeddedLaunch }),
+});
+
+// Module-level callbacks stay stable when native update events rerender the hook.
+const checkForUpdates = async (): Promise<void> => {
+  if (__DEV__ || !Updates.isEnabled) {
+    return;
   }
+  try {
+    await controller.check();
+  } catch {
+    // Network errors are retried on the next foreground event, never in a render loop.
+    console.warn("Could not check for app updates");
+  }
+};
+const reloadApp = async (): Promise<void> => {
+  await controller.restart();
 };
 
 export const useRemoteUpdate = () => {
-  const {
-    isChecking,
-    isUpdateAvailable,
-    isUpdatePending,
-    isDownloading,
-    availableUpdate,
-    downloadedUpdate,
-    downloadError,
-    checkError,
-  } = Updates.useUpdates();
+  const state = Updates.useUpdates();
+  const { isStartupProcedureRunning } = state;
 
-  const reloadApp = async () => {
-    await Updates.reloadAsync({
-      reloadScreenOptions: getReloadScreenOptions(),
+  useEffect(() => {
+    if (__DEV__ || !Updates.isEnabled || isStartupProcedureRunning) {
+      return;
+    }
+    void checkForUpdates();
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void checkForUpdates();
+      }
     });
-  };
+    return () => subscription.remove();
+  }, [isStartupProcedureRunning]);
 
-  const checkForUpdateAsync = async () => {
-    await Updates.checkForUpdateAsync();
-  };
-
-  const fetchUpdateAsync = async () => {
-    await Updates.fetchUpdateAsync();
-  };
-
-  return {
-    isChecking,
-    isUpdateAvailable,
-    isUpdatePending,
-    isDownloading,
-    availableUpdate,
-    downloadedUpdate,
-    downloadError,
-    checkError,
-    reloadApp,
-    checkForUpdateAsync,
-    fetchUpdateAsync,
-  };
+  const pendingTarget = state.isUpdatePending
+    ? getUpdateTarget(state.downloadedUpdate, state.currentlyRunning)
+    : null;
+  return { ...state, canRestart: pendingTarget !== null, reloadApp };
 };

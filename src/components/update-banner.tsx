@@ -1,76 +1,42 @@
-import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
-import { AppState, Pressable, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon as SymbolView } from "@/components/icon";
 import { useThemeColors } from "@/hooks/use-theme";
 import { useRemoteUpdate } from "@/lib/updates";
 
-const RESTART_KEY = "update.restarting-for";
-
 export function UpdateBanner() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const {
-    isUpdateAvailable,
-    isUpdatePending,
-    isDownloading,
-    downloadedUpdate,
-    reloadApp,
-    checkForUpdateAsync,
-    fetchUpdateAsync,
-  } = useRemoteUpdate();
-
-  // Tracks whether we've already triggered a restart for the pending update.
-  // reloadAsync() reloads the JS runtime but the native pending-update flag
-  // isn't cleared until a full cold start, so without this the banner would
-  // reappear on the reloaded bundle.
-  const [suppressed, setSuppressed] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    SecureStore.getItemAsync(RESTART_KEY).then((storedId) => {
-      if (storedId && storedId === downloadedUpdate?.updateId) {
-        setSuppressed(true);
-        SecureStore.deleteItemAsync(RESTART_KEY);
-      } else {
-        setSuppressed(false);
-      }
-    });
-  }, [downloadedUpdate?.updateId]);
-
-  useEffect(() => {
-    if (__DEV__) {
-      return;
-    }
-
-    checkForUpdateAsync();
-
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        checkForUpdateAsync();
-      }
-    });
-
-    return () => subscription.remove();
-  }, [checkForUpdateAsync]);
-
-  useEffect(() => {
-    if (isUpdateAvailable && !isDownloading) {
-      fetchUpdateAsync();
-    }
-  }, [isUpdateAvailable, isDownloading, fetchUpdateAsync]);
+  const { canRestart, isDownloading, isRestarting, reloadApp } =
+    useRemoteUpdate();
+  const [isApplying, setIsApplying] = useState(false);
+  const restartInFlight = useRef(false);
 
   const handleRestart = async () => {
-    if (downloadedUpdate?.updateId) {
-      await SecureStore.setItemAsync(RESTART_KEY, downloadedUpdate.updateId);
+    if (restartInFlight.current || isRestarting || isDownloading) {
+      return;
     }
-    await reloadApp();
+    restartInFlight.current = true;
+    setIsApplying(true);
+    try {
+      await reloadApp();
+      // On success the runtime is being replaced. Keep the button disabled until then.
+    } catch {
+      restartInFlight.current = false;
+      setIsApplying(false);
+      Alert.alert(
+        "Could not restart",
+        "The update is still ready. Please try again."
+      );
+    }
   };
 
-  if (!isUpdatePending || suppressed !== false) {
+  if (!canRestart) {
     return null;
   }
+  const busy = isApplying || isRestarting || isDownloading;
 
   return (
     <View
@@ -102,10 +68,19 @@ export function UpdateBanner() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={
+            busy ? "Restarting app" : "Restart to apply update"
+          }
+          accessibilityState={{ busy, disabled: busy }}
+          disabled={busy}
           className="rounded-xl bg-primary px-4 py-2"
           onPress={handleRestart}
         >
-          <Text className="text-sm font-semibold text-white">Restart</Text>
+          {busy ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-sm font-semibold text-white">Restart</Text>
+          )}
         </Pressable>
       </View>
     </View>
