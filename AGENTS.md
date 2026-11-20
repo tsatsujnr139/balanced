@@ -19,6 +19,17 @@ Convex agent skills for common tasks can be installed by running
 
 <!-- convex-ai-end -->
 
+# Releasing
+
+The app is internal only, so TestFlight is the only distribution channel (no
+App Store release).
+
+- **New native builds** (native code, config plugins, or dependency changes):
+  the user runs `bunx testflight` themselves. Don't start `eas build` or
+  `eas submit`; `eas.json` has no submit profile.
+- **JS-only changes** ship as an EAS update on the `production` channel.
+- **Convex changes** need `npx convex deploy` to reach production.
+
 # Ultracite Code Standards
 
 This project uses **Ultracite**, a zero-config preset that enforces strict code quality standards through automated formatting and linting.
