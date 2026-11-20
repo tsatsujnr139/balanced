@@ -55,6 +55,8 @@ export interface CaptureContextValue {
   images: CaptureImage[];
   isSaving: boolean;
   setDraftAccount: (key: string, accountId: string) => void;
+  /** Account chosen for the whole capture; null detects it per message. */
+  setSourceAccountId: (accountId: string | null) => void;
   setDraftToAccount: (key: string, accountId: string | null) => void;
   setDraftCategory: (key: string, category: CaptureCategory) => void;
   setDrafts: (
@@ -62,6 +64,7 @@ export interface CaptureContextValue {
   ) => void;
   setImages: (images: CaptureImage[]) => void;
   setText: (text: string) => void;
+  sourceAccountId: string | null;
   text: string;
   toggleDraft: (key: string) => void;
   toggleDraftTag: (key: string, tag: CaptureTag) => void;

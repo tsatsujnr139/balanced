@@ -31,6 +31,10 @@ public class BalancedCaptureModule: Module {
     AsyncFunction("extractTransactionsAsync") { (text: String) async throws -> [[String: Any]] in
       try await TransactionExtractor.extract(text: text)
     }
+
+    View(CaptureDropView.self) {
+      Events("onDropImages", "onDropActiveChange")
+    }
   }
 }
 

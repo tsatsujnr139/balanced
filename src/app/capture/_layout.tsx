@@ -79,6 +79,9 @@ export default function CaptureLayout() {
   const [text, setText] = useState("");
   const [images, setImages] = useState<CaptureImage[]>([]);
   const [drafts, setDrafts] = useState<CaptureDraft[]>([]);
+  const [sourceAccountId, setSourceAccountIdState] = useState<string | null>(
+    null
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const externalRefs = useMemo(
@@ -129,6 +132,19 @@ export default function CaptureLayout() {
           : draft
       );
     });
+  }, []);
+
+  const setSourceAccountId = useCallback((accountId: string | null) => {
+    setSourceAccountIdState(accountId);
+    if (!accountId) {
+      return;
+    }
+    // Drafts already read move to the chosen account too.
+    setDrafts((current) =>
+      current.map((draft) =>
+        draft.toAccountId === accountId ? draft : { ...draft, accountId }
+      )
+    );
   }, []);
 
   const setDraftCategory = useCallback(
@@ -363,7 +379,9 @@ export default function CaptureLayout() {
       setDraftToAccount,
       setDrafts,
       setImages,
+      setSourceAccountId,
       setText,
+      sourceAccountId,
       text,
       toggleDraft,
       toggleDraftTag,
@@ -377,6 +395,8 @@ export default function CaptureLayout() {
       setDraftAccount,
       setDraftCategory,
       setDraftToAccount,
+      setSourceAccountId,
+      sourceAccountId,
       text,
       toggleDraft,
       toggleDraftTag,

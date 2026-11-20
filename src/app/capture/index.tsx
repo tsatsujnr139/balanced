@@ -61,6 +61,12 @@ import { useLastTransactionAccountId } from "@/features/finance/use-last-transac
 import { useLocalProfile } from "@/features/finance/use-local-profile";
 import { useThemeColors } from "@/hooks/use-theme";
 
+import {
+  CaptureDropZone,
+  supportsImageDrop,
+} from "../../../modules/balanced-capture/capture-drop-zone";
+import type { DroppedImage } from "../../../modules/balanced-capture/capture-drop-zone";
+
 const MAX_IMAGES = 5;
 const THUMBNAIL_SIZE = 64;
 
@@ -328,6 +334,47 @@ function AccountLink({
   );
 }
 
+/** One account for everything in this capture, or detect it per message. */
+function CaptureAccountRow({ account }: { account: Account | undefined }) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      accessibilityHint="Choose the account these screenshots and messages are from"
+      accessibilityLabel={`Account: ${account?.name ?? "Detect automatically"}`}
+      accessibilityRole="button"
+      onPress={() =>
+        router.push({
+          params: { field: "capture" },
+          pathname: "/capture/account",
+        })
+      }
+      style={{
+        alignItems: "center",
+        backgroundColor: colors.card,
+        borderCurve: "continuous",
+        borderRadius: 18,
+        flexDirection: "row",
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+      }}
+    >
+      <SymbolView
+        name={(account?.symbol ?? "sparkles") as never}
+        size={18}
+        tintColor={account?.color ?? colors.muted}
+      />
+      <Text style={{ color: colors.foreground, flex: 1, fontSize: 16 }}>
+        Account
+      </Text>
+      <Text style={{ color: colors.muted, fontSize: 16 }}>
+        {account?.name ?? "Detect automatically"}
+      </Text>
+      <SymbolView name="chevron.right" size={12} tintColor={colors.muted} />
+    </Pressable>
+  );
+}
+
 function DraftRow({
   alreadyAdded,
   draft,
@@ -572,20 +619,24 @@ const buildDrafts = (
   result: CaptureResult,
   fallbackAccountId: string | null,
   accounts: Account[],
-  ownerNames: string[]
+  ownerNames: string[],
+  /** Chosen by the user for the whole capture; beats detection. */
+  chosenAccountId: string | null
 ): CaptureDraft[] => {
   const continuity = checkBalanceContinuity(
     result.transactions.map((item) => item.transaction)
   );
   return result.transactions.map((captured, index) => {
     const { transaction } = captured;
-    const accountId = pickCaptureSourceAccountId(
-      transaction,
-      accounts,
-      getRememberedAccountId(captureSourceKey(transaction)),
-      fallbackAccountId,
-      ownerNames
-    );
+    const accountId =
+      chosenAccountId ??
+      pickCaptureSourceAccountId(
+        transaction,
+        accounts,
+        getRememberedAccountId(captureSourceKey(transaction)),
+        fallbackAccountId,
+        ownerNames
+      );
     return {
       accountId,
       captured,
@@ -673,8 +724,20 @@ export default function CaptureScreen() {
       setIsLabelling(false);
     }
   };
-  const { alreadyAdded, drafts, images, setDrafts, setImages, setText, text } =
-    useCapture();
+  const {
+    alreadyAdded,
+    drafts,
+    images,
+    setDrafts,
+    setImages,
+    setText,
+    sourceAccountId,
+    text,
+  } = useCapture();
+  const [isDropActive, setIsDropActive] = useState(false);
+  const chosenAccount = accounts.find(
+    (account) => account.id === sourceAccountId
+  );
   const [isReading, setIsReading] = useState(false);
   const [result, setResult] = useState<CaptureResult | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
@@ -717,7 +780,8 @@ export default function CaptureScreen() {
         next,
         fallbackAccountId,
         accounts,
-        firstName ? [firstName] : []
+        firstName ? [firstName] : [],
+        chosenAccount?.id ?? null
       );
       setDrafts(built);
       void applyLabelSuggestions(built);
@@ -744,6 +808,15 @@ export default function CaptureScreen() {
       mimeType: asset.mimeType ?? undefined,
       name: asset.fileName ?? `screenshot-${Date.now()}-${index}.png`,
       uri: asset.uri,
+    }));
+    setImages([...images, ...next].slice(0, MAX_IMAGES));
+  };
+
+  const addDroppedImages = (dropped: DroppedImage[]) => {
+    const next: CaptureImage[] = dropped.map((image) => ({
+      mimeType: image.mimeType,
+      name: image.name,
+      uri: image.uri,
     }));
     setImages([...images, ...next].slice(0, MAX_IMAGES));
   };
@@ -781,58 +854,80 @@ export default function CaptureScreen() {
       showsVerticalScrollIndicator={false}
       style={{ backgroundColor: colors.background, flex: 1 }}
     >
-      <FieldGroup>
-        <TextInput
-          accessibilityLabel="Transaction text"
-          multiline
-          onChangeText={setText}
-          placeholder="Paste a bank or MoMo SMS, type, or tap the keyboard mic to dictate"
-          placeholderTextColor={colors.muted}
-          style={{
-            color: colors.foreground,
-            fontSize: 16,
-            minHeight: 120,
-            padding: 16,
-            textAlignVertical: "top",
-          }}
-          value={text}
-        />
-      </FieldGroup>
+      <CaptureDropZone
+        onDropActiveChange={setIsDropActive}
+        onDropImages={addDroppedImages}
+        style={{
+          borderColor: isDropActive ? colors.primary : "transparent",
+          borderCurve: "continuous",
+          borderRadius: 26,
+          borderStyle: "dashed",
+          borderWidth: 2,
+          gap: 18,
+          margin: -2,
+        }}
+      >
+        <FieldGroup>
+          <TextInput
+            accessibilityLabel="Transaction text"
+            multiline
+            onChangeText={setText}
+            placeholder={
+              supportsImageDrop
+                ? "Paste a bank or MoMo SMS, type, dictate, or drag in a screenshot"
+                : "Paste a bank or MoMo SMS, type, or tap the keyboard mic to dictate"
+            }
+            placeholderTextColor={colors.muted}
+            style={{
+              color: colors.foreground,
+              fontSize: 16,
+              minHeight: 120,
+              padding: 16,
+              textAlignVertical: "top",
+            }}
+            value={text}
+          />
+        </FieldGroup>
 
-      {images.length > 0 ? (
-        <ScrollView
-          contentContainerStyle={{ gap: 10 }}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {images.map((image) => (
-            <View key={image.uri}>
-              <Image
-                accessibilityLabel={image.name}
-                contentFit="cover"
-                source={{ uri: image.uri }}
-                style={{
-                  borderRadius: 12,
-                  height: THUMBNAIL_SIZE * 1.6,
-                  width: THUMBNAIL_SIZE,
-                }}
-              />
-              <Pressable
-                accessibilityLabel={`Remove ${image.name}`}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => removeImage(image.uri)}
-                style={{ position: "absolute", right: -6, top: -6 }}
-              >
-                <SymbolView
-                  name="xmark.circle.fill"
-                  size={22}
-                  tintColor={colors.muted}
+        {images.length > 0 ? (
+          <ScrollView
+            contentContainerStyle={{ gap: 10 }}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          >
+            {images.map((image) => (
+              <View key={image.uri}>
+                <Image
+                  accessibilityLabel={image.name}
+                  contentFit="cover"
+                  source={{ uri: image.uri }}
+                  style={{
+                    borderRadius: 12,
+                    height: THUMBNAIL_SIZE * 1.6,
+                    width: THUMBNAIL_SIZE,
+                  }}
                 />
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
+                <Pressable
+                  accessibilityLabel={`Remove ${image.name}`}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => removeImage(image.uri)}
+                  style={{ position: "absolute", right: -6, top: -6 }}
+                >
+                  <SymbolView
+                    name="xmark.circle.fill"
+                    size={22}
+                    tintColor={colors.muted}
+                  />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
+      </CaptureDropZone>
+
+      {hasInput || chosenAccount ? (
+        <CaptureAccountRow account={chosenAccount} />
       ) : null}
 
       <View style={{ flexDirection: "row", gap: 12 }}>
