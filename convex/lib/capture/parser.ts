@@ -504,9 +504,14 @@ const parseFnbPayment = (text: string): Match[] =>
 const BYBIT_ORDER_HEADING = /\b(?<side>Sell|Buy) USDT\b/g;
 const BYBIT_ORDER_HEADING_ONCE = /\b(?:Sell|Buy) USDT\b/;
 const BYBIT_COMPLETED = /\bCompleted\b/;
+const BYBIT_CANCELED = /\bCancell?ed\b/;
+// The order details screen puts its status above the "Sell USDT" heading:
+// "Completed Sold 1596.1691 USDT".
+const BYBIT_DETAILS_STATUS = /\bCompleted (?:Sold|Bought) [\d,.]+ USDT\b/;
 const BYBIT_FIAT = /(?<fiat>[\d,]+\.\d{2}) GHS/;
 const BYBIT_PRICE = /Price:? (?<price>[\d,]+\.\d+) GHS/;
-const BYBIT_QTY = /Qty:? (?<qty>[\d,]+\.\d+) USDT/;
+// "Qty" in the orders list, "Total Quantity" on the order details screen.
+const BYBIT_QTY = /(?:Qty|Total Quantity):? (?<qty>[\d,]+\.\d+) USDT/;
 // P2P order numbers are 19 digits; OCR sometimes reads the copy icon after
 // them as an extra digit, so take exactly 19.
 const BYBIT_ORDER_NO = /Order No\.? ?(?<orderNo>\d{19})/;
@@ -514,7 +519,10 @@ const BYBIT_COUNTERPARTY = /(?:^|\s)[•=·] ?(?<party>.+?) \d{4}-\d{2}-\d{2}/;
 const ISO_DATE_TIME =
   /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})/;
 
-/** Bybit P2P "Orders" list: one transaction per completed order. */
+/**
+ * Bybit P2P "Orders" list (one transaction per completed order) and the
+ * details screen of a single order.
+ */
 const parseBybitP2pOrders = (text: string): Match[] => {
   const headings = [...text.matchAll(BYBIT_ORDER_HEADING)];
   const matches: Match[] = [];
@@ -522,15 +530,18 @@ const parseBybitP2pOrders = (text: string): Match[] => {
     const start = heading.index;
     const end = headings[index + 1]?.index ?? text.length;
     const block = text.slice(start, end);
+    const detailsStatus =
+      index === 0 ? BYBIT_DETAILS_STATUS.exec(text.slice(0, start)) : null;
+    const isCompleted =
+      BYBIT_COMPLETED.test(block) ||
+      (detailsStatus !== null && !BYBIT_CANCELED.test(block));
     const fiat = BYBIT_FIAT.exec(block)?.[1];
     const price = BYBIT_PRICE.exec(block)?.[1];
     const qty = BYBIT_QTY.exec(block)?.[1];
     const orderNo = BYBIT_ORDER_NO.exec(block)?.[1];
     const when = ISO_DATE_TIME.exec(block);
     // Skip cancelled orders and blocks cut off by the screenshot edge.
-    if (
-      !(BYBIT_COMPLETED.test(block) && fiat && price && qty && orderNo && when)
-    ) {
+    if (!(isCompleted && fiat && price && qty && orderNo && when)) {
       return;
     }
     const [, year, month, day, hour, minute, second] = when;
@@ -552,7 +563,8 @@ const parseBybitP2pOrders = (text: string): Match[] => {
       : "";
     matches.push({
       end: start + when.index + when[0].length,
-      start,
+      // The status line above the heading belongs to the order too.
+      start: detailsStatus?.index ?? start,
       transaction: {
         // Selling sends USDT out of Bybit and GHS arrives in a cedi account;
         // buying sends GHS from a cedi account and USDT arrives in Bybit.
@@ -788,8 +800,14 @@ const findUnparsedSegments = (
     segments
       .map((segment) => segment.trim())
       .filter((segment) => UNPARSED_AMOUNT.test(segment))
-      // A Bybit order heading left over means that order was cut off.
-      .filter((segment) => !BYBIT_ORDER_HEADING_ONCE.test(segment))
+      // A Bybit order without its order number was cut off by the screenshot
+      // edge, and a cancelled one moved no money. Anything else is a complete
+      // order the patterns didn't read, so the models should try it.
+      .filter(
+        (segment) =>
+          !BYBIT_ORDER_HEADING_ONCE.test(segment) ||
+          (BYBIT_ORDER_NO.test(segment) && !BYBIT_CANCELED.test(segment))
+      )
   );
 };
 

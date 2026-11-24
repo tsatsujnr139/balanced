@@ -61,6 +61,34 @@ Price
 P2P
 Orders`;
 
+const BYBIT_ORDER_DETAILS = `12:26 :
+P2P Help Center
+Completed
+Sold 1000.0000 USDT
+This order has concluded, and the assets are no longer
+locked by Bybit. Do not blindly trust strangers or release
+funds without confirming.
+I Sell USDT
+Contact Buyer
+Amount
+12,500.00 GHS
+Price
+12.50 GHS
+Total Quantity
+1,000.0000 USDT
+Transaction Fees
+O USDT
+Order No.
+2100000000000000009 d
+Order Time
+2026-11-19 11:47:58
+Payment Method
+I MoMo
+Leave A Review
+FAQ
+Order Dispute?
+View My Assets`;
+
 const MOMO_APP = `21:07
 Transaction details
 Date and time
@@ -169,6 +197,33 @@ describe("Bybit P2P orders", () => {
     // The cancelled order and the cut-off order are not transactions, and the
     // cut-off one isn't sent to the AI either.
     expect(unparsedSegments).toEqual([]);
+  });
+
+  test("reads the details screen of a single order", () => {
+    const { transactions, unparsedSegments } = parse(BYBIT_ORDER_DETAILS);
+
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]).toMatchObject({
+      amount: 100_000,
+      currency: "USDT",
+      description: "Sell USDT",
+      externalRef: "bybit:2100000000000000009",
+      occurredAt: { day: 19, hour: 11, minute: 47, month: 11, year: 2026 },
+      transfer: { rate: 12.5, toAmount: 1_250_000, toCurrency: "GHS" },
+    });
+    expect(unparsedSegments).toEqual([]);
+  });
+
+  test("sends a complete order it can't read to the models", () => {
+    const unknownLayout = BYBIT_ORDER_DETAILS.replace(
+      "Total Quantity",
+      "Crypto Received"
+    );
+
+    const { transactions, unparsedSegments } = parse(unknownLayout);
+
+    expect(transactions).toEqual([]);
+    expect(unparsedSegments).toHaveLength(1);
   });
 });
 
