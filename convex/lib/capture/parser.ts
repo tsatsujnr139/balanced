@@ -89,6 +89,16 @@ export interface ParseCaptureOptions {
    * resolve Messages-app timestamps such as "Yesterday 12:28". Defaults to now.
    */
   referenceDate?: Date;
+  /**
+   * The user's account currencies and account/institution names. Unknown text
+   * that mentions one of them next to an amount is still sent to the models.
+   */
+  relevance?: CaptureRelevance;
+}
+
+export interface CaptureRelevance {
+  currencies?: string[];
+  names?: string[];
 }
 
 export interface ParseCaptureResult {
@@ -170,7 +180,14 @@ const THREAD_TIMESTAMP =
   /\b(?:(?<relative>Today|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)|(?:(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),? )?(?<day>\d{1,2}) (?<month>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: (?<year>\d{4}))?(?: at)?) (?<hour>\d{1,2}):(?<minute>\d{2})\b/g;
 
 const WHITESPACE = /\s+/g;
-const UNPARSED_AMOUNT = /(?:GHS|USDT?|\$)\s?\d|\d\s?(?:GHS|USDT?)\b/i;
+const UNPARSED_AMOUNT =
+  /(?:\b(?:GHS|GH₵|USDT?|EUR|GBP|NGN)|[₵$€£])\s?\d|\d\s?(?:GHS|USDT?|EUR|GBP|NGN)\b/i;
+// A figure written like money ("20,000.00", "1,596.1691") or any 2+ digit number.
+const MONEY_FIGURE = /\d(?:[\d,]*\.\d{2,})\b/;
+const NUMBER = /\d{2,}/;
+const FINANCIAL_WORD =
+  /\b(?:amount|balance|paid|payment|sent|received|transfer(?:red)?|withdrawal|deposit|debit(?:ed)?|credit(?:ed)?|total|fees?|order|purchase|sold|bought|refund)\b/i;
+const REGEX_SPECIAL = /[.*+?^${}()|[\]\\]/g;
 const HAS_LETTER = /\p{L}/u;
 const NON_DIGIT = /\D/g;
 const WORD_START = /(?<prefix>^|[\s-])(?<letter>\p{L})/gu;
@@ -785,9 +802,55 @@ const PARSERS = [
   parseGreyDetails,
 ] as const;
 
+const escapeRegExp = (value: string): string =>
+  value.replace(REGEX_SPECIAL, String.raw`\$&`);
+
+const phrasePattern = (phrases: string[]): RegExp | null => {
+  const words = [
+    ...new Set(
+      phrases
+        .map((phrase) => phrase.trim())
+        .filter((phrase) => phrase.length >= 2)
+    ),
+  ];
+  return words.length > 0
+    ? new RegExp(String.raw`\b(?:${words.map(escapeRegExp).join("|")})\b`, "i")
+    : null;
+};
+
+/**
+ * Whether text the patterns couldn't read still looks like money moving, so
+ * the models should try it: an amount with a currency, a money-looking figure
+ * next to a word like "paid" or "amount", or one of the user's own currencies
+ * or account names next to a money-looking figure or a number and such a word.
+ */
+const looksFinancial = (
+  segment: string,
+  relevance: CaptureRelevance
+): boolean => {
+  if (UNPARSED_AMOUNT.test(segment)) {
+    return true;
+  }
+  const hasMoneyFigure = MONEY_FIGURE.test(segment);
+  const hasFinancialWord = FINANCIAL_WORD.test(segment);
+  if (hasMoneyFigure && hasFinancialWord) {
+    return true;
+  }
+  const mentionsAccount =
+    phrasePattern([
+      ...(relevance.currencies ?? []),
+      ...(relevance.names ?? []),
+    ])?.test(segment) ?? false;
+  return (
+    mentionsAccount &&
+    (hasMoneyFigure || (hasFinancialWord && NUMBER.test(segment)))
+  );
+};
+
 const findUnparsedSegments = (
   text: string,
-  spans: { end: number; start: number }[]
+  spans: { end: number; start: number }[],
+  relevance: CaptureRelevance
 ): string[] => {
   const segments: string[] = [];
   let cursor = 0;
@@ -799,7 +862,7 @@ const findUnparsedSegments = (
   return (
     segments
       .map((segment) => segment.trim())
-      .filter((segment) => UNPARSED_AMOUNT.test(segment))
+      .filter((segment) => looksFinancial(segment, relevance))
       // A Bybit order without its order number was cut off by the screenshot
       // edge, and a cancelled one moved no money. Anything else is a complete
       // order the patterns didn't read, so the models should try it.
@@ -850,10 +913,14 @@ export const parseCaptureText = (
 
   return {
     transactions,
-    unparsedSegments: findUnparsedSegments(normalized, [
-      ...matches,
-      ...timestamps.map(({ end, index }) => ({ end, start: index })),
-    ]),
+    unparsedSegments: findUnparsedSegments(
+      normalized,
+      [
+        ...matches,
+        ...timestamps.map(({ end, index }) => ({ end, start: index })),
+      ],
+      options.relevance ?? {}
+    ),
   };
 };
 

@@ -352,3 +352,36 @@ describe("device OCR quirks on app screens", () => {
     );
   });
 });
+
+describe("unknown formats", () => {
+  test("sends a money-looking figure next to a payment word to the models", () => {
+    const { unparsedSegments } = parse(
+      "Payment successful Amount 1,250.00 Recipient Jane Doe"
+    );
+
+    expect(unparsedSegments).toHaveLength(1);
+  });
+
+  test("sends a number next to one of the user's accounts to the models", () => {
+    const text = "Zeepay transfer to Jane 450 done";
+    const withoutAccounts = parseCaptureText(text, {
+      referenceDate: REFERENCE_DATE,
+    });
+    const withAccounts = parseCaptureText(text, {
+      referenceDate: REFERENCE_DATE,
+      relevance: { currencies: ["GHS"], names: ["Zeepay"] },
+    });
+
+    expect(withoutAccounts.unparsedSegments).toEqual([]);
+    expect(withAccounts.unparsedSegments).toHaveLength(1);
+  });
+
+  test("keeps text without amounts away from the models", () => {
+    const { unparsedSegments } = parseCaptureText("See you at 10 Zeepay", {
+      referenceDate: REFERENCE_DATE,
+      relevance: { names: ["Zeepay"] },
+    });
+
+    expect(unparsedSegments).toEqual([]);
+  });
+});

@@ -776,6 +776,13 @@ export default function CaptureScreen() {
           (await extractInCloud({ text: leftover })).transactions,
         forceCloud: options.forceCloud,
         ownerNames: firstName ? [firstName] : [],
+        relevance: {
+          currencies: accounts.map((account) => account.currency),
+          names: accounts.flatMap((account) => [
+            account.name,
+            account.institution ?? "",
+          ]),
+        },
       });
       setResult(next);
       const built = buildDrafts(

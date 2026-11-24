@@ -1,7 +1,10 @@
 import { normalizeModelTransactions } from "@/convex/lib/capture/model";
 import type { ModelExtractedTransaction } from "@/convex/lib/capture/model";
 import { parseCaptureText } from "@/convex/lib/capture/parser";
-import type { ParsedCaptureTransaction } from "@/convex/lib/capture/parser";
+import type {
+  CaptureRelevance,
+  ParsedCaptureTransaction,
+} from "@/convex/lib/capture/parser";
 import { redactSensitive } from "@/convex/lib/capture/redact";
 import { resolveTransfers } from "@/convex/lib/capture/transfers";
 import type { CapturedTransfer } from "@/convex/lib/capture/transfers";
@@ -131,6 +134,8 @@ export const parseCapture = async (
     forceCloud?: boolean;
     /** Names that identify the user, to spot transfers to their own accounts. */
     ownerNames?: string[];
+    /** The user's currencies and account names, to spot unknown formats. */
+    relevance?: CaptureRelevance;
   } = {}
 ): Promise<CaptureResult> => {
   const reads = await Promise.all(inputs.map(readInput));
@@ -153,6 +158,7 @@ export const parseCapture = async (
   for (const read of reads) {
     const parsed = parseCaptureText(read.text, {
       referenceDate: read.referenceDate,
+      relevance: options.relevance,
     });
     for (const transaction of parsed.transactions) {
       add(transaction, "pattern", read.imageUri);
